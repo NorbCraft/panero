@@ -16,18 +16,17 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - [x] Repo root moved to `~/Projects/panero`; handoff → `dev/handoff/`.
 - [x] Per-repo git identity; `main` branch created at `v2.8.1`.
 - [x] Commit handoff material + these dev docs.
-- [!] Owner: `sudo bash dev/scripts/bootstrap-host.sh`, then re-login and
-      restart VS Code (docker group).
-- [!] Owner: `gh auth login ... --scopes workflow` + `gh auth setup-git`.
-- [ ] Verify toolchain (`cmake`, `g++`, `gh auth status`, `docker ps`).
-- [ ] Create public `NorbCraft/panero`, push `main` + upstream tags; enable
+- [x] Owner ran bootstrap script (docker group active after re-login; `sg docker` meanwhile).
+- [x] Owner authenticated gh (NorbCraft, repo+workflow scopes).
+- [x] Verify toolchain (`cmake`, `g++`, `gh auth status`, `docker ps`).
+- [x] Create public `NorbCraft/panero`, push `main` + upstream tags; enable
       issues; confirm Actions enabled.
 
 ## Phase 1 — Baseline
 
-- [ ] Baseline build of v2.8.1 unchanged; run existing autotests; record
+- [x] Baseline build of v2.8.1 unchanged; run existing autotests; record
       exact commands and versions in ENVIRONMENT.md.
-- [ ] Minimal CI workflow (build + tests in ubuntu:24.04 container).
+- [x] Minimal CI workflow (build + tests in ubuntu:24.04 container).
 - [ ] License/provenance audit of the base tree (LICENSES/, SPDX headers,
       icons, docs, plugins) → `dev/LICENSE-AUDIT.md` (draft).
 
@@ -39,59 +38,59 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ## Phase 2 — Identity / rebrand (§3.5–3.6, §4)
 
-- [ ] Executable `panero`, desktop file, AppStream metainfo, reverse-DNS id
+- [x] Executable `panero`, desktop file, AppStream metainfo, reverse-DNS id
       derived from owner (e.g. `io.github.norbcraft.panero`).
-- [ ] Separate config (`panerorc`), data, cache, D-Bus/single-instance ids;
+- [x] Separate config (`panerorc`), data, cache, D-Bus/single-instance ids;
       coexistence with installed Krusader verified.
-- [ ] Optional, explicit "Import Krusader settings" (copy, never modify).
-- [ ] About dialog: fork statement, upstream credits, source/credits links,
+- [x] Optional, explicit "Import Krusader settings" (copy, never modify).
+- [x] About dialog: fork statement, upstream credits, source/credits links,
       bug link → this repo. README rewrite with fork statement.
-- [ ] Icon A redrawn as original SVG + PNG sizes 16–256; provenance doc.
+- [x] Icon A redrawn as original SVG + PNG sizes 16–256; provenance doc.
 - [ ] Record PANERO name note (existing third-party uses; no clearance claim).
 
 ## Phase 3 — Commander input model (§7)
 
-- [ ] Separate current row vs. mark set; Commander profile default.
-- [ ] Current row: strong blue treatment; marks: red + check indicator.
-- [ ] Short right-click toggles mark; Space toggles; Insert preserved.
-- [ ] Left-click / arrows / focus / panel switch keep marks; Clear Marks action;
+- [x] Separate current row vs. mark set; Commander profile default.
+- [x] Current row: strong blue treatment; marks: red + check indicator.
+- [x] Short right-click toggles mark; Space toggles; Insert preserved.
+- [x] Left-click / arrows / focus / panel switch keep marks; Clear Marks action;
       Escape does not clear marks.
-- [ ] Marks keyed by stable identity across sort/refresh/view changes;
+- [x] Marks keyed by stable identity across sort/refresh/view changes;
       pruned on disappearance; not carried across directories.
-- [ ] Hold right-click (~600 ms, configurable) → native Krusader context menu
+- [x] Hold right-click (~600 ms, configurable) → native Krusader context menu
       (marked set / item / background rules); no double trigger; drag threshold,
       cancel, focus loss handled.
-- [ ] Header short right-click → native column chooser immediately.
-- [ ] Menu key / Shift+F10.
-- [ ] Unit/GUI tests for event sequencing and target selection.
+- [x] Header short right-click → native column chooser immediately.
+- [x] Menu key / Shift+F10.
+- [x] Unit/GUI tests for event sequencing and target selection.
 
 ## Phase 4 — Views & appearance (§6)
 
-- [ ] Extension column (dirs, hidden, no-ext, multi-suffix) without name
+- [x] Extension column (dirs, hidden, no-ext, multi-suffix) without name
       duplication.
-- [ ] Alternating rows, configurable stripe colors (light/dark).
-- [ ] Row height 18–48 px, compact preset, comfortable default, HiDPI.
-- [ ] Thumbnails/Details toggle using real KIO previews (async, bounded).
+- [x] Alternating rows, configurable stripe colors (light/dark).
+- [x] Row height 18–48 px, compact preset, comfortable default, HiDPI.
+- [x] Thumbnails/Details toggle using real KIO previews (async, bounded).
 - [ ] Colored icon fallbacks working on Zorin (non-KDE); declared deps.
-- [ ] Hidden-files toggle; "View & Colors" dialog with reset; command line
+- [x] Hidden-files toggle; "View & Colors" dialog with reset; command line
       hidden by default.
-- [ ] Light/dark support without touching global theme.
+- [x] Light/dark support without touching global theme.
 
 ## Phase 5 — Toolbar, drives, tree, pins (§5)
 
-- [ ] Default toolbar: Up, Home, Refresh, Compare, Pack, Unpack, Search, Trash
+- [x] Default toolbar: Up, Home, Refresh, Compare, Pack, Unpack, Search, Trash
       (opens `trash:/`), Hidden, Thumbnails/Details, Tree, View & Colors.
       Copy/Move/New Folder/Sync removed from default toolbar only.
-- [ ] Per-panel drive selector (Solid/KIO), graceful missing/unmounted.
-- [ ] Left folder-tree sidebar following the active panel, lazy, non-blocking.
-- [ ] Pinned favorites with persistence and recoverable errors.
+- [x] Per-panel drive selector (Solid/KIO), graceful missing/unmounted.
+- [x] Left folder-tree sidebar following the active panel, lazy, non-blocking.
+- [x] Pinned favorites with persistence and recoverable errors.
 
 ## Phase 6 — KDiff3 compare (§9)
 
-- [ ] Compare by Content defaults to KDiff3; file-from-each-panel and two
+- [x] Compare by Content defaults to KDiff3; file-from-each-panel and two
       marked files; folder compare where supported.
-- [ ] Detection + configured path; safe argv launch.
-- [ ] Missing → "Install KDiff3?" via PackageKit/polkit; progress, cancel,
+- [x] Detection + configured path; safe argv launch.
+- [x] Missing → "Install KDiff3?" via PackageKit/polkit; progress, cancel,
       failure, retry, resume pending comparison.
 
 ## Phase 7 — Preserve upstream (§8)
@@ -111,3 +110,15 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 ## Phase 9 — Verification & final report (§11)
 
 - [ ] Full verification matrix (`dev/TEST-REPORT.md`), screenshots, user guide.
+
+## Status notes (2026-11-17 evening)
+
+- Merged to main: identity (PR #1), commander input (PR #2).
+- Branch `feature/appearance` (pushed): appearance/light-dark, View & Colors,
+  thumbnails view, toolbars, navigation sidebar + pins, drive labels, KDiff3
+  install flow. Next: PR + merge.
+- Branch `feature/packaging` is being produced by a background agent
+  (debian/, LICENSING.md, PROVENANCE.md, release workflow, deb tests).
+- Remaining: backports (Phase 1b, list in dev/BACKPORTS.md), Phase 7 review,
+  packaging merge, VM/clean-system tests (KDiff3 real install, deb install),
+  host Wayland GUI check, screenshots, user guide, release v0.1.0-preview.1.

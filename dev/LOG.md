@@ -62,3 +62,22 @@ done, outcome, next step.
   trigger, arrows keep marks.
 - Found: katepart missing on a clean system triggers a startup warning → the
   .deb must depend on ktexteditor-katepart.
+
+## 2026-11-17 — Claude Code (Opus 5.5) — appearance, thumbnails, sidebar, KDiff3
+
+- Appearance: PaneroAppearance (Fusion + light/dark Panero palette following
+  the GNOME colour scheme via the XDG portal, non-blocking 300 ms call without
+  auto-start — an earlier QDBusInterface version stalled startup in headless
+  sessions; gsettings fallback). Fixed invisible icons in dark mode: KIconThemes
+  sets light Breeze as Qt's fallback theme → now set to the matching Breeze
+  variant; Icon lookup prefers Breeze fallbacks over KIconLoader.
+- View & Colors dialog; row height 16–48 (never clipping); compact preset.
+- Thumbnails view type (QListView icon mode, KIO previews, custom tile paint).
+  Verified real previews for JPEG, PNG, PDF, text.
+- Toolbars per spec; job toolbar hidden by default; navigation dock (pins +
+  KIO tree, follows active panel); drive label on media button.
+- KDiff3: install offer via PackageKit D-Bus (enum values verified via
+  PackageKitGlib GI); verified real kdiff3 launch and a real PackageKit resolve
+  with kdiff3 hidden from PATH.
+- Test tooling: xdotool window offsets — `xdotool getwindowgeometry` reports
+  0,0 for undecorated Xvfb windows; use dev/scripts/xwin.sh.
