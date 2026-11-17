@@ -35,7 +35,7 @@
 
 
 //This is the filter in the QFileDialog of Import/Export:
-static const char* FILE_FILTER = I18N_NOOP("*.xml|XML files\n*|All files");
+static const char* FILE_FILTER = I18N_NOOP("XML files (*.xml);;All files (*)");
 
 
 UserActionPage::UserActionPage(QWidget* parent)

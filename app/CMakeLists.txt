@@ -72,6 +72,7 @@ target_link_libraries(panero
                       KF5::Notifications
                       KF5::Parts
                       KF5::WindowSystem
+                      KF5::Crash
                       Qt5::PrintSupport
                       Qt5::Concurrent
                       # Panero: static libs (GUI, PanelView) use Panel helpers

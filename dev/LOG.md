@@ -146,3 +146,29 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Next: merge backports; rebuild the .deb from final main; screenshots via
   dev/scripts/make-screenshots.sh; ask the owner once to install the .deb on the
   host (needs sudo) for the launcher/coexistence check; tag v0.1.0-preview.1.
+
+## 2026-11-17 — Claude Code (Opus 5.5) — upstream backports (Phase 1b)
+
+- Branch `feature/backports` from origin/main: 39 `Backport:` commits (one per
+  upstream commit; the BookMan crash series as one set), each with
+  `Upstream:` and `Original-Author:` lines. Full table, skips with reasons and
+  the owner-decision list: `dev/BACKPORTS.md`.
+- ISO images did not open at all on noble: kio_iso's `kdemain()` had no
+  `QCoreApplication`, so the worker crashed in `SlaveBase::SlaveBase()`
+  (distro Krusader too), and noble's ISO mime type `application/vnd.efi.iso`
+  was not listed. Took the kdemain hunk of 4c85272cd (was on the skip list;
+  taken at the coordinator's request) plus c6945e68e; verified with a genisoimage ISO via
+  kioclient5 and the staged Panero (`--left=iso:/…`).
+- KCrash (03fe3ae39) adds `KF5::Crash`: `libkf5crash-dev` added to
+  dev/build-deps.txt, dev/scripts/bootstrap-host.sh and README. The host has
+  no sudo, so the build was verified against the noble .deb extracted into the
+  scratchpad (`-DKF5Crash_DIR=…`); the owner must
+  `sudo apt install libkf5crash-dev` before the next local configure.
+- Verified with kioclient5 against the built workers: .tar.bz2 mapping, .jar,
+  reading inside a .deb, krarc on single .xz/.bz2/.lzma (crashed before),
+  krarc→krarc copy error. Offscreen Panero runs with an isolated HOME:
+  SIGTERM/SIGINT/SIGSEGV save panerorc; duplicate bookmarks + reloads, no crash.
+- Clean rebuild: no new warnings (45 vs 47 at baseline); ctest 4/4.
+- Owner decisions pending (not applied): cfae74772, 3ff36af32, 6713c4132,
+  4a0d063a3+c7a4ac114, e78991813. Also note b89d6643d now shows a message when
+  Enter is pressed in inline rename without changing the name.

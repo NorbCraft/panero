@@ -72,9 +72,12 @@ void KrViewItemDelegate::paintTile(QPainter *painter, const QStyleOptionViewItem
         const QRect textRect(r.left() + 4, iconRect.bottom() + 4, r.width() - 8, r.bottom() - iconRect.bottom() - 6);
         QVariant fg = index.data(Qt::ForegroundRole);
         painter->setPen(fg.canConvert<QBrush>() ? fg.value<QBrush>().color() : option.palette.color(QPalette::Text));
-        painter->setFont(option.font);
-        const QFontMetrics fm(option.font);
-        QTextLayout layout(text, option.font);
+        // the file list font comes from the model (Qt::FontRole), as in the other views
+        const QVariant fontData = index.data(Qt::FontRole);
+        const QFont font = fontData.canConvert<QFont>() ? fontData.value<QFont>() : option.font;
+        painter->setFont(font);
+        const QFontMetrics fm(font);
+        QTextLayout layout(text, font);
         QTextOption to(Qt::AlignHCenter);
         to.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
         layout.setTextOption(to);

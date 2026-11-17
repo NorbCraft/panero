@@ -22,6 +22,8 @@
 #include "feedtolistboxdialog.h"
 #include "synchronizercolors.h"
 
+#include <limits>
+
 // QtCore
 #include <QEventLoop>
 #include <QRegExp>
@@ -360,8 +362,11 @@ void SynchronizerGUI::initGUI(const QString& profileName, QUrl leftURL, QUrl rig
     syncList->setSelectionMode(QAbstractItemView::ExtendedSelection);
     syncList->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     syncList->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    header->setSortIndicatorShown(false);
-    syncList->setSortingEnabled(false);
+    // Panero: always open sorted A-Z by the left name. Qt's default sort
+    // indicator (and the one stored in header states saved while sorting was
+    // disabled) is descending, which would list the results Z-A
+    header->setSortIndicator(0, Qt::AscendingOrder);
+    syncList->setSortingEnabled(true);
     syncList->setRootIsDecorated(true);
     syncList->setIndentation(10);
     syncList->setDragEnabled(true);
@@ -997,6 +1002,11 @@ void SynchronizerGUI::compare()
     btnScrollResults->show();
     disableMarkButtons();
 
+    // In order to avoid performance problems (e.g.
+    // when there are huge quantities of files):
+    // disable sorting before inserting the items
+    syncList->setSortingEnabled(false);
+
     int fileCount = synchronizer.compare(leftLocation->currentText(), rightLocation->currentText(),
                                          &query, cbSubdirs->isChecked(), cbSymlinks->isChecked(),
                                          cbIgnoreDate->isChecked(), cbAsymmetric->isChecked(), cbByContent->isChecked(),
@@ -1004,6 +1014,10 @@ void SynchronizerGUI::compare()
                                          convertToSeconds(equalitySpinBox->value(), equalityUnitCombo->currentIndex()),
                                          convertToSeconds(timeShiftSpinBox->value(), timeShiftUnitCombo->currentIndex()),
                                          parallelThreadsSpinBox->value(), ignoreHiddenFilesCB->isChecked());
+
+    // Re-enable sorting after the items have been inserted
+    syncList->setSortingEnabled(true);
+
     enableMarkButtons();
     btnStopComparing->setEnabled(isComparing = false);
     btnStopComparing->hide();
@@ -1083,6 +1097,7 @@ void SynchronizerGUI::addFile(SynchronizerFileItem *item)
 
     if (listItem) {
         listItem->setIcon(0, Icon(isDir ? "folder" : "document-new"));
+        listItem->updateSortData(item);
         if (!item->isMarked())
             listItem->setHidden(true);
         else
@@ -1121,6 +1136,7 @@ void SynchronizerGUI::markChanged(SynchronizerFileItem *item, bool ensureVisible
             listItem->setText(5, rightSize);
             listItem->setText(6, rightName);
             listItem->setColors(foreGrounds[ item->task()], backGrounds[ item->task()]);
+            listItem->updateSortData(item);
 
             if (ensureVisible)
                 syncList->scrollTo(syncList->indexOf(listItem));
@@ -1182,7 +1198,17 @@ void SynchronizerGUI::refresh()
         btnSynchronize->setEnabled(false);
         btnFeedToListBox->setEnabled(false);
         disableMarkButtons();
+
+        // In order to avoid performance problems (e.g.
+        // when there are huge quantities of files):
+        // disable sorting before `synchronizer.refresh()`
+        syncList->setSortingEnabled(false);
+
         int fileCount = synchronizer.refresh();
+
+        // Re-enable sorting after `synchronizer.refresh()`
+        syncList->setSortingEnabled(true);
+
         enableMarkButtons();
         btnCompareDirs->setEnabled(true);
         profileManager->setEnabled(true);
@@ -1572,3 +1598,68 @@ QString SynchronizerGUI::dirLabel()
     return label;
 }
 
+// Store raw values so `operator<` doesn't have to parse formatted text
+void SynchronizerGUI::SyncViewItem::updateSortData(SynchronizerFileItem *item)
+{
+    // These checks ensure that the source types are not wider than qint64.
+    // Note: The actual values are expected to remain within qint64's
+    // range. These checks cost nothing at runtime
+    static_assert(sizeof(time_t) <= sizeof(qint64), "time_t is wider than qint64, the sorting data could be truncated!");
+    static_assert(sizeof(KIO::filesize_t) <= sizeof(qint64), "filesize_t is wider than qint64, the sorting data could be truncated!");
+
+    // Folders and {files that only exist on one side} don't have
+    // a meaningful size/date to compare, so we give them this
+    // provisional value. `lowest()` was chosen because it is always
+    // lower than any date or file size.
+    // When the user sorts by clicking the column header, these
+    // provisional rows will end up first if sorting low-to-high, and
+    // last if sorting high-to-low
+    static constexpr qint64 noComparableValue = std::numeric_limits<qint64>::lowest();
+
+    setData(1, Qt::UserRole, item->existsInLeft() && !item->isDir()
+                                ? QVariant(static_cast<qint64>(item->leftSize()))
+                                : QVariant(noComparableValue));
+    setData(5, Qt::UserRole, item->existsInRight() && !item->isDir()
+                                ? QVariant(static_cast<qint64>(item->rightSize()))
+                                : QVariant(noComparableValue));
+    setData(2, Qt::UserRole, item->existsInLeft()
+                                ? QVariant(static_cast<qint64>(item->leftDate()))
+                                : QVariant(noComparableValue));
+    setData(4, Qt::UserRole, item->existsInRight()
+                                ? QVariant(static_cast<qint64>(item->rightDate()))
+                                : QVariant(noComparableValue));
+    // Column 3 displays a translated, human-readable label for
+    // the task (e.g. "Copy from left to right"), which comes from
+    // Synchronizer::getTaskTypeName(). We don't have to sort using
+    // that label; instead, we store the underlying task enum value
+    // here
+    setData(3, Qt::UserRole, static_cast<int>(item->task()));
+}
+
+bool SynchronizerGUI::SyncViewItem::operator<(const QTreeWidgetItem &other) const
+{
+    // By default, QTreeWidgetItem sorts every column by comparing the
+    // text shown to the user, which doesn't work well in these cases: sizes
+    // like "9 KB" and "10 KB" would be sorted alphabetically (instead of by
+    // actual byte count) and dates wouldn't be sorted in chronological order.
+    // To solve this, we override the comparison and use the raw numeric
+    // values that we stored earlier (via updateSortData()) for the size,
+    // date, and task columns, and only fall back to comparing the
+    // displayed text for the name columns
+
+    const int numOfCol = treeWidget() ? treeWidget()->sortColumn() : 0;
+    switch (numOfCol) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+            return data(numOfCol, Qt::UserRole).toLongLong() <
+                other.data(numOfCol, Qt::UserRole).toLongLong();
+        default:
+            // Columns 0 and 6 are the file/folder name columns. We use
+            // localeAwareCompare() instead of a plain string comparison
+            // so that names are sorted as the user expects
+            return text(numOfCol).localeAwareCompare(other.text(numOfCol)) < 0;
+    }
+}

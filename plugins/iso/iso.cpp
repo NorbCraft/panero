@@ -11,10 +11,12 @@
 
 #include "iso.h"
 
+#include <cstdlib>
 #include <zlib.h>
 
 // QtCore
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -44,14 +46,19 @@ extern "C"
 
         if (argc != 4) {
             fprintf(stderr, "Usage: kio_iso protocol domain-socket1 domain-socket2\n");
-            exit(-1);
+            return -1;
         }
+
+        // KIO::SlaveBase needs a QCoreApplication (it queries the
+        // application's thread); without one the worker crashes on start
+        QCoreApplication app(argc, argv);
+        app.setApplicationName(QStringLiteral("kio_iso"));
 
         kio_isoProtocol slave(argv[2], argv[3]);
         slave.dispatchLoop();
 
         //qDebug()   << "Done" << endl;
-        return 0;
+        return EXIT_SUCCESS;
     }
 
 } // extern "C"
@@ -264,8 +271,27 @@ void kio_isoProtocol::listDir(const QUrl &url)
         dir = root;
     }
 
+    // Add the listed directory itself, as a "." entry (expected by modern
+    // KIO clients).
+    // An ISO image is read-only, therefore a non-writable directory must
+    // be presented.
+    // A note for future developments: A similar approach could be seen in
+    // the `listAccounts()` function at <https://invent.kde.org/network/
+    // kio-gdrive/-/blob/master/src/kio_gdrive.cpp> and in the `listDir(const
+    // QUrl &url)` function at <https://invent.kde.org/network/kio-extras/-/
+    // blob/master/mtp/kio_mtp.cpp> (although for a writable directory in
+    // that case)
+    UDSEntry dotEntry;
+    dotEntry.fastInsert(UDSEntry::UDS_NAME, QStringLiteral("."));
+    dotEntry.fastInsert(UDSEntry::UDS_FILE_TYPE, S_IFDIR);
+    dotEntry.fastInsert(UDSEntry::UDS_SIZE, 0LL);
+    dotEntry.fastInsert(UDSEntry::UDS_ACCESS, S_IRUSR | S_IXUSR |
+                                              S_IRGRP | S_IXGRP |
+                                              S_IROTH | S_IXOTH);
+    listEntry(dotEntry);
+
     QStringList l = dir->entries();
-    totalSize(l.count());
+    totalSize(l.count() + 1); // `+ 1` because the "." entry is counted
 
     UDSEntry entry;
     QStringList::Iterator it = l.begin();

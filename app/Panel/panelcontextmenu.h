@@ -14,6 +14,7 @@
 
 #include <KService/KService>
 #include <KIOWidgets/KFileItemActions>
+#include <kio_version.h>
 
 class KrPanel;
 
@@ -40,7 +41,9 @@ private:
     void performAction(int id);
     void addEmptyMenuEntries(); // adds the choices for a menu without selected items
     void addCreateNewMenu(); // adds a "create new" submenu
+#if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)
     void addCompressAndExtractPluginActions(); // adds various plugin actions
+#endif
 
     enum ID {
         OPEN_ID,

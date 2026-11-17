@@ -56,7 +56,13 @@ TerminalDock::TerminalDock(QWidget* parent, KrMainWindow *mainWindow) : QWidget(
 }
 
 TerminalDock::~TerminalDock()
-= default;
+{
+    // konsole_part is a child of this widget and is only destroyed after this destructor ran;
+    // its destroyed() signal must not reach killTerminalEmulator() of the half-destroyed dock
+    if (konsole_part) {
+        disconnect(konsole_part, &KParts::ReadOnlyPart::destroyed, this, &TerminalDock::killTerminalEmulator);
+    }
+}
 
 bool TerminalDock::initialise()
 {

@@ -442,7 +442,7 @@ void ListPanel::createView()
     connect(view->op(), &KrViewOperator::contextMenu, this, &ListPanel::popRightClickMenu);
     connect(view->op(), &KrViewOperator::emptyContextMenu, this, &ListPanel::popEmptyRightClickMenu);
     connect(view->op(), &KrViewOperator::letsDrag, this, &ListPanel::startDragging);
-    connect(view->op(), &KrViewOperator::gotDrop, this, [this](QDropEvent *event) {handleDrop(event, true); });
+    connect(view->op(), &KrViewOperator::gotDrop, this, [this](QDropEvent *event) {handleDrop(event); });
     connect(view->op(), &KrViewOperator::previewJobStarted, this, &ListPanel::slotPreviewJobStarted);
     connect(view->op(), &KrViewOperator::refreshActions, krApp->viewActions(), &ViewActions::refreshActions);
     connect(view->op(), &KrViewOperator::currentChanged, func->history, &DirHistoryQueue::saveCurrentItem);
@@ -800,7 +800,7 @@ void ListPanel::updateFilesystemStats(const QString &metaInfo, const QString &fs
     mediaButton->updateLabel(virtualPath(), mountPoint);
 }
 
-void ListPanel::handleDrop(QDropEvent *event, bool onView)
+void ListPanel::handleDrop(QDropEvent *event, QWidget *targetFrame)
 {
     // check what was dropped
     const QList<QUrl> urls = KUrlMimeData::urlsFromMimeData(event->mimeData());
@@ -812,7 +812,7 @@ void ListPanel::handleDrop(QDropEvent *event, bool onView)
     // find dropping destination
     QString destinationDir = "";
     const bool dragFromThisPanel = event->source() == this;
-    const KrViewItem *item = onView ? view->getKrViewItemAt(event->pos()) : nullptr;
+    const KrViewItem *item = !targetFrame ? view->getKrViewItemAt(event->pos()) : nullptr;
     if (item) {
         const FileItem *file = item->getFileItem();
         if (file && !file->isDir() && dragFromThisPanel) {
@@ -829,7 +829,9 @@ void ListPanel::handleDrop(QDropEvent *event, bool onView)
     QUrl destination = QUrl(virtualPath());
     destination.setPath(destination.path() + '/' + destinationDir);
 
-    func->files()->dropFiles(destination, event);
+    QWidget *targetWidget = targetFrame ? targetFrame : view->widget();
+
+    func->files()->dropFiles(destination, event, targetWidget);
 
     if(KConfigGroup(krConfig, "Look&Feel").readEntry("UnselectBeforeOperation",
                                                      _UnselectBeforeOperation)) {
@@ -841,7 +843,7 @@ void ListPanel::handleDrop(QDropEvent *event, bool onView)
 
 void ListPanel::handleDrop(const QUrl &destination, QDropEvent *event)
 {
-    func->files()->dropFiles(destination, event);
+    func->files()->dropFiles(destination, event, view->widget());
 }
 
 void ListPanel::startDragging(const QStringList& names, const QPixmap& px)

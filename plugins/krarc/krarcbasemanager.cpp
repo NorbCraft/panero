@@ -9,10 +9,15 @@
 #include "krarcbasemanager.h"
 #include "../../app/krdebuglogger.h"
 
+#include <KArchive/KArchiveDirectory>
 #include <KArchive/KTar>
 
 #include <QtCore/QStandardPaths>
 
+// Having a "file signature" (also known as "magic number") there
+// allows the archive type to be identified (for example, in
+// KrArcBaseManager::detectArchive()) instead of depending on the
+// file extension that the archive has
 KrArcBaseManager::AutoDetectParams KrArcBaseManager::autoDetectParams[] = {{"zip",  0, "PK\x03\x04"},
     {"rar",  0, "Rar!\x1a" },
     {"arj",  0, "\x60\xea" },
@@ -21,8 +26,8 @@ KrArcBaseManager::AutoDetectParams KrArcBaseManager::autoDetectParams[] = {{"zip
     {"bzip2", 0, "\x42\x5a\x68\x39\x31" },
     {"gzip", 0, "\x1f\x8b"},
     {"deb",  0, "!<arch>\ndebian-binary   " },
-    {"7z",   0, "7z\xbc\xaf\x27\x1c" }/*,
-    {"xz",   0, "\xfd\x37\x7a\x58\x5a\x00"}*/
+    {"7z",   0, "7z\xbc\xaf\x27\x1c" },
+    {"xz",   0, "\xfd\x37\x7a\x58\x5a\x00"}
 };
 
 int KrArcBaseManager::autoDetectElems = sizeof(autoDetectParams) / sizeof(AutoDetectParams);
@@ -116,20 +121,42 @@ QString KrArcBaseManager::detectArchive(bool &encrypted, const QString& fileName
 
             if (j == detectionString.length()) {
                 QString type = autoDetectParams[ i ].type;
-                if (type == "bzip2" || type == "gzip") {
+                if (type == QStringLiteral("bzip2") || type == QStringLiteral("gzip") ||
+                       type == QStringLiteral("xz") || type == QStringLiteral("lzma")) {
                     if (fast) {
-                        if (fileName.endsWith(QLatin1String(".tar.gz")))
-                            type = "tgz";
-                        else if (fileName.endsWith(QLatin1String(".tar.bz2")))
-                            type = "tbz";
+                        if (fileName.endsWith(QStringLiteral(".tar.gz")) || fileName.endsWith(QStringLiteral(".tgz")))
+                            type = QStringLiteral("tgz");
+                        else if (fileName.endsWith(QStringLiteral(".tar.bz2")) || fileName.endsWith(QStringLiteral(".tbz")))
+                            type = QStringLiteral("tbz");
+                        else if (fileName.endsWith(QStringLiteral(".tar.xz")) || fileName.endsWith(QStringLiteral(".txz")))
+                            type = QStringLiteral("txz");
+                        else if (fileName.endsWith(QStringLiteral(".tar.lzma")) || fileName.endsWith(QStringLiteral(".tlz")))
+                            type = QStringLiteral("tlz");
                     } else {
                         KTar tapeArchive(fileName);
                         if (tapeArchive.open(QIODevice::ReadOnly)) {
+                            // When, for example, Krusader tries to find text in {the files that are inside an archive}:
+                            // - For some archives, the previous `tapeArchive.open` operation (and `tar`) fail if
+                            // the file is not a tar archive (which is correct, e.g. `echo {1..512} > test.txt;
+                            // xz test.txt; tar tf test.txt.xz`).
+                            // - However, for other archives, the previous `tapeArchive.open` operation (and `tar`)
+                            // succeed if the file is not a tar archive (and they should fail, e.g. `echo {1..100} >
+                            // test.txt; xz test.txt; tar tf test.txt.xz`)).
+                            // Therefore, additional tests are going to be performed
+                            const KArchiveDirectory *rootDir = tapeArchive.directory();
+                            if (rootDir) {
+                                if (rootDir->entries().size() >= 1) {
+                                    if (type == QStringLiteral("gzip"))
+                                        type = QStringLiteral("tgz");
+                                    else if (type == QStringLiteral("bzip2"))
+                                        type = QStringLiteral("tbz");
+                                    else if (type == QStringLiteral("xz"))
+                                        type = QStringLiteral("txz");
+                                    else if (type == QStringLiteral("lzma"))
+                                        type = QStringLiteral("tlz");
+                                }
+                            }
                             tapeArchive.close();
-                            if (type == "gzip")
-                                type = "tgz";
-                            else if (type == "bzip2")
-                                type = "tbz";
                         }
                     }
                 } else if (type == "zip")
@@ -253,6 +280,13 @@ QString KrArcBaseManager::getShortTypeFromMime(const QString &mime)
     // If it's a cbr file but its mimetype isn't "application/x-cbr"
     if (mime == "application/vnd.comicbook-rar")
         return "cbr";
+
+    // If it's a deb file but its mimetype isn't "application/x-deb"
+    if (mime == QStringLiteral("application/x-debian-package") ||
+        mime == QStringLiteral("application/vnd.debian.binary-package")) {
+        // In a test, this code was executed when right-clicking on a file and choosing "Open"
+        return QStringLiteral("deb");
+    }
 
     // The short type that will be returned
     QString sType = mime;

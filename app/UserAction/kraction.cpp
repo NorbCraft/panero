@@ -52,6 +52,12 @@
 KrActionProcDlg::KrActionProcDlg(const QString& caption, bool enableStderr, QWidget *parent) :
         QDialog(parent), _stdout(nullptr), _stderr(nullptr), _currentTextEdit(nullptr)
 {
+    // This dialog is intentionally used as a standalone top-level window rather
+    // than being owned through a QObject parent. Delete it as soon as the user
+    // closes it, any surviving external reference is a QPointer and will be
+    // reset automatically to nullptr
+    setAttribute(Qt::WA_DeleteOnClose);
+
     setWindowTitle(caption);
     setWindowModality(Qt::NonModal);
 
@@ -127,20 +133,30 @@ KrActionProcDlg::KrActionProcDlg(const QString& caption, bool enableStderr, QWid
     resize(sizeHint() * 2);
 }
 
+// Insert process output as it arrives: append() would start a new paragraph for every
+// chunk read from the process, adding empty lines. Panero: insert at the end even if the
+// user has moved the cursor or selected text in the output view.
+static void insertOutput(KTextEdit *edit, const QString &str, bool italic = false)
+{
+    edit->moveCursor(QTextCursor::End);
+    if (italic)
+        edit->setFontItalic(true);
+    edit->insertPlainText(str);
+    if (italic)
+        edit->setFontItalic(false);
+}
+
 void KrActionProcDlg::addStderr(const QString& str)
 {
     if (_stderr)
-        _stderr->append(str);
-    else {
-        _stdout->setFontItalic(true);
-        _stdout->append(str);
-        _stdout->setFontItalic(false);
-    }
+        insertOutput(_stderr, str);
+    else
+        insertOutput(_stdout, str, true);
 }
 
 void KrActionProcDlg::addStdout(const QString& str)
 {
-    _stdout->append(str);
+    insertOutput(_stdout, str);
 }
 
 void KrActionProcDlg::toggleFixedFont(bool state)
@@ -210,11 +226,6 @@ KrActionProc::KrActionProc(KrActionBase* action) : _action(action), _proc(nullpt
 {
 }
 
-KrActionProc::~KrActionProc()
-{
-    delete _proc;
-}
-
 void KrActionProc::start(const QString& cmdLine)
 {
     QStringList list;
@@ -265,6 +276,10 @@ void KrActionProc::start(QStringList cmdLineList)
                       " -t -u " + _action->user() + " -c " + KrServices::quote(cmd);
             }
             MAIN_VIEW->terminalDock()->sendInput(cmd + '\n');
+            // This KrActionProc object was created on the heap in actionProcFactoryMethod().
+            // When the command is forwarded to the embedded terminal, no external QProcess
+            // is started here, therefore no later finished signal will call processExited()
+            // to destroy this KrActionProc object. Schedule its destruction now
             deleteLater();
     }
     else { // will start a new process
@@ -281,6 +296,9 @@ void KrActionProc::start(QStringList cmdLineList)
                 if (termArgs.isEmpty()) {
                     KMessageBox::error(nullptr, i18nc("Arg is a string containing the bad quoting.",
                                                 "Bad quoting in terminal command:\n%1", term));
+                    // This KrActionProc object was created on the heap in actionProcFactoryMethod().
+                    // Because execution stops here and no later finished signal will call processExited()
+                    // to destroy this KrActionProc object, schedule its destruction now
                     deleteLater();
                     return;
                 }
@@ -302,6 +320,9 @@ void KrActionProc::start(QStringList cmdLineList)
             bool separateStderr = false;
             if (_action->execType() == KrAction::CollectOutputSeparateStderr)
                 separateStderr = true;
+            // Create an unparented top-level output dialog. It deletes itself when it's closed
+            // (after that, `_output` must be checked before using it). `_output` is a QPointer,
+            // so it is reset automatically to nullptr when the dialog is destroyed
             _output = new KrActionProcDlg(_action->text(), separateStderr);
             // connect the output to the dialog
             _proc->setOutputChannelMode(KProcess::SeparateChannels);
@@ -330,6 +351,8 @@ void KrActionProc::processExited(int /*exitCode*/, QProcess::ExitStatus /*exitSt
         // TODO tell the user the program exit code
         _output->slotProcessFinished();
     }
+    // This KrActionProc object was created on the heap in actionProcFactoryMethod().
+    // It is destroyed here after the external process has finished
     delete this; // banzai!!
 }
 

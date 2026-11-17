@@ -636,7 +636,7 @@ void kio_krarcProtocol::get(const QUrl &url, int tries)
     QString file = getPath(url).mid(getPath(arcFile->url()).length() + 1);
     KrLinecountingProcess proc;
     if (extArcReady) {
-        proc << getCmd << arcTempDir + "contents.cpio" << '*' + localeEncodedString(file);
+        proc << getCmd << arcTempDir + "contents.cpio" << QStringLiteral("./") + localeEncodedString(file);
     } else if (arcType == "arj" || arcType == "ace" || arcType == "7z") {
         proc << getCmd << getPath(arcFile->url(), QUrl::StripTrailingSlash) << localeEncodedString(file);
         if (arcType == "ace" && QFile("/dev/ptmx").exists())    // Don't remove, unace crashes if missing!!!
@@ -1117,8 +1117,17 @@ void kio_krarcProtocol::copy(const QUrl &url, const QUrl &dest, int, KIO::JobFla
     if (encrypted)
         KRDEBUG("ERROR: " << url.path() << " is encrypted.");
     if (!dest.isLocalFile())
-        KRDEBUG("ERROR: " << url.path() << " is not a local file.");
+        KRDEBUG("ERROR: " << dest.path() << " is not a local file.");
 
+    // if the destination is an archive, avoid that get/put is tried instead - which will fail
+    if (dest.scheme() == "krarc") {
+#if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
+        return WorkerResult::fail(ERR_UNKNOWN, i18n("Copying from archive to archive is not supported."));
+#else
+        error(ERR_UNKNOWN, i18n("Copying from archive to archive is not supported."));
+        return;
+#endif
+    }
     // CMD_COPY is no more in KF5 - replaced with 74 value (as stated in https://invent.kde.org/frameworks/kio/-/blob/master/src/core/commands_p.h)
 #if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
     return WorkerResult::fail(ERR_UNSUPPORTED_ACTION, unsupportedActionErrorString("kio_krarc", 74));
@@ -1369,8 +1378,6 @@ bool kio_krarcProtocol::setArcFile(const QUrl &url)
     if (arcType.isEmpty()) {
         arcType = arcFile->mimetype();
         arcType = getShortTypeFromMime(arcType);
-        if (arcType == "jar")
-            arcType = "zip";
     }
 
     return initArcParameters();
@@ -1413,24 +1420,22 @@ bool kio_krarcProtocol::initDirDict(const QUrl &url, bool forced)
         return false;
     }
 
-    if (arcType != "bzip2" && arcType != "lzma" && arcType != "xz") {
-        if (arcType == "rpm") {
-            proc << listCmd << arcPath;
-            proc.setStandardOutputFile(temp.fileName());
-        } else {
-            proc << listCmd << getPath(arcFile->url(), QUrl::StripTrailingSlash);
-            proc.setStandardOutputFile(temp.fileName());
-        }
-        if (arcType == "ace" && QFile("/dev/ptmx").exists())    // Don't remove, unace crashes if missing!!!
-            proc.setStandardInputFile("/dev/ptmx");
-
-        proc.setOutputChannelMode(KProcess::SeparateChannels); // without this output redirection has no effect
-        proc.start();
-        proc.waitForFinished();
-        if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(proc.exitCode())) return false;
+    if (arcType == "rpm") {
+        proc << listCmd << arcPath;
+        proc.setStandardOutputFile(temp.fileName());
+    } else {
+        proc << listCmd << getPath(arcFile->url(), QUrl::StripTrailingSlash);
+        proc.setStandardOutputFile(temp.fileName());
     }
-    // clear the dir dictionary
+    if (arcType == "ace" && QFile("/dev/ptmx").exists())    // Don't remove, unace crashes if missing!!!
+        proc.setStandardInputFile("/dev/ptmx");
 
+    proc.setOutputChannelMode(KProcess::SeparateChannels); // without this output redirection has no effect
+    proc.start();
+    proc.waitForFinished();
+    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(proc.exitCode())) return false;
+
+    // clear the dir dictionary
     QHashIterator< QString, KIO::UDSEntryList *> lit(dirDict);
     while (lit.hasNext())
         delete lit.next().value();
@@ -1447,9 +1452,6 @@ bool kio_krarcProtocol::initDirDict(const QUrl &url, bool forced)
     entry.fastInsert(KIO::UDSEntry::UDS_ACCESS, mode & 07777);   // keep permissions only
 
     root->append(entry);
-
-    if (arcType == "bzip2" || arcType == "lzma" || arcType == "xz")
-        abort();
 
     char buf[1000];
     QString line;
@@ -2035,21 +2037,21 @@ bool kio_krarcProtocol::initArcParameters()
         putCmd  = QStringList();
     } else if (arcType == "bzip2") {
         cmd     = fullPathName("bzip2");
-        listCmd << fullPathName("bzip2");
+        listCmd << fullPathName(QStringLiteral("ls")) << QStringLiteral("--literal"); // This is better than using `bzip2 -tv`
         getCmd  << fullPathName("bzip2") << "-dc";
         copyCmd = QStringList();
         delCmd  = QStringList();
         putCmd  = QStringList();
     } else if (arcType == "lzma") {
         cmd     = fullPathName("lzma");
-        listCmd << fullPathName("lzma");
+        listCmd << fullPathName(QStringLiteral("ls")) << QStringLiteral("--literal"); // This is better than using `lzma -tv`
         getCmd  << fullPathName("lzma") << "-dc";
         copyCmd = QStringList();
         delCmd  = QStringList();
         putCmd  = QStringList();
     } else if (arcType == "xz") {
         cmd     = fullPathName("xz");
-        listCmd << fullPathName("xz");
+        listCmd << fullPathName(QStringLiteral("ls")) << QStringLiteral("--literal"); // This is better than using `xz -l`
         getCmd  << fullPathName("xz") << "-dc";
         copyCmd = QStringList();
         delCmd  = QStringList();
@@ -2270,7 +2272,7 @@ QString kio_krarcProtocol::getPassword()
     authInfo.url.setScheme("krarc");
 
     if (checkCachedAuthentication(authInfo) && !authInfo.password.isNull()) {
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
     }
 
@@ -2279,7 +2281,7 @@ QString kio_krarcProtocol::getPassword()
 #if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
     int errCode = openPasswordDialog(authInfo, i18n("Accessing the file requires a password."));
     if (!errCode && !authInfo.password.isNull()) {
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
     } else {
         password.clear();
@@ -2292,7 +2294,7 @@ QString kio_krarcProtocol::getPassword()
 #else
     if (openPasswordDialog(authInfo, i18n("Accessing the file requires a password.")) && !authInfo.password.isNull()) {
 #endif
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
 #if KIO_VERSION_MINOR >= 24
     } else {
@@ -2302,7 +2304,7 @@ QString kio_krarcProtocol::getPassword()
 
 #endif
 
-    KRDEBUG(password);
+    // KRDEBUG(password);
     return password;
 }
 

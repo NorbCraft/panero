@@ -14,6 +14,7 @@
 #include <QPointer>
 #include <QEvent>
 #include <QMap>
+#include <QSet>
 #include <QUrl>
 // QtXml
 #include <QDomEntity>
@@ -21,6 +22,8 @@
 #include <QMenu>
 #include <QWidgetAction>
 #include <QLineEdit>
+
+#include <utility>
 
 #include "krbookmark.h"
 
@@ -43,8 +46,8 @@ public:
 protected:
     void deleteBookmark(KrBookmark *bm);
     void importFromFile();
-    bool importFromFileBookmark(QDomElement &e, KrBookmark *parent, const QString& path, QString *errorMsg);
-    bool importFromFileFolder(QDomNode &first, KrBookmark *parent, const QString& path, QString *errorMsg);
+    bool importFromFileBookmark(QDomElement &e, KrBookmark *parent, const QString& path, QString *errorMsg, QSet<KrBookmark*> &seenBookmarks);
+    bool importFromFileFolder(QDomNode &first, KrBookmark *parent, const QString& path, QString *errorMsg, QSet<KrBookmark*> &seenBookmarks);
     void exportToFile();
     void exportToFileFolder(QDomDocument &doc, QDomElement &parent, KrBookmark *folder);
     void exportToFileBookmark(QDomDocument &doc, QDomElement &where, KrBookmark *bm);
@@ -52,7 +55,7 @@ protected:
     void buildMenu(KrBookmark *parent, QMenu *menu, int depth = 0);
 
     bool eventFilter(QObject *obj, QEvent *ev) override;
-    void rightClicked(QMenu *menu, KrBookmark *bm);
+    void rightClicked(KrBookmark *bm);
     void rightClickOnSpecialBookmark();
 
     void removeReferences(KrBookmark *root, KrBookmark *bmToRemove);
@@ -74,15 +77,13 @@ private:
 
     QWidgetAction *_quickSearchAction; ///< Search bar container action
     QLineEdit *_quickSearchBar; ///< Search bar containing current query
-    QMenu *_quickSearchMenu; ///< The menu where the search is performed
-    QHash<QAction *, QString> _quickSearchOriginalActionTitles; ///< Saved original action text values to restore after search
+    QPointer<QMenu> _quickSearchMenu; ///< The menu where the search is performed
+    QList<std::pair<QPointer<QAction>, QString>> _quickSearchOriginalActionTitles; ///< Saved original action text values to restore after search
 
     void _setQuickSearchText(const QString &text);
     QString _quickSearchText() const;
     static void _highlightAction(QAction *action, bool isMatched = true);
     void _resetActionTextAndHighlighting();
 };
-
-Q_DECLARE_METATYPE(KrBookmark *)
 
 #endif // KRBOOKMARK_HANDLER_H

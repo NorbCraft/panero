@@ -109,8 +109,25 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     layout->addWidget(m_pins);
 
     // folder tree
-    layout->addWidget(sectionLabel(i18n("Folders"), content));
+    auto *treeHeader = new QHBoxLayout;
+    treeHeader->setSpacing(2);
+    treeHeader->addWidget(sectionLabel(i18n("Folders"), content));
+    treeHeader->addStretch();
+    auto *treeOptions = new QToolButton(content);
+    treeOptions->setIcon(Icon(QStringLiteral("configure")));
+    treeOptions->setAutoRaise(true);
+    treeOptions->setToolTip(i18n("Folder tree options (start from place, current folder or root; hidden folders)"));
+    treeOptions->setAccessibleName(i18n("Folder tree options"));
+    treeHeader->addWidget(treeOptions);
+    layout->addLayout(treeHeader);
     m_tree = new KrFileTreeView(content);
+    // the tree's own options menu (normally on its header, which is hidden here)
+    connect(treeOptions, &QToolButton::clicked, m_tree, [this]() {
+        QMetaObject::invokeMethod(m_tree, "showHeaderContextMenu");
+        // "Show Details" adds columns: show the header only when there is more than one
+        QHeaderView *header = m_tree->header();
+        header->setVisible(header->count() - header->hiddenSectionCount() > 1);
+    });
     m_tree->setAccessibleName(i18n("Folder tree"));
     connect(m_tree, &KrFileTreeView::urlActivated, this, &PaneroNavigationDock::treeUrlActivated);
     layout->addWidget(m_tree, 1);
@@ -356,8 +373,14 @@ void PaneroNavigationDock::saveSettings() const
 void PaneroNavigationDock::restoreSettings()
 {
     const KConfigGroup g(krConfig, NAV_GROUP);
+    // Panero default: root the tree at the nearest place (e.g. Home) instead of "/"
+    KConfigGroup navTree(krConfig, "Panero Navigation Tree");
+    KConfigGroup treeGroup(&navTree, "TreeView");
+    if (!treeGroup.hasKey("StartFromPlace"))
+        treeGroup.writeEntry("StartFromPlace", true);
     m_tree->restoreSettings(KConfigGroup(krConfig, "Panero Navigation Tree"));
-    m_tree->header()->setVisible(false); // single name column: header not needed
+    // single name column (default): no header needed
+    m_tree->header()->setVisible(m_tree->header()->count() - m_tree->header()->hiddenSectionCount() > 1);
     setVisible(g.readEntry("Visible", true));
     resize(g.readEntry("Width", 230), height());
 }

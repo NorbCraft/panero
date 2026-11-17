@@ -12,6 +12,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QFile>
+#include <QSet>
 // QtWidgets
 #include <QApplication>
 
@@ -43,13 +44,17 @@ KrArcHandler::KrArcHandler(QObject *parent) : QObject(parent)
     // be added/removed/modified in the `krarc.protocol` file, or
     // in `KrArcBaseManager::getShortTypeFromMime(const QString &mime)`
 
+    // These kinds of files are normally ones that, for example,
+    // when the user double-clicks on one of them, Krusader is not
+    // expected to browse (although e.g. when the user right-clicks on
+    // one of them, Krusader has to show an option to browse it)
+
     // Hard-code these proven mimetypes openable by krarc protocol.
     // They cannot be listed in krarc.protocol itself
     // because it would baffle other file managers (like Dolphin).
     krarcArchiveMimetypes = { QStringLiteral("application/x-deb"),
                               QStringLiteral("application/x-debian-package"),
                               QStringLiteral("application/vnd.debian.binary-package"),
-                              QStringLiteral("application/x-java-archive"),
                               QStringLiteral("application/x-rpm"),
                               QStringLiteral("application/x-source-rpm"),
                               QStringLiteral("application/vnd.oasis.opendocument.chart"),
@@ -69,7 +74,11 @@ KrArcHandler::KrArcHandler(QObject *parent) : QObject(parent)
                               QStringLiteral("application/epub+zip"),
                               QStringLiteral("application/x-webarchive"),
                               QStringLiteral("application/x-plasma"),
-                              QStringLiteral("application/vnd.rar") };
+                              QStringLiteral("application/vnd.rar"),
+                              // The mime type for java archives changed over the years. For more information:
+                              // https://stackoverflow.com/questions/44468917/whats-the-right-content-type-for-a-java-jar-file
+                              QStringLiteral("application/x-java-archive"),
+                              QStringLiteral("application/java-archive") };
 
     #ifdef KRARC_QUERY_ENABLED
     const auto mimetypes = KProtocolInfo::archiveMimetypes("krarc");
@@ -690,6 +699,26 @@ QString KrArcHandler::registeredProtocol(const QString& mimetype)
             return QStringLiteral("krarc");
         }
         protocol = KProtocolManager::protocolForArchiveMimetype(mimetype);
+        if (protocol.isEmpty()) {
+            // The mimetypes of tar archives that can be decompressed using the bzip2 program
+            static const QSet<QString> tarBMimes = {"application/x-tbz", "application/x-tbz2",
+                "application/x-bzip-compressed-tar", "application/x-bzip1-compressed-tar",
+                "application/x-bzip2-compressed-tar"};
+            // Note: On <https://invent.kde.org/utilities/ark/-/blob/a751cf8c12c05e23280a8e60c51baa6c35e9d04a/README.md>,
+            // that table could be seen:
+            // Format                |  Supported Mimetype                    |  Notes
+            // [...]                 |  [...]                                 |  [...]
+            // BZip2-compressed TAR  |  `application/x-bzip2-compressed-tar`  |  (`application/x-bzip-compressed-tar`
+            // with shared-mime-info < 2.3)
+
+            // If the archive is a .tar.bz2, .tbz or similar
+            if (tarBMimes.contains(mimetype)) {
+                protocol = QStringLiteral("tar");
+            }
+
+            // Note: At this point, the `protocol` variable is empty when,
+            // for example, the file is a text one (therefore, it's not an archive)
+        }
     }
     return protocol;
 }
