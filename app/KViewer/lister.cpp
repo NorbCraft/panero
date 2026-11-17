@@ -1189,7 +1189,7 @@ protected:
 
 Lister::Lister(QWidget *parent) : KParts::ReadOnlyPart(parent)
 {
-    setXMLFile("krusaderlisterui.rc");
+    setXMLFile(QStringLiteral("panerolisterui.rc"));
 
     _actionSaveSelected = new QAction(Icon("document-save"), i18n("Save selection..."), this);
     connect(_actionSaveSelected, &QAction::triggered, this, &Lister::saveSelected);
@@ -1315,7 +1315,7 @@ Lister::Lister(QWidget *parent) : KParts::ReadOnlyPart(parent)
     enableSearch(false);
 
     _tempFile = new QTemporaryFile(this);
-    _tempFile->setFileTemplate(QDir::tempPath() + QLatin1String("/krusader_lister.XXXXXX"));
+    _tempFile->setFileTemplate(QDir::tempPath() + QLatin1String("/panero_lister.XXXXXX"));
 }
 
 bool Lister::openUrl(const QUrl &listerUrl)

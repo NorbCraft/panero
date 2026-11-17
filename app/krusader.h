@@ -52,7 +52,7 @@ class KrView;
 class Krusader : public KParts::MainWindow, public KrMainWindow
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.krusader.Instance")
+    Q_CLASSINFO("D-Bus Interface", PANERO_APP_ID ".Instance")
 
 public:
     explicit Krusader(const QCommandLineParser &parser);

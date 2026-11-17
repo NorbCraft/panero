@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(krusader)
+project(panero)
 
-set(VERSION "2.8.1")
-set(RELEASE_NAME "A New Day")
+# Panero version (Debian mapping: 0.1.0-preview.1 -> 0.1.0~preview.1-1).
+set(VERSION "0.1.0-preview.1")
+# Upstream Krusader release this fork is based on (see dev/DECISIONS.md D-001).
+set(KRUSADER_BASE_VERSION "2.8.1")
+# Reverse-DNS application identifier derived from the project owner
+# (github.com/NorbCraft). Used for the desktop file, metainfo, icon and D-Bus.
+set(PANERO_APP_ID "io.github.norbcraft.panero")
+set(PANERO_HOMEPAGE "https://github.com/NorbCraft/panero")
 
 set(MIN_QT_VERSION 5.12)
 set(MIN_KF_VERSION 5.68)
@@ -89,6 +95,14 @@ if(NOT KDESU_PATH)
     endif()
 endif()
 add_definitions(-DKDESU_PATH="${KDESU_PATH}")
+
+# Panero installs its own KIO workers (krarc, iso) in a private plugin directory,
+# so it can coexist with an installed Krusader without file collisions.
+# main.cpp prepends this directory to the Qt plugin search path.
+set(PANERO_PRIVATE_PLUGIN_DIR "${KDE_INSTALL_LIBDIR}/panero/plugins")
+set(PANERO_FULL_PRIVATE_PLUGIN_DIR "${KDE_INSTALL_FULL_LIBDIR}/panero/plugins")
+add_definitions(-DPANERO_PRIVATE_PLUGIN_DIR="${PANERO_FULL_PRIVATE_PLUGIN_DIR}")
+add_definitions(-DPANERO_APP_ID="${PANERO_APP_ID}")
 message(STATUS "kdesu path has been hard-coded: ${KDESU_PATH}")
 
 add_definitions(${QT_DEFINITIONS} ${KF5_DEFINITIONS})
@@ -150,6 +164,9 @@ add_subdirectory(app)
 add_subdirectory(doc/handbook)
 add_subdirectory(plugins/iso)
 add_subdirectory(plugins/krarc)
+if(BUILD_TESTING)
+    add_subdirectory(autotests)
+endif()
 
 
 # ===== Translations =====

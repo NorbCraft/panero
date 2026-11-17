@@ -29,7 +29,7 @@ SynchronizeDialog::SynchronizeDialog(QWidget* parent,
         deleteSize(pdeleteSize), parallelThreads(parThreads),
         isPause(true), syncStarted(false)
 {
-    setWindowTitle(i18n("Krusader::Synchronize"));
+    setWindowTitle(i18n("Panero::Synchronize"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);

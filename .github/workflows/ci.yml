@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Build and test Panero on the target distribution base (Ubuntu 24.04 "noble",
+# which Zorin OS 18.1 is built on). Runs on pushes and pull requests with a
+# read-only token; no secrets are used.
+name: CI
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install build dependencies (Ubuntu 24.04 archive only)
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            $(grep -v '^#' dev/build-deps.txt | xargs)
+
+      - name: Record build environment
+        run: |
+          cat /etc/os-release | head -4
+          gcc --version | head -1; cmake --version | head -1
+          dpkg-query -W qtbase5-dev libkf5kio-dev extra-cmake-modules
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: cd build && xvfb-run -a ctest --output-on-failure
+
+      - name: Stage install
+        run: DESTDIR="$PWD/stage" ninja -C build install && find stage -type f | sort | head -50

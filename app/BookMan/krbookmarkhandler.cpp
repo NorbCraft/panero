@@ -40,7 +40,7 @@
 #define SPECIAL_BOOKMARKS true
 
 // ------------------------ for internal use
-#define BOOKMARKS_FILE "krusader/krbookmarks.xml"
+#define BOOKMARKS_FILE "panero/krbookmarks.xml"
 #define CONNECT_BM(X) { disconnect(X, SIGNAL(activated(QUrl)), nullptr, nullptr); connect(X, SIGNAL(activated(QUrl)), this, SLOT(slotActivated(QUrl))); }
 
 KrBookmarkHandler::KrBookmarkHandler(KrMainWindow *mainWindow) :
@@ -65,7 +65,7 @@ KrBookmarkHandler::KrBookmarkHandler(KrMainWindow *mainWindow) :
 
     // create bookmark manager
     QString filename = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1Char('/') + BOOKMARKS_FILE;
-    manager = KBookmarkManager::managerForFile(filename, QStringLiteral("krusader"));
+    manager = KBookmarkManager::managerForFile(filename, QStringLiteral("panero"));
     connect(manager, &KBookmarkManager::changed, this, &KrBookmarkHandler::bookmarksChanged);
 
     // create the quick search bar and action

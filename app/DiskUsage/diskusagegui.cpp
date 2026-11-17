@@ -29,7 +29,7 @@
 DiskUsageGUI::DiskUsageGUI(const QUrl &openDir)
         : QDialog(nullptr), exitAtFailure(true)
 {
-    setWindowTitle(i18n("Krusader::Disk Usage"));
+    setWindowTitle(i18n("Panero::Disk Usage"));
     setAttribute(Qt::WA_DeleteOnClose);
 
     baseDirectory = openDir;

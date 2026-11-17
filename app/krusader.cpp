@@ -89,7 +89,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
     App = this;
     krMainWindow = this;
     SLOTS = new KrSlots(this);
-    setXMLFile("krusaderui.rc");   // kpart-related xml file
+    setXMLFile(QStringLiteral("paneroui.rc"));   // kpart-related xml file
 
     plzWait = new KrPleaseWaitHandler(this);
 
@@ -98,10 +98,10 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
     QString message;
     switch (krConfig->accessMode()) {
     case KConfigBase::NoAccess :
-        message = "Krusader's configuration file can't be found. Default values will be used.";
+        message = "Panero's configuration file can't be found. Default values will be used.";
         break;
     case KConfigBase::ReadOnly :
-        message = "Krusader's configuration file is in READ ONLY mode (why is that!?) Changed values will not be saved";
+        message = "Panero's configuration file is in READ ONLY mode. Changed values will not be saved.";
         break;
     case KConfigBase::ReadWrite :
         message = "";
@@ -301,16 +301,16 @@ bool Krusader::versionControl()
     // first installation of krusader
     if (firstRun) {
         KMessageBox::information(
-            krApp, i18n("<qt><b>Welcome to Krusader.</b><p>As this is your first run, your machine "
+            krApp, i18n("<qt><b>Welcome to Panero.</b><p>As this is your first run, your machine "
                         "will now be checked for external applications. Then the Konfigurator will "
-                        "be launched where you can customize Krusader to your needs.</p></qt>"));
+                        "be launched where you can customize Panero to your needs.</p></qt>"));
     }
     nogroup.writeEntry("Version", VERSION);
     nogroup.writeEntry("First Time", false);
     krConfig->sync();
 
     QDir().mkpath(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                  QStringLiteral("/krusader/"));
+                  QStringLiteral("/panero/"));
 
     return firstRun;
 }
@@ -533,9 +533,9 @@ void Krusader::updateUserActions() {
 
 const char* Krusader::appIconName() {
     if (geteuid())
-        return "krusader_user";
+        return PANERO_APP_ID;
     else
-        return "krusader_root";
+        return PANERO_APP_ID;
 }
 
 void Krusader::quit()

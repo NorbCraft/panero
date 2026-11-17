@@ -29,7 +29,7 @@ public:
     // Actions
     static QAction *actCompare;
     static QAction *actCmdlinePopup, *actLocate, *actSwitchFullScreenTE;
-    static QAction *actDiskUsage, *actSavePosition;
+    static QAction *actDiskUsage, *actSavePosition, *actImportKrusader;
     static QAction *actHomeTerminal, *actProfiles;
     static QAction *actMountMan, *actNewTool, *actSwapPanels, *actSwapSides;
     static QAction *actKonfigurator, *actToolsSetup, *actFind;

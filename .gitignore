@@ -7,3 +7,7 @@
 
 # compiled docs
 /doc/*.html
+
+# Panero local build logs
+/build-*.log
+/build-cmake.err

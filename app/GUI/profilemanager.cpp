@@ -89,7 +89,7 @@ void ProfileManager::profilePopup()
 
 void ProfileManager::newProfile(const QString& defaultName)
 {
-    QString profile = QInputDialog::getText(this, i18n("Krusader::ProfileManager"), i18n("Enter the profile name:"),
+    QString profile = QInputDialog::getText(this, i18n("Panero::ProfileManager"), i18n("Enter the profile name:"),
                                             QLineEdit::Normal, defaultName);
     if (!profile.isEmpty()) {
         int profileNum = 1;

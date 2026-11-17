@@ -42,8 +42,9 @@
 #include "krusaderversion.h"
 #include "krusaderview.h"
 #include "panelmanager.h"
+#include "paneroimport.h"
 
-static const char *description = I18N_NOOP("Krusader\nTwin-Panel File Manager by KDE");
+static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
 static void sigterm_handler(int i)
 {
@@ -64,8 +65,8 @@ void openTabsRemote(QStringList tabs, bool left, const QString& appName)
             tabs[ i ] = QDir::currentPath() + '/' + tabs[ i ];
     }
 
-    QDBusInterface remoteApp("org.krusader", "/Instances/" + appName + (left ? "/left_manager" : "/right_manager"),
-                             "org.krusader.PanelManager", QDBusConnection::sessionBus());
+    QDBusInterface remoteApp(QStringLiteral(PANERO_APP_ID), "/Instances/" + appName + (left ? "/left_manager" : "/right_manager"),
+                             QStringLiteral(PANERO_APP_ID ".PanelManager"), QDBusConnection::sessionBus());
     QDBusReply<void> reply;
     if (remoteApp.isValid())
         reply = remoteApp.call("newTabs", tabs);
@@ -87,8 +88,15 @@ int main(int argc, char *argv[])
     QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
     // create the application and set application domain so that calls to i18n get strings from right place.
+    // Panero ships its own KIO workers (krarc, iso) in a private plugin directory so that
+    // it can be installed next to Krusader. Prepend it (and an optional developer override)
+    // to the plugin search path before any KIO protocol lookup happens.
+    QCoreApplication::addLibraryPath(QStringLiteral(PANERO_PRIVATE_PLUGIN_DIR));
+    if (!qEnvironmentVariableIsEmpty("PANERO_PLUGIN_DIR"))
+        QCoreApplication::addLibraryPath(qEnvironmentVariable("PANERO_PLUGIN_DIR"));
+
     QApplication app(argc, argv);
-    KLocalizedString::setApplicationDomain("krusader");
+    KLocalizedString::setApplicationDomain("panero");
 
     // init icon theme
     qDebug() << "System icon theme:" << QIcon::themeName();
@@ -97,25 +105,37 @@ int main(int argc, char *argv[])
     QIcon::setThemeName(QIcon::themeName());
 
     // ABOUT data information
-#ifdef RELEASE_NAME
-    QString versionName = QStringLiteral("%1 \"%2\"").arg(VERSION, RELEASE_NAME);
-#else
-    QString versionName = VERSION;
-#endif
+    QString versionName = QStringLiteral(VERSION);
 
 #ifdef GIT_REVISION
     versionName += QString(" (gitrev: %1)").arg(GIT_REVISION);
 #endif
 
-    KAboutData aboutData(QStringLiteral("krusader"),
-        (geteuid() ? i18n("Krusader") : i18n("Krusader - ROOT PRIVILEGES")), versionName,
+    KAboutData aboutData(QStringLiteral("panero"),
+        (geteuid() ? i18n("Panero") : i18n("Panero - ROOT PRIVILEGES")), versionName,
         i18n(description), KAboutLicense::GPL_V2,
-        i18n("© 2000-2003 Shie Erlich, Rafi Yanai\n© 2004-2022 Krusader Krew"),
-        i18n("Feedback:\nhttps://forum.kde.org/viewforum.php?f=225"),
-        QStringLiteral("https://krusader.org"));
+        i18n("© 2026 Panero contributors\n"
+             "Based on Krusader %1: © 2000-2003 Shie Erlich, Rafi Yanai, © 2004-2022 Krusader Krew",
+             QStringLiteral(KRUSADER_BASE_VERSION)),
+        i18n("<p>Panero is an independent fork of Krusader. It is not affiliated with or endorsed "
+             "by KDE or the Krusader maintainers.</p>"
+             "<p>Source code: <a href=\"%1\">%1</a><br/>"
+             "License and credits: see the Licenses tab and /usr/share/doc/panero/</p>"
+             "<p>Please report Panero problems at <a href=\"%1/issues\">%1/issues</a>, "
+             "not to the Krusader project.</p>",
+             QStringLiteral(PANERO_HOMEPAGE)),
+        QStringLiteral(PANERO_HOMEPAGE),
+        QStringLiteral(PANERO_HOMEPAGE "/issues"));
 
-    aboutData.setOrganizationDomain(QByteArray("kde.org"));
-    aboutData.setDesktopFileName(QStringLiteral("org.kde.krusader"));
+    // GPL-2.0-or-later, as for upstream Krusader
+    aboutData.setLicense(KAboutLicense::GPL_V2, KAboutLicense::OrLaterVersions);
+    aboutData.setOrganizationDomain(QByteArray("norbcraft.github.io"));
+    aboutData.setDesktopFileName(QStringLiteral(PANERO_APP_ID));
+    aboutData.setProgramLogo(QIcon::fromTheme(QStringLiteral(PANERO_APP_ID)));
+
+    aboutData.addAuthor(i18n("Norbert Szabo"), i18n("Panero maintainer"), QString(),
+                        QStringLiteral("https://github.com/NorbCraft"));
+    // Upstream Krusader authors (preserved attribution)
 
     aboutData.addAuthor(i18n("Davide Gianforte"), i18n("Developer"), QStringLiteral("davide@gengisdave.org"), nullptr);
     aboutData.addAuthor(i18n("Toni Asensi Esteve"), i18n("Developer"), QStringLiteral("toni.asensi@kdemail.net"), nullptr);
@@ -221,7 +241,7 @@ int main(int argc, char *argv[])
         url = parser.positionalArguments().first();
     }
 
-    QString appName = "krusader";
+    QString appName = QStringLiteral("panero");
     if (!singleInstanceMode)
         appName += QString("%1").arg(getpid());
 
@@ -232,8 +252,8 @@ int main(int argc, char *argv[])
     }
 
     if (singleInstanceMode) {
-        QDBusInterface remoteApp("org.krusader", "/Instances/" + appName,
-                                "org.krusader.Instance", QDBusConnection::sessionBus());
+        QDBusInterface remoteApp(QStringLiteral(PANERO_APP_ID), "/Instances/" + appName,
+                                QStringLiteral(PANERO_APP_ID ".Instance"), QDBusConnection::sessionBus());
         QDBusReply<bool> reply;
         if (remoteApp.isValid())
             reply = remoteApp.call("isRunning");
@@ -257,6 +277,10 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Panero: offer a one-time, explicit import of an existing Krusader configuration
+    // (or perform an import requested from the Settings menu) before the configuration is used.
+    PaneroImport::offerImportOnFirstRun(nullptr);
+
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;
     { // don't remove bracket
@@ -278,7 +302,7 @@ int main(int argc, char *argv[])
         krusader->openUrl(url);
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
-    if (!dbus.interface()->isServiceRegistered("org.krusader") && !dbus.registerService("org.krusader")) {
+    if (!dbus.interface()->isServiceRegistered(QStringLiteral(PANERO_APP_ID)) && !dbus.registerService(QStringLiteral(PANERO_APP_ID))) {
         fprintf(stderr, "DBus Error: %s, %s\n", dbus.lastError().name().toLocal8Bit().constData(), dbus.lastError().message().toLocal8Bit().constData());
     }
     if (!dbus.registerObject("/Instances/" + appName, krusader, QDBusConnection::ExportScriptableSlots)) {

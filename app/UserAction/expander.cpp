@@ -412,7 +412,7 @@ TagString exp_ListFile::expFunc(const KrPanel* panel, const QStringList& paramet
         mask = '*';
     else
         mask = parameter[3];
-    QTemporaryFile tmpFile(QDir::tempPath() + QLatin1String("/krusader_XXXXXX.itemlist"));
+    QTemporaryFile tmpFile(QDir::tempPath() + QLatin1String("/panero_XXXXXX.itemlist"));
     tmpFile.setAutoRemove(false);
 
     if (!tmpFile.open()) {
@@ -861,7 +861,7 @@ TagString exp_PanelSize::expFunc(const KrPanel* panel, const QStringList& parame
 exp_View::exp_View()
 {
     _expression = "View";
-    _description = i18n("View File with Krusader's Internal Viewer...");
+    _description = i18n("View File with Panero's Internal Viewer...");
     _needPanel = false;
 
     addParameter(exp_parameter(i18n("Which file to view (normally '%aCurrent%'):"), "__placeholder", true));

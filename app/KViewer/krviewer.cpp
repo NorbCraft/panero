@@ -57,7 +57,7 @@ KrViewer::KrViewer(QWidget *parent)
       tabWidget(this), sizeX(-1), sizeY(-1)
 {
     //setWFlags(Qt::WType_TopLevel | WDestructiveClose);
-    setXMLFile("krviewer.rc");   // kpart-related xml file
+    setXMLFile(QStringLiteral("paneroviewer.rc"));   // kpart-related xml file
     setHelpMenuEnabled(false);
 
     connect(&manager, &KParts::PartManager::activePartChanged, this, &KrViewer::createGUI);

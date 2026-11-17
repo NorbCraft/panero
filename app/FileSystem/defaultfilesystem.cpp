@@ -171,7 +171,7 @@ bool DefaultFileSystem::refreshInternal(const QUrl &directory, bool onlyScan)
 {
     qDebug() << "refresh internal to URL=" << directory.toDisplayString();
     if (!KProtocolManager::supportsListing(directory)) {
-        emit error(i18n("Protocol not supported by Krusader:\n%1", directory.url()));
+        emit error(i18n("Protocol not supported by Panero:\n%1", directory.url()));
         return false;
     }
 

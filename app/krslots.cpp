@@ -95,7 +95,7 @@ void KrSlots::sendFileByEmail(const QList<QUrl> &urls)
     QStringList lst = KrServices::supportedTools();
     if (lst.contains("MAIL")) mailProg = lst[lst.indexOf("MAIL") + 1];
     else {
-        KMessageBox::error(nullptr, i18n("Krusader cannot find a supported mail client. Please install one to your path. Hint: Krusader supports KMail."));
+        KMessageBox::error(nullptr, i18n("Panero cannot find a supported mail client. Please install one to your path. Hint: Panero supports KMail."));
         return;
     }
 
@@ -176,7 +176,7 @@ bool downloadToTemp(const QUrl &url, QString &dest) {
         KIO::Job* job = KIO::file_copy(url, QUrl::fromLocalFile(dest), -1,
                                        KIO::Overwrite | KIO::HideProgressInfo);
         if(!job->exec()) {
-            KMessageBox::error(krApp, i18n("Krusader is unable to download %1", url.fileName()));
+            KMessageBox::error(krApp, i18n("Panero is unable to download %1", url.fileName()));
             return false;
         }
         return true;
@@ -190,7 +190,7 @@ void KrSlots::compareContent(const QUrl& url1, const QUrl& url2)
     QStringList lst = KrServices::supportedTools();
     if (lst.contains("DIFF")) diffProg = lst[lst.indexOf("DIFF") + 1];
     else {
-        KMessageBox::error(nullptr, i18n("Krusader cannot find any of the supported diff-frontends. Please install one to your path. Hint: Krusader supports Kompare, KDiff3 and Xxdiff."));
+        KMessageBox::error(nullptr, i18n("Panero cannot find any of the supported diff-frontends. Please install one to your path. Hint: Panero supports Kompare, KDiff3 and Xxdiff."));
         return;
     }
 
@@ -459,7 +459,7 @@ void KrSlots::rootKrusader()
 
     if (!KrServices::isExecutable(KDESU_PATH)) {
         KMessageBox::error(krApp,
-            i18n("Cannot start root mode Krusader, %1 not found or not executable. "
+            i18n("Cannot start root mode Panero, %1 not found or not executable. "
                  "Please verify that kde-cli-tools are installed.", QString(KDESU_PATH)));
         return;
     }

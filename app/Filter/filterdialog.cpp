@@ -20,7 +20,7 @@
 FilterDialog::FilterDialog(QWidget *parent, const QString& caption, QStringList extraOptions, bool modal)
         : QDialog(parent)
 {
-    setWindowTitle(caption.isNull() ? i18n("Krusader::Choose Files") : caption);
+    setWindowTitle(caption.isNull() ? i18n("Panero::Choose Files") : caption);
     setModal(modal);
 
     auto *mainLayout = new QVBoxLayout;

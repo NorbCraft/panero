@@ -28,7 +28,7 @@ KrArcBaseManager::AutoDetectParams KrArcBaseManager::autoDetectParams[] = {{"zip
 int KrArcBaseManager::autoDetectElems = sizeof(autoDetectParams) / sizeof(AutoDetectParams);
 const int KrArcBaseManager::maxLenType = 5;
 
-KrArcBaseManager::KrArcBaseManager() : krConf("krusaderrc"), dependGrp(&krConf, "Dependencies") {}
+KrArcBaseManager::KrArcBaseManager() : krConf(QStringLiteral("panerorc")), dependGrp(&krConf, "Dependencies") {}
 
 QString KrArcBaseManager::fullPathName(const QString& name)
 {

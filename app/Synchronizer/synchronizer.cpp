@@ -1333,7 +1333,7 @@ void Synchronizer::synchronizeWithKGet()
             QString rightDirName = item->rightDirectory().isEmpty() ? "" : item->rightDirectory() + '/';
 
             if (progDlg == nullptr) {
-                progDlg = new KgetProgressDialog(krMainWindow, i18n("Krusader::Synchronizer"),
+                progDlg = new KgetProgressDialog(krMainWindow, i18n("Panero::Synchronizer"),
                                                  i18n("Feeding the URLs to KGet"), true);
                 progDlg->progressBar()->setMaximum(totalCount);
                 progDlg->show();

@@ -38,16 +38,14 @@ set(krusader_SRCS
     krusader.cpp
     krslots.cpp
     krdebuglogger.cpp
+    paneroimport.cpp
 )
-
-file(GLOB ICONS_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/icons/*-apps-krusader_user.png")
-ecm_add_app_icon(krusader_SRCS ICONS ${ICONS_SRCS})
 
 qt5_add_resources(krusader_RC_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc" )
 
-add_executable(krusader ${krusader_SRCS} ${krusader_RC_SRCS})
+add_executable(panero ${krusader_SRCS} ${krusader_RC_SRCS})
 
-target_link_libraries(krusader
+target_link_libraries(panero
                       Panel
                       PanelView
                       BookMan
@@ -77,53 +75,37 @@ target_link_libraries(krusader
 )
 
 if(SYNCHRONIZER_ENABLED)
-    target_link_libraries( krusader Synchronizer )
+    target_link_libraries( panero Synchronizer )
 endif(SYNCHRONIZER_ENABLED)
 
-install(TARGETS krusader ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
-install(PROGRAMS org.kde.krusader.desktop
+install(TARGETS panero ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(PROGRAMS io.github.norbcraft.panero.desktop
         DESTINATION ${KDE_INSTALL_APPDIR} )
-install(FILES krusaderui.rc
-              krusaderlisterui.rc
-              krviewer.rc
-        DESTINATION ${KDE_INSTALL_KXMLGUI5DIR}/krusader)
+install(FILES paneroui.rc
+              panerolisterui.rc
+              paneroviewer.rc
+        DESTINATION ${KDE_INSTALL_KXMLGUI5DIR}/panero)
 install(FILES midnight_commander.color
               total_commander.color
               total_commander.keymap
               total_commander.keymap.info
               useraction_examples.xml
               layout.xml
-              splash.png
-        DESTINATION ${KDE_INSTALL_DATADIR}/krusader)
-install(FILES org.kde.krusader.appdata.xml
+        DESTINATION ${KDE_INSTALL_DATADIR}/panero)
+install(FILES io.github.norbcraft.panero.metainfo.xml
         DESTINATION ${KDE_INSTALL_METAINFODIR})
 
+# Panero application icon (original artwork, see dev/ICON-PROVENANCE.md)
 ecm_install_icons(ICONS
-    icons/16-apps-krusader_blue.png
-    icons/16-apps-krusader_red.png
-    icons/16-apps-krusader_root.png
-    icons/16-apps-krusader_user.png
-    icons/22-apps-krusader_blue.png
-    icons/22-apps-krusader_red.png
-    icons/22-apps-krusader_root.png
-    icons/22-apps-krusader_shield.png
-    icons/22-apps-krusader_user.png
-    icons/32-apps-krusader_blue.png
-    icons/32-apps-krusader_red.png
-    icons/32-apps-krusader_root.png
-    icons/32-apps-krusader_shield.png
-    icons/32-apps-krusader_user.png
-    icons/48-apps-krusader_blue.png
-    icons/48-apps-krusader_red.png
-    icons/48-apps-krusader_root.png
-    icons/48-apps-krusader_shield.png
-    icons/48-apps-krusader_user.png
-    icons/64-apps-krusader_blue.png
-    icons/64-apps-krusader_red.png
-    icons/64-apps-krusader_root.png
-    icons/64-apps-krusader_shield.png
-    icons/64-apps-krusader_user.png
-    icons/128-apps-krusader_root.png
-    icons/128-apps-krusader_user.png
+    icons/panero/16-apps-io.github.norbcraft.panero.png
+    icons/panero/22-apps-io.github.norbcraft.panero.png
+    icons/panero/24-apps-io.github.norbcraft.panero.png
+    icons/panero/32-apps-io.github.norbcraft.panero.png
+    icons/panero/48-apps-io.github.norbcraft.panero.png
+    icons/panero/64-apps-io.github.norbcraft.panero.png
+    icons/panero/128-apps-io.github.norbcraft.panero.png
+    icons/panero/256-apps-io.github.norbcraft.panero.png
+    icons/panero/sc-apps-io.github.norbcraft.panero.svg
     DESTINATION ${KDE_INSTALL_ICONDIR}
+    THEME hicolor
 )

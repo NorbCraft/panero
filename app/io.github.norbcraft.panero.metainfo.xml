@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Panero contributors
+  SPDX-FileCopyrightText: Krusader Krew (upstream metainfo this file derives from)
+  SPDX-License-Identifier: FSFAP
+-->
+<component type="desktop-application">
+  <id>io.github.norbcraft.panero</id>
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+  <name>Panero</name>
+  <summary>Twin-panel commander-style file manager</summary>
+  <developer id="io.github.norbcraft">
+    <name>Panero contributors</name>
+  </developer>
+  <description>
+    <p>Panero is an independent fork of Krusader. It is not affiliated with or endorsed by KDE or the Krusader maintainers.</p>
+    <p>It keeps Krusader's file management engine and adds a modernised appearance and a workflow familiar to Total Commander users:</p>
+    <ul>
+      <li>Two independent panels with tabs, breadcrumbs, drive selector and a folder tree</li>
+      <li>Persistent marks separate from the keyboard cursor; right-click marks, holding the right button opens the context menu</li>
+      <li>Compact, adjustable rows with alternating backgrounds and an Extension column</li>
+      <li>Archive handling, remote protocols, search, synchronizer and internal viewer/editor from Krusader</li>
+      <li>Content comparison with KDiff3</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.norbcraft.panero.desktop</launchable>
+  <url type="homepage">https://github.com/NorbCraft/panero</url>
+  <url type="bugtracker">https://github.com/NorbCraft/panero/issues</url>
+  <url type="vcs-browser">https://github.com/NorbCraft/panero</url>
+  <provides>
+    <binary>panero</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+    <category>FileManager</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0~preview.1" date="2026-11-17" type="development">
+      <description>
+        <p>First preview release, based on Krusader 2.8.1.</p>
+      </description>
+    </release>
+  </releases>
+</component>

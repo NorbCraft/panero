@@ -40,7 +40,7 @@ Splitter::Splitter(QWidget* parent,  QUrl fileNameIn, QUrl destinationDirIn, boo
     setMaximum(100);
     setAutoClose(false);    /* don't close or reset the dialog automatically */
     setAutoReset(false);
-    setLabelText("Krusader::Splitter");
+    setLabelText("Panero::Splitter");
     setWindowModality(Qt::WindowModal);
 }
 
@@ -69,7 +69,7 @@ void Splitter::split(KIO::filesize_t splitSizeIn)
 
     permissions = file.permissions() | QFile::WriteUser;
 
-    setWindowTitle(i18n("Krusader::Splitting..."));
+    setWindowTitle(i18n("Panero::Splitting..."));
     setLabelText(i18n("Splitting the file %1...", fileName.toDisplayString(QUrl::PreferLocalFile)));
 
     if (file.isDir()) {

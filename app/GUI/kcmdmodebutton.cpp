@@ -23,10 +23,10 @@
 KCMDModeButton::KCMDModeButton(QWidget *parent) : QToolButton(parent)
 {
     /* // from the old terminal-button:
-      setText( i18n( "If pressed, Krusader executes command line in a terminal." ) );
-      setToolTip( i18n( "If pressed, Krusader executes command line in a terminal." ) );
+      setText( i18n( "If pressed, Panero executes command line in a terminal." ) );
+      setToolTip( i18n( "If pressed, Panero executes command line in a terminal." ) );
       QWhatsThis::add( terminal, i18n(
-                            "The 'run in terminal' button allows Krusader "
+                            "The 'run in terminal' button allows Panero "
                             "to run console (or otherwise non-graphical) "
                             "programs in a terminal of your choice. If it's "
                             "pressed, terminal mode is active." ) );

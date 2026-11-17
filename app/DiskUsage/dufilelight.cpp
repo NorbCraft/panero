@@ -170,7 +170,7 @@ void DUFilelight::minFontSize()
 {
     bool ok = false;
 
-    int result = QInputDialog::getInt(this, i18n("Krusader::Filelight"), i18n("Minimum font size"),
+    int result = QInputDialog::getInt(this, i18n("Panero::Filelight"), i18n("Minimum font size"),
                                       (int)Filelight::Config::minFontPitch, 1, 100, 1, &ok);
 
     if (ok) {
