@@ -133,20 +133,30 @@ KrActionProcDlg::KrActionProcDlg(const QString& caption, bool enableStderr, QWid
     resize(sizeHint() * 2);
 }
 
+// Insert process output as it arrives: append() would start a new paragraph for every
+// chunk read from the process, adding empty lines. Panero: insert at the end even if the
+// user has moved the cursor or selected text in the output view.
+static void insertOutput(KTextEdit *edit, const QString &str, bool italic = false)
+{
+    edit->moveCursor(QTextCursor::End);
+    if (italic)
+        edit->setFontItalic(true);
+    edit->insertPlainText(str);
+    if (italic)
+        edit->setFontItalic(false);
+}
+
 void KrActionProcDlg::addStderr(const QString& str)
 {
     if (_stderr)
-        _stderr->append(str);
-    else {
-        _stdout->setFontItalic(true);
-        _stdout->append(str);
-        _stdout->setFontItalic(false);
-    }
+        insertOutput(_stderr, str);
+    else
+        insertOutput(_stdout, str, true);
 }
 
 void KrActionProcDlg::addStdout(const QString& str)
 {
-    _stdout->append(str);
+    insertOutput(_stdout, str);
 }
 
 void KrActionProcDlg::toggleFixedFont(bool state)
