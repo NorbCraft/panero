@@ -81,3 +81,44 @@ done, outcome, next step.
   with kdiff3 hidden from PATH.
 - Test tooling: xdotool window offsets — `xdotool getwindowgeometry` reports
   0,0 for undecorated Xvfb windows; use dev/scripts/xwin.sh.
+
+## 2026-11-17 — Claude Code (Opus 5.5) — Debian packaging, licensing, release workflow
+
+Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
+
+- Licensing audit with `reuse lint`, `licensecheck -r`, SPDX headers and Git
+  history: added `LICENSES/FSFAP.txt` (metainfo) and
+  `LICENSES/LGPL-3.0-or-later.txt` (`app/icons/icon-missing.svgz` is
+  Breeze-derived per upstream commit 86115e3b6), extended `.reuse/dep5`
+  (translations, Krusader artwork/data/build files, packaging) → tree is
+  REUSE 3.0 compliant (891/891 files). Wrote `LICENSING.md` and
+  `dev/PROVENANCE.md`; open items there (libisofs headers "From the linux
+  kernel" may be GPL-2.0-only; Breeze icon status rests on a commit message;
+  files without notices attributed to the project license).
+- `debian/`: debhelper 13, `dh --buildsystem=cmake+ninja`, RelWithDebInfo,
+  hardening, ctest via dh_auto_test, `3.0 (quilt)` (Debian revision, D-010),
+  DEP-5 copyright, docs + LICENSES in `/usr/share/doc/panero`, handbook
+  docbooks excluded from `dh_compress` (help:/panero), justified lintian
+  overrides. Depends kio, kinit, ktexteditor-katepart, breeze-icon-theme +
+  shlibs; Recommends kio-extras, kdegraphics-thumbnailers, ffmpegthumbs,
+  kimageformat-plugins, kde-cli-tools, packagekit; Suggests kdiff3,
+  qt5-gtk-platformtheme and krusader's archiver/tool list. No
+  Conflicts/Replaces.
+- `dev/scripts/build-deb.sh` (clean ubuntu:24.04 container build, lintian as
+  non-root, outputs + BUILD-INFO in dist/) and `dev/scripts/test-deb.sh`
+  (install, coexistence both orders, upgrade, remove/purge, KIO workers, GUI
+  smoke) — both re-exec under `sg docker` when needed.
+- `.github/workflows/release.yml`: tags `v*` + manual dispatch, read-only
+  build job (build, ctest, lintian, container tests, `git archive` source
+  archive + SOURCE-INFO.txt, licenses archive, SHA256SUMS, notes), publish
+  job with `contents: write` only (`gh release create --prerelease` for
+  preview versions, re-download + checksum verify). Actions pinned by SHA
+  (checkout v7.0.1, upload-artifact v7.0.2, download-artifact v8.0.2).
+  GitHub rewrites `~` in asset names to `.` → asset uploaded as
+  `panero_0.1.0.preview.1-1_amd64.deb` (D-010).
+- Results (`dev/TEST-REPORT-packaging.md`): build from commit 1f417981d,
+  ctest 3/3, lintian only overridden tags, container tests PASS 83 /
+  FAIL 0 / KNOWN 1 (kio_iso cannot open ISO images on noble — upstream bug,
+  same in distro krusader; backport 4c85272cd + c6945e68e).
+- Not done: desktop GUI install test on Zorin/VM; release notes file
+  `dev/release-notes/v0.1.0-preview.1.md`; first real run of release.yml.
