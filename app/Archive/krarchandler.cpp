@@ -50,7 +50,6 @@ KrArcHandler::KrArcHandler(QObject *parent) : QObject(parent)
     krarcArchiveMimetypes = { QStringLiteral("application/x-deb"),
                               QStringLiteral("application/x-debian-package"),
                               QStringLiteral("application/vnd.debian.binary-package"),
-                              QStringLiteral("application/x-java-archive"),
                               QStringLiteral("application/x-rpm"),
                               QStringLiteral("application/x-source-rpm"),
                               QStringLiteral("application/vnd.oasis.opendocument.chart"),
@@ -70,7 +69,11 @@ KrArcHandler::KrArcHandler(QObject *parent) : QObject(parent)
                               QStringLiteral("application/epub+zip"),
                               QStringLiteral("application/x-webarchive"),
                               QStringLiteral("application/x-plasma"),
-                              QStringLiteral("application/vnd.rar") };
+                              QStringLiteral("application/vnd.rar"),
+                              // The mime type for java archives changed over the years. For more information:
+                              // https://stackoverflow.com/questions/44468917/whats-the-right-content-type-for-a-java-jar-file
+                              QStringLiteral("application/x-java-archive"),
+                              QStringLiteral("application/java-archive") };
 
     #ifdef KRARC_QUERY_ENABLED
     const auto mimetypes = KProtocolInfo::archiveMimetypes("krarc");
