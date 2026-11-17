@@ -672,7 +672,7 @@ void Krusader::setupPaneroToolbarLabels()
         {"toggle hidden files", i18nc("toolbar", "Hidden Files")},
         {"view0", i18nc("toolbar", "Details")},
         {"view2", i18nc("toolbar", "Thumbnails")},
-        {"panero view colors", i18nc("toolbar", "View & Colors")},
+        {"panero view colors", i18nc("toolbar", "View && Colors")},
     };
     for (const auto &label : labels) {
         if (QAction *a = actionCollection()->action(QLatin1String(label.first)))

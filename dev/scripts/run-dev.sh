@@ -13,12 +13,13 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD="$ROOT/build"
 STAGE="$BUILD/stage"
 DEVHOME="${PANERO_DEV_HOME:-$BUILD/dev-home}"
-XVFB=0; DOBUILD=1; ARGS=(); SHOT=""; DELAY=6
+XVFB=0; DOBUILD=1; ARGS=(); SHOT=""; DELAY=6; SESSIONBUS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --xvfb) XVFB=1;; --no-build) DOBUILD=0;;
     --screenshot) SHOT="$2"; XVFB=1; shift;;   # write PNG of the Xvfb screen and quit
     --delay) DELAY="$2"; shift;;
+    --session-bus) SESSIONBUS=1;;   # desktop run on the real session bus (portal, theme)
     --) shift; ARGS=("$@"); break;;
     *) echo "unknown option $1" >&2; exit 2;;
   esac; shift
@@ -63,7 +64,8 @@ elif [[ $XVFB == 1 ]]; then
   unset WAYLAND_DISPLAY; export QT_QPA_PLATFORM=xcb XDG_RUNTIME_DIR="$DEVHOME/runtime" GIO_USE_VFS=local
   exec xvfb-run -a -s "-screen 0 ${PANERO_XVFB_SIZE:-1400x900x24}" dbus-run-session -- "${CMD[@]}"
 else
-  # keep the desktop's display/session bus, but a private D-Bus session avoids
-  # clashing with a running Panero/Krusader instance
+  # keep the desktop's display; a private D-Bus session avoids clashing with a running
+  # Panero instance unless --session-bus is given
+  if [[ $SESSIONBUS == 1 ]]; then exec "${CMD[@]}"; fi
   exec dbus-run-session -- "${CMD[@]}"
 fi

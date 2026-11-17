@@ -25,6 +25,7 @@
 // QtWidgets
 #include <QApplication>
 #include <QSplashScreen>
+#include <QTimer>
 
 #include <KCoreAddons/KAboutData>
 #include <KConfigCore/KSharedConfig>
@@ -325,6 +326,20 @@ int main(int argc, char *argv[])
     signal(SIGHUP, sigterm_handler);
 
     QObject::connect(&app, &QGuiApplication::applicationStateChanged, SLOTS, &KrSlots::applicationStateChanged);
+
+    // developer/test aid: PANERO_DEV_GRAB=/path/shot.png:3000 saves a grab of the main
+    // window after the given delay (works on Wayland, where external screenshots are restricted)
+    const QString devGrab = qEnvironmentVariable("PANERO_DEV_GRAB");
+    if (!devGrab.isEmpty()) {
+        const int colon = devGrab.lastIndexOf(QLatin1Char(':'));
+        const QString path = colon > 0 ? devGrab.left(colon) : devGrab;
+        const int delay = colon > 0 ? devGrab.mid(colon + 1).toInt() : 3000;
+        QTimer::singleShot(delay, krusader, [krusader, path]() {
+            krusader->grab().save(path);
+            fprintf(stderr, "PANERO_DEV_GRAB saved %s (platform %s)\n", qPrintable(path),
+                    qPrintable(QGuiApplication::platformName()));
+        });
+    }
 
     // hide splashscreen
     if (splash) {
