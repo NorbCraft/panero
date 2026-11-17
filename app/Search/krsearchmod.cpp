@@ -29,7 +29,7 @@
 
 #define EVENT_PROCESS_DELAY 250 // milliseconds
 
-static const QStringList TAR_TYPES = QStringList() << "tbz" << "tgz" << "tarz" << "tar" << "tlz";
+static const QStringList TAR_TYPES = QStringList() << "tbz" << "tgz" << "tarz" << "tar" << "tlz" << "txz";
 
 KrSearchMod::KrSearchMod(const KrQuery *query)
     : m_defaultFileSystem(nullptr), m_virtualFileSystem(nullptr), m_stopSearch(false)
