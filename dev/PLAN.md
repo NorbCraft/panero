@@ -33,9 +33,12 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
 ## Phase 1b — Backports from upstream 2.9.0 / master (D-007)
 
-- [ ] Review `git log v2.8.1..v2.9.0` and `v2.9.0..upstream/master`; list
+- [x] Review `git log v2.8.1..v2.9.0` and `v2.9.0..upstream/master`; list
       candidate functional fixes in `dev/BACKPORTS.md` (applied / skipped + why).
-- [ ] Apply KF5-compatible fixes as individual commits citing upstream hashes.
+- [x] Apply KF5-compatible fixes as individual commits citing upstream hashes
+      (branch `feature/backports`, 39 commits; needs `libkf5crash-dev`).
+- [ ] Owner decision on the 5 items listed under "Owner decision" in
+      `dev/BACKPORTS.md`; then PR + merge `feature/backports`.
 
 ## Phase 2 — Identity / rebrand (§3.5–3.6, §4)
 
@@ -132,7 +135,9 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
   install flow. Next: PR + merge.
 - Branch `feature/packaging` is being produced by a background agent
   (debian/, LICENSING.md, PROVENANCE.md, release workflow, deb tests).
-- Remaining: backports (Phase 1b, list in dev/BACKPORTS.md), Phase 7 review,
+- Branch `feature/backports` (pushed): 39 backport commits, see
+  dev/BACKPORTS.md. Next: owner decisions, PR + merge.
+- Remaining: Phase 7 review,
   packaging merge, VM/clean-system tests (KDiff3 real install, deb install),
   host Wayland GUI check, screenshots, user guide, release v0.1.0-preview.1.
 
