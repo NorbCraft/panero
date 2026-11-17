@@ -20,7 +20,7 @@
 void ActionsBase::ActionGroup::reconnect(QObject *recv)
 {
     foreach(QAction *action, _slots.keys()) {
-        disconnect(action, nullptr, nullptr, nullptr);
+        disconnect(action, &QAction::triggered, nullptr, nullptr);
         connect(action, SIGNAL(triggered(bool)), recv, _slots[action]);
     }
 }
