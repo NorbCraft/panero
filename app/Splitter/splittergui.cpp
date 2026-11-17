@@ -131,7 +131,7 @@ SplitterGUI::SplitterGUI(QWidget* parent,  const QUrl& fileURL, const QUrl& defa
 
     grid->addWidget(buttonBox, 5 , 0);
 
-    setWindowTitle(i18n("Krusader::Splitter"));
+    setWindowTitle(i18n("Panero::Splitter"));
 
 
     KConfigGroup cfg(KSharedConfig::openConfig(), QStringLiteral("Splitter"));

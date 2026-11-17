@@ -137,7 +137,7 @@ void KgGeneral::createViewerTab()
                                        label1, editorGrp, false, QString(), PAGE_VIEWER, false);
     editorGrid->addWidget(urlReq, 0, 1);
 
-    QLabel *label2 = new QLabel(i18n("Hint: use 'internal editor' if you want to use Krusader's fast built-in editor"), editorGrp);
+    QLabel *label2 = new QLabel(i18n("Hint: use 'internal editor' if you want to use Panero's fast built-in editor"), editorGrp);
     editorGrid->addWidget(label2, 1, 0, 1, 2);
 }
 
@@ -270,8 +270,8 @@ void KgGeneral::createGeneralTab()
     terminalGrid->addWidget(terminalLabel, 1, 1);
 
     KONFIGURATOR_CHECKBOX_PARAM terminal_settings[] = { //   cfg_class  cfg_name     default        text            restart tooltip
-        {"General", "Send CDs", _SendCDs, i18n("Embedded Terminal sends Chdir on panel change"), false, i18n("When checked, whenever the panel is changed (for example, by pressing Tab), Krusader changes the current folder in the embedded terminal.") },
-        {"General", "Follow Terminal CD", _FollowTerminalCD, i18n("Active panel follows Embedded Terminal working directory"), false, i18n("When checked, whenever terminal working directory is changed (for example, by executing 'cd' or 'popd' command), Krusader changes the current folder of active panel.") },
+        {"General", "Send CDs", _SendCDs, i18n("Embedded Terminal sends Chdir on panel change"), false, i18n("When checked, whenever the panel is changed (for example, by pressing Tab), Panero changes the current folder in the embedded terminal.") },
+        {"General", "Follow Terminal CD", _FollowTerminalCD, i18n("Active panel follows Embedded Terminal working directory"), false, i18n("When checked, whenever terminal working directory is changed (for example, by executing 'cd' or 'popd' command), Panero changes the current folder of active panel.") },
     };
     cbs = createCheckBoxGroup(1, 0, terminal_settings, 2 /*count*/, terminalGrp, PAGE_GENERAL);
     terminalGrid->addWidget(cbs, 2, 0, 1, 2);

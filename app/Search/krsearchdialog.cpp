@@ -122,7 +122,7 @@ KrSearchDialog::KrSearchDialog(const QString& profile, QWidget* parent)
 {
     KConfigGroup group(krConfig, "Search");
 
-    setWindowTitle(i18n("Krusader::Search"));
+    setWindowTitle(i18n("Panero::Search"));
     setWindowIcon(Icon("system-search"));
 
     auto* searchBaseLayout = new QGridLayout(this);
@@ -573,7 +573,7 @@ void KrSearchDialog::contextMenu(const QPoint &pos)
 {
     // create the menu
     QMenu popup;
-    popup.setTitle(i18n("Krusader Search"));
+    popup.setTitle(i18n("Panero Search"));
 
     popup.addAction(viewAction);
     popup.addAction(editAction);

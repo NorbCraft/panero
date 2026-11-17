@@ -40,7 +40,7 @@
 Konfigurator::Konfigurator(bool f, int startPage) : KPageDialog((QWidget *)nullptr),
         firstTime(f), internalCall(false), sizeX(-1), sizeY(-1)
 {
-    setWindowTitle(i18n("Konfigurator - Creating Your Own Krusader"));
+    setWindowTitle(i18n("Konfigurator - Creating Your Own Panero"));
     setWindowModality(Qt::ApplicationModal);
     setFaceType(KPageDialog::List);
 
@@ -111,7 +111,7 @@ void Konfigurator::newPage(KonfiguratorPage *page, const QString &name, const QS
 void Konfigurator::createLayout(int startPage)
 {
     // startup
-    newPage(new KgStartup(firstTime, this), i18n("Startup"), i18n("Krusader's settings upon startup"), Icon("go-home"));
+    newPage(new KgStartup(firstTime, this), i18n("Startup"), i18n("Panero's settings upon startup"), Icon("go-home"));
     // panel
     newPage(new KgPanel(firstTime, this), i18n("Panel"), i18n("Panel"), Icon("view-choose"));
     // colors
@@ -121,7 +121,7 @@ void Konfigurator::createLayout(int startPage)
     // advanced
     newPage(new KgAdvanced(firstTime, this), i18n("Advanced"), i18n("Be sure you know what you are doing."), Icon("dialog-messages"));
     // archives
-    newPage(new KgArchives(firstTime, this), i18n("Archives"), i18n("Customize the way Krusader deals with archives"),
+    newPage(new KgArchives(firstTime, this), i18n("Archives"), i18n("Customize the way Panero deals with archives"),
             Icon("archive-extract"));
     // dependencies
     newPage(new KgDependencies(firstTime, this), i18n("Dependencies"), i18n("Set the full path of the external applications"),

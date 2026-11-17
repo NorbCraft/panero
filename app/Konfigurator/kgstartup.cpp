@@ -30,7 +30,7 @@ KgStartup::KgStartup(bool first, QWidget* parent) :
     QGroupBox *panelsGrp = createFrame(i18n("General"), innerWidget);
     QGridLayout *panelsGrid = createGridLayout(panelsGrp);
 
-    QString s = "<p><img src='toolbar|user-identity'></p>" + i18n("Defines the panel profile used at startup. A panel profile contains:<ul><li>all the tabs paths</li><li>the current tab</li><li>the active panel</li></ul><b>&lt;Last session&gt;</b> is a special panel profile which is saved automatically when Krusader is closed.");
+    QString s = "<p><img src='toolbar|user-identity'></p>" + i18n("Defines the panel profile used at startup. A panel profile contains:<ul><li>all the tabs paths</li><li>the current tab</li><li>the active panel</li></ul><b>&lt;Last session&gt;</b> is a special panel profile which is saved automatically when Panero is closed.");
     QLabel *label = addLabel(panelsGrid, 0, 0, i18n("Startup profile:"), panelsGrp);
     panelsGrp->setWhatsThis(s);
 
@@ -54,8 +54,8 @@ KgStartup::KgStartup(bool first, QWidget* parent) :
     panelsGrid->addWidget(createLine(panelsGrp), 1, 0, 1, 2);
 
     KONFIGURATOR_CHECKBOX_PARAM settings[] = { //   cfg_class  cfg_name                default             text                              restart tooltip
-        {"Look&Feel", "Show splashscreen",  _ShowSplashScreen, i18n("Show splashscreen"), false,  i18n("Display a splashscreen when starting Krusader.") },
-        {"Look&Feel", "Single Instance Mode", _SingleInstanceMode, i18n("Single instance mode"), false,  i18n("Only one Krusader instance is allowed to run.") }
+        {"Look&Feel", "Show splashscreen",  _ShowSplashScreen, i18n("Show splashscreen"), false,  i18n("Display a splashscreen when starting Panero.") },
+        {"Look&Feel", "Single Instance Mode", _SingleInstanceMode, i18n("Single instance mode"), false,  i18n("Only one Panero instance is allowed to run.") }
     };
 
     KonfiguratorCheckBoxGroup* cbs = createCheckBoxGroup(2, 0, settings, 2 /* settings count */, panelsGrp);
@@ -91,7 +91,7 @@ KgStartup::KgStartup(bool first, QWidget* parent) :
         {"Startup", "Update Default Panel Settings", _RememberPos, i18n("Update default panel settings"), true,
             i18n("When settings of a panel are changed, save them as the default for new panels of the same type.") },
         {"Startup", "Start To Tray", _StartToTray, i18n("Start to tray"), false,
-            i18n("Krusader starts to tray, without showing the main window") },
+            i18n("Panero starts to tray, without showing the main window") },
     };
 
     KonfiguratorCheckBoxGroup *uiSettingsGroup = createCheckBoxGroup(1, 0, uiSettings, 3, uiGrp);

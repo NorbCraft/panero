@@ -35,7 +35,7 @@ FeedToListBoxDialog::FeedToListBoxDialog(QWidget *parent, Synchronizer *sync,
         synchronizer(sync), syncList(syncL), equalAllowed(equOK), accepted(false)
 {
 
-    setWindowTitle(i18n("Krusader::Feed to listbox"));
+    setWindowTitle(i18n("Panero::Feed to listbox"));
     setWindowModality(Qt::WindowModal);
 
     auto *mainLayout = new QVBoxLayout;

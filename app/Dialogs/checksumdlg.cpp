@@ -198,8 +198,8 @@ bool ChecksumWizard::checkExists(const QString& type)
 {
     if (!KrServices::cmdExist(m_checksumTools[type])) {
         KMessageBox::error(
-            this, i18n("<qt>Krusader cannot find a checksum tool that handles %1 on your system. "
-                        "Please check the <b>Dependencies</b> page in Krusader's settings.</qt>",
+            this, i18n("<qt>Panero cannot find a checksum tool that handles %1 on your system. "
+                        "Please check the <b>Dependencies</b> page in Panero's settings.</qt>",
                         type));
         return false;
     }

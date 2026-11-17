@@ -104,7 +104,7 @@ LocateDlg * LocateDlg::LocateDialog = nullptr;
 
 LocateDlg::LocateDlg(QWidget *parent) : QDialog(parent), isFeedToListBox(false)
 {
-    setWindowTitle(i18n("Krusader::Locate"));
+    setWindowTitle(i18n("Panero::Locate"));
     setWindowModality(Qt::NonModal);
 
     auto *mainLayout = new QVBoxLayout;

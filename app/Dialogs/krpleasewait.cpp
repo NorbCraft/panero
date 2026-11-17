@@ -30,7 +30,7 @@ KrPleaseWait::KrPleaseWait(const QString& msg, QWidget *parent, int count, bool 
     setModal(!cancel);
 
     timer = new QTimer(this);
-    setWindowTitle(i18n("Krusader::Wait"));
+    setWindowTitle(i18n("Panero::Wait"));
 
     setMinimumDuration(500);
     setAutoClose(false);

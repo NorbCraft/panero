@@ -34,7 +34,7 @@ Combiner::Combiner(QWidget* parent,  QUrl baseURLIn, QUrl destinationURLIn, bool
     setMaximum(100);
     setAutoClose(false);    /* don't close or reset the dialog automatically */
     setAutoReset(false);
-    setLabelText("Krusader::Combiner");
+    setLabelText("Panero::Combiner");
     setWindowModality(Qt::WindowModal);
 
     firstFileIs000 = true; //start with this assumption, will set it to false as soon as .000 isn't found
@@ -48,7 +48,7 @@ Combiner::~Combiner()
 
 void Combiner::combine()
 {
-    setWindowTitle(i18n("Krusader::Combining..."));
+    setWindowTitle(i18n("Panero::Combining..."));
     setLabelText(i18n("Combining the file %1...", baseURL.toDisplayString(QUrl::PreferLocalFile)));
 
     /* check whether the .crc file exists */

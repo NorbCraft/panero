@@ -170,7 +170,7 @@ KCMDLine::KCMDLine(QWidget *parent) : QWidget(parent)
     connect(cmdLine, QOverload<const QString &>::of(&CmdLineCombo::returnPressed), cmdLine->lineEdit(), &QLineEdit::clear);
     connect(cmdLine, &CmdLineCombo::returnToPanel, this, &KCMDLine::slotReturnFocus);
 
-    cmdLine->setWhatsThis(i18n("<qt><p>Well, it is actually quite simple: you type your command here and Krusader obeys.</p><p><b>Tip</b>: move within command line history with &lt;Up&gt; and &lt;Down&gt; arrows.</p></qt>"));
+    cmdLine->setWhatsThis(i18n("<qt><p>Well, it is actually quite simple: you type your command here and Panero obeys.</p><p><b>Tip</b>: move within command line history with &lt;Up&gt; and &lt;Down&gt; arrows.</p></qt>"));
     layout->addWidget(cmdLine, 0, 1);
 
     buttonAddPlaceholder = new QToolButton(this);

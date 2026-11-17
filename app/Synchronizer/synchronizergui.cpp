@@ -135,7 +135,7 @@ void SynchronizerGUI::initGUI(const QString& profileName, QUrl leftURL, QUrl rig
     if (rightURL.isEmpty())
         rightURL = QUrl::fromLocalFile(ROOT_DIR);
 
-    setWindowTitle(i18n("Krusader::Synchronize Folders"));
+    setWindowTitle(i18n("Panero::Synchronize Folders"));
     auto *synchGrid = new QGridLayout(this);
     synchGrid->setSpacing(6);
     synchGrid->setContentsMargins(11, 11, 11, 11);
@@ -1292,7 +1292,7 @@ void SynchronizerGUI::keyPressEvent(QKeyEvent *e)
             e->accept();
             if (syncList->topLevelItemCount() != 0) {
                 int result = KMessageBox::warningYesNo(this, i18n("The synchronizer window contains data from a previous compare. If you exit, this data will be lost. Do you really want to exit?"),
-                                                       i18n("Krusader::Synchronize Folders"),
+                                                       i18n("Panero::Synchronize Folders"),
                                                        KStandardGuiItem::yes(), KStandardGuiItem::no(), "syncGUIexit");
                 if (result != KMessageBox::Yes)
                     return;
