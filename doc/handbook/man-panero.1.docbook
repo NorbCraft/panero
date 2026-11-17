@@ -21,19 +21,19 @@
 </refentryinfo>
 
 <refmeta>
-<refentrytitle><command>krusader</command></refentrytitle>
+<refentrytitle><command>panero</command></refentrytitle>
 <manvolnum>1</manvolnum>
 </refmeta>
 
 <refnamediv>
-<refname>krusader</refname>
+<refname>panero</refname>
 <refpurpose>advanced twin-panel file manager and &FTP; client by KDE</refpurpose>
 </refnamediv>
 <!-- body begins here -->
 
 <refsynopsisdiv>
 <cmdsynopsis>
-<command>krusader</command>
+<command>panero</command>
 <arg choice="opt">Options</arg>
 <arg choice="plain">url</arg>
 </cmdsynopsis>
@@ -120,9 +120,9 @@ panel</para>
 <refsect1><title>Examples</title>
 
 <itemizedlist>
-  <listitem><para>$ krusader --left=/mnt/cdrom --right=ftp://downloads@myserver.net</para></listitem>
-  <listitem><para>$ krusader --left=/home,/usr,smb://workgroup.net --right=fish://myserver.net</para></listitem>
-  <listitem><para>$ krusader --profile=ftp_management</para></listitem>
+  <listitem><para>$ panero --left=/mnt/cdrom --right=ftp://downloads@myserver.net</para></listitem>
+  <listitem><para>$ panero --left=/home,/usr,smb://workgroup.net --right=fish://myserver.net</para></listitem>
+  <listitem><para>$ panero --profile=ftp_management</para></listitem>
 
 </itemizedlist>
 </refsect1>
@@ -130,15 +130,15 @@ panel</para>
 <refsect1><title>Files</title>
 <para>Configuration files:</para>
 
-<para><filename>~/.config/krusaderrc</filename></para>
+<para><filename>~/.config/panerorc</filename></para>
 
-<para><filename>~/.local/share/krusader/krbookmarks.xml</filename> or <filename>krusader/krbookmarks.xml</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
+<para><filename>~/.local/share/panero/krbookmarks.xml</filename> or <filename>panero/krbookmarks.xml</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
 
-<para><filename>~/.local/share/krusader/useractions.xml</filename> or <filename>krusader/useractions.xml</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
+<para><filename>~/.local/share/panero/useractions.xml</filename> or <filename>panero/useractions.xml</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
 
-<para><filename>/usr/share/kxmlgui5/krusader/krusaderui.rc</filename></para>
+<para><filename>/usr/share/kxmlgui5/panero/paneroui.rc</filename></para>
 
-<para><filename>~/.local/share/kxmlgui5/krusader/krusaderui.rc</filename> or <filename>kxmlgui5/krusader/krusaderui.rc</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
+<para><filename>~/.local/share/kxmlgui5/panero/paneroui.rc</filename> or <filename>kxmlgui5/panero/paneroui.rc</filename> in the folder which can be determined using the <userinput>qtpaths --paths GenericDataLocation</userinput> command</para>
 
 </refsect1>
 
@@ -171,7 +171,7 @@ panel</para>
 
 <para>Krusader 2.5 and newer</para>
 
-<para>The latest version of Krusader can be found at the <ulink url="https://krusader.org/">Krusader website</ulink>.</para>
+<para>Panero is an independent fork of Krusader. It is not affiliated with or endorsed by KDE or the Krusader maintainers. Panero releases and bug reports: <ulink url="https://github.com/NorbCraft/panero">https://github.com/NorbCraft/panero</ulink>. The upstream Krusader project is at <ulink url="https://krusader.org/">https://krusader.org/</ulink>.</para>
 
 </refsect1>
 
