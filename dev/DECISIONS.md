@@ -58,3 +58,20 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   install test; the owner's Zorin 18.1 host (Wayland) for real-desktop GUI
   tests, with temporary `HOME`/`XDG_CONFIG_HOME` so real config is untouched.
   X11 covered via XWayland + Xvfb only.
+
+## D-007 — Base confirmed: v2.8.1 + backported upstream fixes (2026-11-17, owner decision)
+
+- Owner asked to start from the latest upstream (2.9.0 stable / 2.10.0-dev
+  master per krusader.org). Re-checked: v2.9.0 requires Qt ≥ 6.4 + KF6
+  ≥ 5.240; master requires Qt 6.7 + KF6 6.5 ("Increase these minimum required
+  versions: Qt to 6.7 and KF to 6.5"). Ubuntu 24.04/Zorin 18.1 has Qt 6.4.2
+  and **no KF6 packages at all** (`apt-cache search ^libkf6` → 0).
+- 2.9.0's changelog is the KF6 port plus ~10 fixes; master adds mostly
+  cleanups plus Synchronizer sorting, kio_iso fixes, crash/division fixes.
+- Options presented: (1) 2.8.1 + backports, native distro Qt5/KF5;
+  (2) 2.9.0 with a bundled KF6 (+Qt) stack; (3) master with bundled Qt 6.7 + KF6.
+  **Owner chose (1).**
+- Follow-up: backport functional fixes from `v2.8.1..v2.9.0` and
+  `v2.9.0..upstream/master` that apply to KF5 (tracked in PLAN Phase 1b and
+  `dev/BACKPORTS.md`), each as a separate commit referencing the upstream
+  commit hash.

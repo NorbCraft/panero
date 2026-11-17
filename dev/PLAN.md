@@ -31,6 +31,12 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - [ ] License/provenance audit of the base tree (LICENSES/, SPDX headers,
       icons, docs, plugins) → `dev/LICENSE-AUDIT.md` (draft).
 
+## Phase 1b — Backports from upstream 2.9.0 / master (D-007)
+
+- [ ] Review `git log v2.8.1..v2.9.0` and `v2.9.0..upstream/master`; list
+      candidate functional fixes in `dev/BACKPORTS.md` (applied / skipped + why).
+- [ ] Apply KF5-compatible fixes as individual commits citing upstream hashes.
+
 ## Phase 2 — Identity / rebrand (§3.5–3.6, §4)
 
 - [ ] Executable `panero`, desktop file, AppStream metainfo, reverse-DNS id
