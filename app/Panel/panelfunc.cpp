@@ -1390,20 +1390,23 @@ ListPanelFunc* ListPanelFunc::otherFunc()
 
 void ListPanelFunc::historyGotoPos(int pos)
 {
-    if(history->gotoPos(pos))
-        refresh();
+    const QUrl url = history->gotoPos(pos);
+    if (url.isValid())
+        openUrl(url, history->currentItem());
 }
 
 void ListPanelFunc::historyBackward()
 {
-    if(history->goBack())
-        refresh();
+    const QUrl url = history->goBack();
+    if (url.isValid())
+        openUrl(url, history->currentItem());
 }
 
 void ListPanelFunc::historyForward()
 {
-    if(history->goForward())
-        refresh();
+    const QUrl url = history->goForward();
+    if (url.isValid())
+        openUrl(url, history->currentItem());
 }
 
 void ListPanelFunc::dirUp()
