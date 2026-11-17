@@ -56,8 +56,11 @@ PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool 
     return menu;
 }
 
+#if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)
 /**
  * Copied from dolphin/src/dolphincontextmenu.cpp and modified to add only compress and extract submenus.
+ * Only needed before KIO 5.79: since then KFileItemActions::addActionsTo() adds these plugin actions
+ * together with all other file item actions.
  */
 void PanelContextMenu::addCompressAndExtractPluginActions()
 {
@@ -77,6 +80,7 @@ void PanelContextMenu::addCompressAndExtractPluginActions()
         }
     }
 }
+#endif
 
 PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *parent)
     : QMenu(parent), panel(krPanel)
@@ -224,23 +228,25 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     addAction(userAction);
 
     // --------------- compress/extract actions
-    // workaround for Bug 372999: application freezes very long time if many files are selected
-    if (_items.length() < 1000)
-        // add compress and extract plugins (if available)
-        addCompressAndExtractPluginActions();
-
     // --------------- KDE file item actions
-    // NOTE: design and usability problem here. Services disabled in kservicemenurc settings won't
-    // be added to the menu. But Krusader does not provide a way do change these settings (only
-    // Dolphin does).
-    auto *fileItemActions = new KFileItemActions(this);
-    fileItemActions->setItemListProperties(KFileItemListProperties(_items));
-    fileItemActions->setParentWidget(MAIN_VIEW);
-#if KIO_VERSION >= QT_VERSION_CHECK(5, 79, 0)
-    fileItemActions->addActionsTo(this);
-#else
-    fileItemActions->addServiceActionsTo(this);
+    // workaround for Bug 372999: application freezes very long time if many files are selected
+    if (_items.length() < 1000) {
+#if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)
+        // add compress and extract plugins (if available); newer KIO adds them in addActionsTo()
+        addCompressAndExtractPluginActions();
 #endif
+        // NOTE: design and usability problem here. Services disabled in kservicemenurc settings won't
+        // be added to the menu. But Krusader does not provide a way do change these settings (only
+        // Dolphin does).
+        auto *fileItemActions = new KFileItemActions(this);
+        fileItemActions->setItemListProperties(KFileItemListProperties(_items));
+        fileItemActions->setParentWidget(MAIN_VIEW);
+#if KIO_VERSION >= QT_VERSION_CHECK(5, 79, 0)
+        fileItemActions->addActionsTo(this);
+#else
+        fileItemActions->addServiceActionsTo(this);
+#endif
+    }
 
     addSeparator();
 
