@@ -14,6 +14,7 @@ libkf5codecs-dev
 libkf5completion-dev
 libkf5coreaddons-dev
 libkf5config-dev
+libkf5crash-dev
 libkf5doctools-dev
 libkf5iconthemes-dev
 libkf5itemviews-dev

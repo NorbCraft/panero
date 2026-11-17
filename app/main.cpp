@@ -29,6 +29,7 @@
 
 #include <KCoreAddons/KAboutData>
 #include <KConfigCore/KSharedConfig>
+#include <KCrash/KCrash>
 #include <KI18n/KLocalizedString>
 #include <KWidgetsAddons/KActionMenu>
 #include <KWindowSystem/KStartupInfo>
@@ -48,9 +49,18 @@
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
-static void sigterm_handler(int i)
+static void handleCrash(const int signal)
 {
-    fprintf(stderr, "Signal: %d\n", i);
+    fprintf(stderr, "Panero crashed with signal %d\n", signal);
+
+    Krusader::emergencySaveSettings();
+}
+
+static void handleExitSignal(const int signal)
+{
+    fprintf(stderr, "Panero received signal: %d\n", signal);
+
+    Krusader::emergencySaveSettings();
 
     QAbstractEventDispatcher *instance = QAbstractEventDispatcher::instance();
     if (instance)
@@ -232,6 +242,10 @@ int main(int argc, char *argv[])
     parser.process(app);
     aboutData.processCommandLine(&parser);
 
+    // handle crashes
+    KCrash::initialize();
+    KCrash::setEmergencySaveFunction(handleCrash);
+
     // set global message handler
     KrServices::setGlobalKrMessageHandler(parser.isSet("debug"));
 
@@ -321,9 +335,9 @@ int main(int argc, char *argv[])
     }
 
     // catching SIGTERM, SIGHUP, SIGQUIT
-    signal(SIGTERM, sigterm_handler);
-    signal(SIGPIPE, sigterm_handler);
-    signal(SIGHUP, sigterm_handler);
+    signal(SIGTERM, handleExitSignal);
+    signal(SIGPIPE, handleExitSignal);
+    signal(SIGHUP, handleExitSignal);
 
     QObject::connect(&app, &QGuiApplication::applicationStateChanged, SLOTS, &KrSlots::applicationStateChanged);
 

@@ -31,7 +31,7 @@ BUILD=(build-essential cmake ninja-build extra-cmake-modules gettext pkg-config
        ccache clang-format gdb)
 QT_KF5=(qtbase5-dev qtbase5-dev-tools
         libkf5archive-dev libkf5bookmarks-dev libkf5codecs-dev libkf5completion-dev
-        libkf5coreaddons-dev libkf5config-dev libkf5doctools-dev libkf5iconthemes-dev
+        libkf5coreaddons-dev libkf5config-dev libkf5crash-dev libkf5doctools-dev libkf5iconthemes-dev
         libkf5itemviews-dev libkf5kio-dev libkf5notifications-dev libkf5parts-dev
         libkf5solid-dev libkf5textwidgets-dev libkf5wallet-dev libkf5widgetsaddons-dev
         libkf5windowsystem-dev libkf5xmlgui-dev libkf5guiaddons-dev libkf5i18n-dev

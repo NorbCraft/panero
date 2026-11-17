@@ -683,3 +683,14 @@ void Krusader::setupPaneroToolbarLabels()
             hidden->setIcon(Icon(QStringLiteral("view-hidden")));
     }
 }
+
+void Krusader::emergencySaveSettings()
+{
+    // Panero: skip while the main window is still starting up or already
+    // being destroyed - saveSettings() needs the panels and toolbars
+    if (App && !App->isStarting && MAIN_VIEW) {
+        fprintf(stderr, "Emergency saving of settings...\n");
+        App->saveSettings();
+        fprintf(stderr, "...settings saved.\n");
+    }
+}

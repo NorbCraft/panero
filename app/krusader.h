@@ -98,6 +98,12 @@ public:
      */
     static const char* appIconName();
 
+    /**
+     * Save the settings of the running main window, if any. Called on a crash
+     * (KCrash emergency save) and when SIGTERM/SIGHUP/SIGINT is received.
+     */
+    static void emergencySaveSettings();
+
 public slots:
     void quit();
     void moveToTop();
