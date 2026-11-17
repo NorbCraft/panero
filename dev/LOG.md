@@ -172,3 +172,14 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Owner decisions pending (not applied): cfae74772, 3ff36af32, 6713c4132,
   4a0d063a3+c7a4ac114, e78991813. Also note b89d6643d now shows a message when
   Enter is pressed in inline rename without changing the name.
+
+## 2026-11-17 (night) — Claude Code (Opus 5.5) — release candidate
+
+- PR #5 (release prep, trash/pack fixes, test tooling) and PR #6 (39 backports
+  incl. kio_iso, rename-message revert, KCrash build dep, thumbnail tile fix,
+  sidebar tree default "start from place", README screenshots) merged.
+- KDiff3 isolated container tests: allow / deny / broken sources all as designed.
+- RC .deb built in a clean container; test-deb: all scenarios pass, ISO check
+  passes after correcting the test's ISO path.
+- Next: tag v0.1.0-preview.1 → release workflow; verify assets/checksums; owner
+  installs the .deb on the host (sudo) for the desktop launcher/coexistence check.

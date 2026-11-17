@@ -151,3 +151,11 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - Remaining before release: merge #5 and backports; final .deb build + test-deb;
   container screenshots; host install check by the owner (sudo); tag
   v0.1.0-preview.1 → release workflow; verify published assets/checksums.
+
+## Status notes (2026-11-17, 21:50)
+
+- All feature/packaging/backport PRs (#1–#6) merged; main CI green.
+- Release candidate verified (see dev/TEST-REPORT.md, dev/TEST-REPORT-packaging.md).
+- In progress: tag v0.1.0-preview.1 and publish via .github/workflows/release.yml.
+- After release: owner host install check (sudo needed), then update release notes
+  if anything is found.
