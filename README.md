@@ -36,7 +36,7 @@ Krusader configuration; Krusader's own files are never changed.
 sudo apt install build-essential cmake ninja-build extra-cmake-modules gettext \
   qtbase5-dev libkf5kio-dev libkf5parts-dev libkf5xmlgui-dev libkf5archive-dev \
   libkf5bookmarks-dev libkf5doctools-dev libkf5iconthemes-dev libkf5notifications-dev \
-  libkf5textwidgets-dev libkf5wallet-dev libkf5windowsystem-dev libkf5guiaddons-dev \
+  libkf5textwidgets-dev libkf5wallet-dev libkf5windowsystem-dev libkf5guiaddons-dev libkf5crash-dev \
   libacl1-dev libattr1-dev zlib1g-dev
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr
 ninja -C build && (cd build && ctest --output-on-failure)
