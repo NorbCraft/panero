@@ -90,12 +90,26 @@ KrBookmarkHandler::~KrBookmarkHandler()
 
 void KrBookmarkHandler::bookmarkCurrent(QUrl url)
 {
+    // Disconnect the `KBookmarkManager::changed` signal before
+    // the modal dialog is opened. That way, `importFromFile()`
+    // is not automatically executed while the modal dialog is open,
+    // e.g. if the user presses the "New Folder" button (which causes
+    // an `exportToFile()` execution) that does not cause problems
+    disconnect(manager, &KBookmarkManager::changed,
+               this, &KrBookmarkHandler::bookmarksChanged);
+
     QPointer<KrAddBookmarkDlg> dlg = new KrAddBookmarkDlg(_mainWindow->widget(), std::move(url));
     if (dlg->exec() == QDialog::Accepted) {
         KrBookmark *bm = new KrBookmark(dlg->name(), dlg->url(), _collection);
         addBookmark(bm, dlg->folder());
     }
     delete dlg;
+
+    // Reconnect the `KBookmarkManager::changed` signal, now that the
+    // modal dialog is closed and the KrBookmark pointers from the dialog
+    // are no longer used
+    connect(manager, &KBookmarkManager::changed,
+            this, &KrBookmarkHandler::bookmarksChanged);
 }
 
 void KrBookmarkHandler::addBookmark(KrBookmark *bm, KrBookmark *folder)
@@ -115,8 +129,11 @@ void KrBookmarkHandler::deleteBookmark(KrBookmark *bm)
         clearBookmarks(bm);   // remove the child bookmarks
     removeReferences(_root, bm);
     foreach(QWidget *w, bm->associatedWidgets())
-    w->removeAction(bm);
-    delete bm;
+        w->removeAction(bm);
+
+    // Perform a safe asynchronous deletion (it prevents deleting the action
+    // while Qt's context menu event loop is still actively evaluating it)
+    bm->deleteLater();
 
     exportToFile();
 }
@@ -217,7 +234,7 @@ void KrBookmarkHandler::exportToFile()
     }
 }
 
-bool KrBookmarkHandler::importFromFileBookmark(QDomElement &e, KrBookmark *parent, const QString& path, QString *errorMsg)
+bool KrBookmarkHandler::importFromFileBookmark(QDomElement &e, KrBookmark *parent, const QString& path, QString *errorMsg, QSet<KrBookmark*> &seenBookmarks)
 {
     QString url, name, iconName;
     // verify tag
@@ -240,27 +257,50 @@ bool KrBookmarkHandler::importFromFileBookmark(QDomElement &e, KrBookmark *paren
     if (e.hasAttribute("icon")) {
         iconName = e.attribute("icon");
     }
-    // ok: got name and url, let's add a bookmark
-    KrBookmark *bm = KrBookmark::getExistingBookmark(path + name, _collection);
-    if (!bm) {
-        bm = new KrBookmark(name, QUrl(url), _collection, iconName, path + name);
-    } else {
-        bm->setURL(QUrl(url));
-        bm->setIconName(iconName);
+    // ok: got name and url, let's add a bookmark safely allowing duplicates
+    KrBookmark *bm = nullptr;
+    QString baseActionName = path + name;
+    QString actionName = baseActionName;
+    int suffix = 1;
+
+    // Loop to find an unused internal action name. This allows having
+    // multiple bookmarks with the exact same display name
+    // to exist as distinct pointers
+    while (true) {
+        bm = KrBookmark::getExistingBookmark(actionName, _collection);
+        if (!bm) {
+            // No bookmark exists with this internal actionName.
+            // Create a new bookmark safely
+            bm = new KrBookmark(name, QUrl(url), _collection, iconName, actionName);
+            break;
+        } else if (!seenBookmarks.contains(bm)) {
+            // We have found an existing one that hasn't been added to
+            // the tree yet in this pass. Reuse it
+            bm->setURL(QUrl(url));
+            bm->setIconName(iconName);
+            break;
+        }
+        // This pointer was already used (it's a duplicate name in the XML).
+        // Increment the suffix and check for (or create) a unique internal action name
+        suffix++;
+        actionName = baseActionName + "_" + QString::number(suffix);
     }
+
+    // Append it to the tree and record it in the guard set
     parent->children().append(bm);
+    seenBookmarks.insert(bm);
 
     return true;
 }
 
-bool KrBookmarkHandler::importFromFileFolder(QDomNode &first, KrBookmark *parent, const QString& path, QString *errorMsg)
+bool KrBookmarkHandler::importFromFileFolder(QDomNode &first, KrBookmark *parent, const QString& path, QString *errorMsg, QSet<KrBookmark*> &seenBookmarks)
 {
     QString name;
     QDomNode n = first;
     while (!n.isNull()) {
         QDomElement e = n.toElement();
         if (e.tagName() == "bookmark") {
-            if (!importFromFileBookmark(e, parent, path, errorMsg))
+            if (!importFromFileBookmark(e, parent, path, errorMsg, seenBookmarks))
                 return false;
         } else if (e.tagName() == "folder") {
             QString iconName = "";
@@ -275,7 +315,7 @@ bool KrBookmarkHandler::importFromFileFolder(QDomNode &first, KrBookmark *parent
             parent->children().append(folder);
 
             QDomNode nextOne = tmp.nextSibling();
-            if (!importFromFileFolder(nextOne, folder, path + name + '/', errorMsg))
+            if (!importFromFileFolder(nextOne, folder, path + name + '/', errorMsg, seenBookmarks))
                 return false;
         } else if (e.tagName() == "separator") {
             parent->children().append(KrBookmark::separator());
@@ -298,6 +338,16 @@ void KrBookmarkHandler::importFromFile()
     QString errorMsg;
     QDomNode n;
     QDomElement e;
+
+    // A set of bookmarks that have been seen.
+    // Note: There are two legitimate but conflicting design requirements:
+    // - The XML format intentionally allows *duplicate* display names. Users should be able to have e.g.
+    // two bookmarks both named "Documents".
+    // - A KActionCollection *uniquely* maps string names to pointers. This is necessary in order to preserve
+    // user-assigned toolbar buttons and keyboard shortcuts across reloads.
+    // This `QSet` makes the two conflicting design requirements coexist safely
+    QSet<KrBookmark*> seenBookmarks;
+
     QDomDocument doc("xbel");
     if (!doc.setContent(&file, &errorMsg)) {
         goto BM_ERROR;
@@ -311,7 +361,8 @@ void KrBookmarkHandler::importFromFile()
         errorMsg = i18n("%1 does not seem to be a valid bookmarks file", filename);
         goto BM_ERROR;
     } else n = n.firstChild(); // skip the xbel part
-    importFromFileFolder(n, _root, "", &errorMsg);
+
+    importFromFileFolder(n, _root, "", &errorMsg, seenBookmarks);
     goto BM_SUCCESS;
 
 BM_ERROR:
@@ -360,6 +411,19 @@ void KrBookmarkHandler::populate(QMenu *menu)
         _mainBookmarkPopup->removeAction(_quickSearchAction);
     }
     _mainBookmarkPopup = menu;
+
+    // In order to prevent memory leaks:
+    // QMenu::clear() deletes actions, but it does *not* delete
+    // the dynamically-allocated child QMenus. We must explicitly
+    // delete them in order to prevent a fast proliferation of
+    // top-level widgets that are not properly cleaned up
+    const auto actions = menu->actions();
+    for (QAction *act : actions) {
+        if (QMenu *subMenu = act->menu()) {
+            delete subMenu;
+        }
+    }
+
     menu->clear();
     _specialBookmarks.clear();
     buildMenu(_root, menu);
@@ -383,8 +447,7 @@ void KrBookmarkHandler::buildMenu(KrBookmark *parent, QMenu *menu, int depth)
         newMenu->setIcon(Icon(bm->iconName()));
         newMenu->setTitle(bm->text());
         QAction *menuAction = menu->addMenu(newMenu);
-        QVariant v;
-        v.setValue<KrBookmark *>(bm);
+        QVariant v = QVariant::fromValue(QPointer<KrBookmark>(bm));
         menuAction->setData(v);
 
         buildMenu(bm, newMenu, depth + 1);
@@ -533,14 +596,14 @@ void KrBookmarkHandler::clearBookmarks(KrBookmark *root, bool removeBookmarks)
 
         if (bm->isFolder()) {
             clearBookmarks(bm, removeBookmarks);
-            delete bm;
+            bm->deleteLater();
         } else if (bm->isSeparator()) {
-            delete bm;
+            bm->deleteLater();
         } else if (removeBookmarks) {
             foreach (QWidget *w, bm->associatedWidgets()) {
                 w->removeAction(bm);
             }
-            delete bm;
+            bm->deleteLater();
         }
     }
 }
@@ -548,6 +611,12 @@ void KrBookmarkHandler::clearBookmarks(KrBookmark *root, bool removeBookmarks)
 void KrBookmarkHandler::bookmarksChanged(const QString&, const QString&)
 {
     importFromFile();
+
+    // Refresh the active menu if it is currently visible to the user
+    // to prevent dangling pointers in the UI
+    if (_mainBookmarkPopup && !_mainBookmarkPopup->isHidden()) {
+        populate(_mainBookmarkPopup);
+    }
 }
 
 bool KrBookmarkHandler::eventFilter(QObject *obj, QEvent *ev)
@@ -572,13 +641,15 @@ bool KrBookmarkHandler::eventFilter(QObject *obj, QEvent *ev)
             qDebug() << "Bookmark search: active action =" << _quickSearchMenu->activeAction();
 
             // fix automatic deactivation of current action due to spurious close event from submenu
-            auto quickSearchMenu = _quickSearchMenu;
-            auto activeAction = _quickSearchMenu->activeAction();
-            QTimer::singleShot(0, this, [=]() {
-                qDebug() << "Bookmark search: active action =" << quickSearchMenu->activeAction();
-                if (!quickSearchMenu->activeAction() && activeAction) {
-                    quickSearchMenu->setActiveAction(activeAction);
-                    qDebug() << "Bookmark search: restored active action =" << quickSearchMenu->activeAction();
+            QPointer<QMenu> quickSearchMenu = _quickSearchMenu;
+            QPointer<QAction> activeAction = _quickSearchMenu->activeAction();
+            QTimer::singleShot(0, this, [quickSearchMenu, activeAction]() {
+                if (quickSearchMenu && activeAction) {
+                    qDebug() << "Bookmark search: active action =" << quickSearchMenu->activeAction();
+                    if (!quickSearchMenu->activeAction()) {
+                        quickSearchMenu->setActiveAction(activeAction);
+                        qDebug() << "Bookmark search: restored active action =" << quickSearchMenu->activeAction();
+                    }
                 }
             });
         }
@@ -651,7 +722,7 @@ bool KrBookmarkHandler::eventFilter(QObject *obj, QEvent *ev)
 
                 // strip accelerator keys from actions so they don't interfere with the search key press events
                 auto text = act->text();
-                _quickSearchOriginalActionTitles.insert(act, text);
+                _quickSearchOriginalActionTitles.append({act, text});
                 act->setText(KLocalizedString::removeAcceleratorMarker(text));
             }
 
@@ -711,11 +782,15 @@ bool KrBookmarkHandler::eventFilter(QObject *obj, QEvent *ev)
 
                 auto *bm = qobject_cast<KrBookmark *>(act);
                 if (bm != nullptr) {
-                    rightClicked(menu, bm);
+                    rightClicked(bm);
                     return true;
-                } else if (act && act->data().canConvert<KrBookmark *>()) {
-                    auto *bm = act->data().value<KrBookmark *>();
-                    rightClicked(menu, bm);
+                } else if (act && act->data().canConvert<QPointer<KrBookmark>>()) {
+                    QPointer<KrBookmark> bmPtr = act->data().value<QPointer<KrBookmark>>();
+                    // Safely check if the object still exists
+                    if (bmPtr) {
+                        rightClicked(bmPtr.data());
+                    }
+                    // If bmPtr is null, the object was deleted in the background; therefore, ignore the click
                 }
             }
             break;
@@ -734,11 +809,11 @@ bool KrBookmarkHandler::eventFilter(QObject *obj, QEvent *ev)
 
 void KrBookmarkHandler::_resetActionTextAndHighlighting()
 {
-    for (QHash<QAction *, QString>::const_iterator i = _quickSearchOriginalActionTitles.constBegin();
-         i != _quickSearchOriginalActionTitles.constEnd(); ++i) {
-        QAction *action = i.key();
-        action->setText(i.value());
-        _highlightAction(action, false);
+    for (const auto &item : _quickSearchOriginalActionTitles) {
+        if (QAction *action = item.first) {
+            action->setText(item.second);
+            _highlightAction(action, false);
+        }
     }
 
     _quickSearchOriginalActionTitles.clear();
@@ -785,9 +860,6 @@ void KrBookmarkHandler::rightClickOnSpecialBookmark()
     act->setCheckable(true);
     act->setChecked(hasJumpback);
 
-    connect(_mainBookmarkPopup, SIGNAL(highlighted(int)), &menu, SLOT(close()));
-    connect(_mainBookmarkPopup, SIGNAL(activated(int)), &menu, SLOT(close()));
-
     int result = -1;
     QAction *res = menu.exec(QCursor::pos());
     if (res && res->data().canConvert<int>())
@@ -826,7 +898,7 @@ void KrBookmarkHandler::rightClickOnSpecialBookmark()
 #define OPEN_NEW_TAB_ID   100201
 #define DELETE_ID         100202
 
-void KrBookmarkHandler::rightClicked(QMenu *menu, KrBookmark * bm)
+void KrBookmarkHandler::rightClicked(KrBookmark * bm)
 {
     QMenu popup(_mainBookmarkPopup);
     QAction * act;
@@ -841,8 +913,8 @@ void KrBookmarkHandler::rightClicked(QMenu *menu, KrBookmark * bm)
     act = popup.addAction(Icon("edit-delete"), i18n("Delete"));
     act->setData(QVariant(DELETE_ID));
 
-    connect(menu, SIGNAL(highlighted(int)), &popup, SLOT(close()));
-    connect(menu, SIGNAL(activated(int)), &popup, SLOT(close()));
+    // A QPointer aimed to safely track the lifetime of the bookmark
+    QPointer<KrBookmark> safeBm(bm);
 
     int result = -1;
     QAction *res = popup.exec(QCursor::pos());
@@ -854,15 +926,20 @@ void KrBookmarkHandler::rightClicked(QMenu *menu, KrBookmark * bm)
         _mainBookmarkPopup->close();
     }
 
+    // Only proceed if the bookmark wasn't destroyed in the background
+    if (!safeBm) {
+        return;
+    }
+
     switch (result) {
     case OPEN_ID:
-        SLOTS->refresh(bm->url());
+        SLOTS->refresh(safeBm->url());
         break;
     case OPEN_NEW_TAB_ID:
-        _mainWindow->activeManager()->newTab(bm->url());
+        _mainWindow->activeManager()->newTab(safeBm->url());
         break;
     case DELETE_ID:
-        deleteBookmark(bm);
+        deleteBookmark(safeBm.data());
         break;
     }
 }
