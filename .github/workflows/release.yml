@@ -1,0 +1,303 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Build, test and publish a Panero release from a version tag.
+#
+# - Triggered by pushing a tag v* (e.g. v0.1.0-preview.1) or manually for an
+#   existing tag. Never runs on pull requests, so no untrusted code reaches
+#   the job that holds a write token.
+# - The build job has a read-only token. It builds the .deb in a clean
+#   ubuntu:24.04 container with dev/scripts/build-deb.sh (dpkg-buildpackage,
+#   ctest via dh_auto_test, lintian), tests the package in fresh containers
+#   with dev/scripts/test-deb.sh, and assembles the source archive (git
+#   archive of the exact tagged commit), the licenses archive, the release
+#   notes and SHA256SUMS.
+# - Only the publish job gets contents: write. It creates the GitHub release
+#   (a prerelease for versions containing "preview") with the gh CLI and the
+#   workflow's GITHUB_TOKEN, then downloads the assets again and verifies
+#   their checksums.
+# Tag <-> Debian version mapping (dev/DECISIONS.md D-003):
+#   v0.1.0-preview.1 <-> 0.1.0~preview.1-1
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and release (e.g. v0.1.0-preview.1)
+        required: true
+        type: string
+      publish:
+        description: Create the GitHub release (otherwise build and test only)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  # Krusader v2.8.1, the upstream base of Panero (dev/DECISIONS.md D-001).
+  KRUSADER_BASE_COMMIT: dbc4540bc850a15d8c776b54fdecc0b326b4c469
+
+jobs:
+  build:
+    name: Build and test the .deb
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      debversion: ${{ steps.meta.outputs.debversion }}
+      debasset: ${{ steps.meta.outputs.debasset }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - name: Checkout the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine and check versions
+        id: meta
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$TAG' is not a release tag like v1.2.3 or v1.2.3-preview.1"; exit 1
+          fi
+          tag_commit=$(git rev-parse --verify "refs/tags/$TAG^{commit}")
+          head_commit=$(git rev-parse HEAD)
+          if [ "$tag_commit" != "$head_commit" ]; then
+            echo "::error::checked out $head_commit but $TAG is $tag_commit"; exit 1
+          fi
+          version=${TAG#v}
+          debversion=$(head -n 1 debian/changelog | sed -E 's/^[^(]*\(([^)]*)\).*/\1/')
+          expected_upstream=${version/-/"~"}
+          if [ "${debversion%-*}" != "$expected_upstream" ]; then
+            echo "::error::debian/changelog has $debversion, expected $expected_upstream-<revision> for $TAG"; exit 1
+          fi
+          prerelease=false
+          case "$version" in *preview*|*alpha*|*beta*|*rc*) prerelease=true ;; esac
+          {
+            echo "tag=$TAG"
+            echo "version=$version"
+            echo "debversion=$debversion"
+            # GitHub turns "~" in asset names into "."; use that name up front
+            # so SHA256SUMS and the notes match the downloadable file (D-010).
+            echo "debasset=panero_${debversion//\~/.}_amd64.deb"
+            echo "commit=$head_commit"
+            echo "prerelease=$prerelease"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      - name: Build the .deb in ubuntu:24.04 (dpkg-buildpackage, ctest, lintian)
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: dev/scripts/build-deb.sh --ref "refs/tags/$TAG" --out dist
+
+      - name: Show test and lintian results
+        run: |
+          grep -E 'tests passed|Test #' dist/build.log
+          cat dist/lintian.txt
+
+      - name: Fetch the previous release's .deb for the upgrade test
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p prev
+          prev=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 30 \
+                   --json tagName,isDraft --jq '[.[] | select(.isDraft | not) | .tagName] | .[]' \
+                 | grep -v -x -F "$TAG" | head -n 1 || true)
+          if [ -n "$prev" ]; then
+            echo "Previous release: $prev"
+            gh release download "$prev" --repo "$GITHUB_REPOSITORY" \
+              --pattern 'panero_*_amd64.deb' --dir prev || true
+          else
+            echo "No previous release; the upgrade test will be skipped."
+          fi
+          ls -l prev
+
+      - name: Test the package in clean ubuntu:24.04 containers
+        env:
+          DEBVERSION: ${{ steps.meta.outputs.debversion }}
+        run: |
+          set -euo pipefail
+          args=(--deb "dist/panero_${DEBVERSION}_amd64.deb" --log dist/test-deb.log)
+          old=$(ls prev/panero_*_amd64.deb 2>/dev/null | head -n 1 || true)
+          if [ -n "$old" ] && dpkg --compare-versions "$(dpkg-deb -f "$old" Version)" lt "$DEBVERSION"; then
+            args+=(--old-deb "$old")
+          else
+            echo "No older release package; the upgrade test is skipped."
+          fi
+          dev/scripts/test-deb.sh "${args[@]}"
+
+      - name: Assemble release assets
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          DEBVERSION: ${{ steps.meta.outputs.debversion }}
+          DEBASSET: ${{ steps.meta.outputs.debasset }}
+          COMMIT: ${{ steps.meta.outputs.commit }}
+        run: |
+          set -euo pipefail
+          mkdir -p release extra
+          cp "dist/panero_${DEBVERSION}_amd64.deb" "release/$DEBASSET"
+          image=$(sed -n 's/^image: //p' dist/BUILD-INFO.txt)
+
+          # SOURCE-INFO.txt: exact commit plus a dated record of Panero's
+          # changes to the Krusader sources (GPL-2.0 section 2(a)).
+          {
+            echo "Panero $VERSION - corresponding source"
+            echo
+            echo "Git tag:        $TAG"
+            echo "Commit:         $COMMIT"
+            echo "Commit date:    $(git show -s --format=%cI "$COMMIT")"
+            echo "Debian package: panero_${DEBVERSION}_amd64.deb (release asset $DEBASSET)"
+            echo "Build image:    $image"
+            echo "Repository:     $GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+            echo "Based on:       Krusader 2.8.1, commit $KRUSADER_BASE_COMMIT"
+            echo "                (https://invent.kde.org/utilities/krusader, tag v2.8.1)"
+            echo
+            echo "Build: dev/scripts/build-deb.sh (dpkg-buildpackage -us -uc -b in a"
+            echo "clean ubuntu:24.04 container); see README.md and debian/."
+            echo
+            echo "== Files changed, added (A), deleted (D) or renamed (R) relative to Krusader 2.8.1 =="
+            git diff --name-status -M "$KRUSADER_BASE_COMMIT" "$COMMIT"
+            echo
+            echo "== Changes since Krusader 2.8.1 (date, author, summary, files) =="
+            git log --no-merges --date=short --format='%n%ad  %an  %h%n    %s' \
+              --name-status "$KRUSADER_BASE_COMMIT..$COMMIT"
+          } > extra/SOURCE-INFO.txt
+
+          git archive --format=tar --prefix="panero-$VERSION/" \
+            --add-file=extra/SOURCE-INFO.txt "$COMMIT" \
+            | gzip -n -9 > "release/panero-$VERSION-source.tar.gz"
+
+          # Licenses and notices from the tagged tree, plus the GPL-3.0 text
+          # that the LGPL-3.0 (one embedded icon) incorporates.
+          cp /usr/share/common-licenses/GPL-3 extra/GPL-3.0-referenced-by-LGPL-3.0.txt
+          git archive --format=tar --prefix="panero-$VERSION-licenses/" \
+            --add-file=extra/GPL-3.0-referenced-by-LGPL-3.0.txt "$COMMIT" \
+            LICENSING.md LICENSES debian/copyright AUTHORS CREDITS \
+            dev/PROVENANCE.md dev/ICON-PROVENANCE.md \
+            | gzip -n -9 > "release/panero-$VERSION-licenses.tar.gz"
+
+          (cd release && sha256sum -- * > SHA256SUMS && sha256sum -c SHA256SUMS)
+
+          # Release notes: dev/release-notes/<tag>.md if present, plus build facts.
+          if [ -f "dev/release-notes/$TAG.md" ]; then
+            cp "dev/release-notes/$TAG.md" extra/RELEASE-NOTES.md
+          else
+            printf 'Panero %s\n\nNo release notes file (dev/release-notes/%s.md) was found.\n' \
+              "$VERSION" "$TAG" > extra/RELEASE-NOTES.md
+          fi
+          {
+            echo
+            echo "---"
+            echo
+            echo "**Build details**"
+            echo
+            echo "- Source commit: \`$COMMIT\` (tag \`$TAG\`)"
+            echo "- Debian version: \`$DEBVERSION\`; built with \`dpkg-buildpackage\` in \`$image\`"
+            echo "- Tested in clean Ubuntu 24.04 containers: install with dependency resolution,"
+            echo "  coexistence with the Ubuntu \`krusader\` package, upgrade (when a previous"
+            echo "  release exists), remove and purge"
+            echo "- Install: \`sudo apt install ./$DEBASSET\`"
+            echo "  (GitHub does not allow \`~\` in file names, so the asset name has \`.\`"
+            echo "  where the Debian version \`$DEBVERSION\` has \`~\`.)"
+            echo
+            echo "SHA-256 checksums (also in \`SHA256SUMS\`):"
+            echo
+            echo '```'
+            cat release/SHA256SUMS
+            echo '```'
+          } >> extra/RELEASE-NOTES.md
+          cp extra/RELEASE-NOTES.md release-notes.md
+          ls -l release
+
+      - name: Upload release assets for the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panero-release
+          path: |
+            release/
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build and test logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panero-build-logs
+          path: |
+            dist/build.log
+            dist/lintian.txt
+            dist/test-deb.log
+            dist/BUILD-INFO.txt
+            dist/*.buildinfo
+            dist/*.changes
+            extra/SOURCE-INFO.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish:
+    name: Publish the GitHub release
+    needs: build
+    if: github.event_name == 'push' || inputs.publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: panero-release
+          path: assets
+
+      - name: Verify checksums before publishing
+        run: cd assets/release && sha256sum -c SHA256SUMS
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::release $TAG already exists; delete it first or release a new tag"; exit 1
+          fi
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Panero $VERSION" --notes-file assets/release-notes.md "${flags[@]}" \
+            assets/release/*
+
+      - name: Verify the published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir verify
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir verify
+          cd verify
+          ls -l
+          sha256sum -c SHA256SUMS
+          cmp SHA256SUMS ../assets/release/SHA256SUMS
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json url,isPrerelease,tagName

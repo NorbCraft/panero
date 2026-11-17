@@ -114,3 +114,23 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   Shift+F10 to the "All Files" view filter; that filter stays in the View
   menu without a default shortcut.
 - "Unselect All" (Alt+Minus) is labelled "Clear All Marks".
+
+## D-010 — Packaging and release mechanics (2026-11-17, accepted)
+
+- Debian source format `3.0 (quilt)` with `debian/` in this repository (no
+  patches): D-003 versions carry a Debian revision, which `3.0 (native)`
+  does not allow. One binary package `panero` (amd64); no `-data` split.
+- Release builds run `dev/scripts/build-deb.sh` (clean `ubuntu:24.04`
+  container, `dpkg-buildpackage -us -uc -b`, ctest, lintian) and
+  `dev/scripts/test-deb.sh`, locally and in `.github/workflows/release.yml`.
+- GitHub release asset name: GitHub replaces `~` in asset file names with
+  `.`, so the workflow uploads `panero_0.1.0~preview.1-1_amd64.deb` as
+  `panero_0.1.0.preview.1-1_amd64.deb` and uses that name in `SHA256SUMS`
+  and the install command. The package itself (control `Version:`) stays
+  `0.1.0~preview.1-1`. Supersedes the asset-name sentence of D-003.
+- Releases are prereleases while the version contains "preview" (also
+  alpha/beta/rc). Assets: the `.deb`, `panero-<version>-source.tar.gz`
+  (`git archive` of the tagged commit + `SOURCE-INFO.txt` with the commit
+  hash and the dated change list since Krusader 2.8.1),
+  `panero-<version>-licenses.tar.gz`, `SHA256SUMS`; notes from
+  `dev/release-notes/<tag>.md` plus generated build details.
