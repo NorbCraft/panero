@@ -153,8 +153,11 @@ for f in /usr/bin/panero \
          /usr/share/doc/panero/LICENSES/FSFAP.txt; do
     check "installed: $f" test -e "$f"
 done
-check "installed: /usr/share/doc/panero/LICENSING.md[.gz]" \
-    bash -c 'ls /usr/share/doc/panero/LICENSING.md* >/dev/null 2>&1'
+for d in LICENSING.md USER-GUIDE.md README.md; do
+    check "installed: /usr/share/doc/panero/$d[.gz]" bash -c "ls /usr/share/doc/panero/$d* >/dev/null 2>&1"
+done
+check "handbook docbook files are not compressed (help:/panero)" \
+    bash -c "! ls /usr/share/doc/HTML/*/panero/*.docbook.gz >/dev/null 2>&1"
 check "copyright file is DEP-5 and names GPL-2+" \
     bash -c "head -n 1 /usr/share/doc/panero/copyright | grep -q copyright-format/1.0 && grep -q '^License: GPL-2+' /usr/share/doc/panero/copyright"
 check "copyright file carries the fork statement" \

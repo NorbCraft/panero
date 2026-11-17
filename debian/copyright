@@ -40,7 +40,11 @@ Copyright: 2000-2006 Shie Erlich <erlich@users.sourceforge.net>
            2026 Panero contributors
 License: GPL-2+
 Comment: Copyright holders as listed in the SPDX-FileCopyrightText headers of
- the program sources. Several files note that parts are based on other KDE
+ the program sources. Files added by Panero (for example app/panero*.cpp,
+ app/Panel/panerotheme.*, app/Panel/paneroappearance.*,
+ app/Panel/PanelView/commandergesture.*,
+ app/Panel/PanelView/krinterthumbnailview.*,
+ app/Dialogs/paneroviewcolorsdialog.*) are "2026 Panero contributors". Several files note that parts are based on other KDE
  code (kdelibs KTar, KIO, Dolphin, KRemoteEncodingPlugin by Dawit Alemayehu,
  code by Sebastian Trueg and Bruno Nova); upstream distributes them under
  GPL-2+, which the original GPL/LGPL terms of that code allow.
@@ -114,6 +118,7 @@ Files: AGENTS.md
        CLAUDE.md
        LICENSING.md
        README.md
+       USER-GUIDE.md
        autotests/*
        debian/*
        dev/*

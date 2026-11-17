@@ -32,6 +32,7 @@ bundled assets and runtime dependencies is in
 | Component | Where | License | Copyright |
 |---|---|---|---|
 | Program sources (Krusader-derived) | `app/`, `plugins/krarc/`, `plugins/iso/*.cpp` | GPL-2.0-or-later | Shie Erlich, Rafi Yanai, Csaba Karai, Jan Lepper, Nikita Melnichenko and the Krusader Krew (see headers) |
+| Panero additions (commander input/marks, appearance and View & Colors, thumbnails view, navigation sidebar and pins, KDiff3 install via PackageKit, settings import) | `app/panero*`, `app/Panel/panero*`, `app/Panel/PanelView/commandergesture.*`, `app/Panel/PanelView/krinterthumbnailview.*`, `app/Dialogs/paneroviewcolorsdialog.*`, plus edits in Krusader files | GPL-2.0-or-later | Panero contributors |
 | Disk usage map (from Filelight) | `app/DiskUsage/filelightParts/`, `app/DiskUsage/radialMap/` | GPL-2.0-or-later | Max Howell, Krusader Krew |
 | libisofs 0.2 (ISO 9660 reader for the `iso:/` worker) | `plugins/iso/libisofs/` | GPL-2.0-or-later as declared (see note 1) | Szombathelyi György, Krusader Krew |
 | Fallback "missing icon", compiled into `panero` | `app/icons/icon-missing.svgz` | LGPL-3.0-or-later (see note 2) | Nikita Melnichenko; Breeze icon theme authors |
@@ -42,7 +43,7 @@ bundled assets and runtime dependencies is in
 | Translated handbooks | `po/*/docs/` | GFDL-1.1-or-later (no invariant sections) | Krusader authors and KDE translators |
 | User-interface translations | `po/*/panero.po` | GPL-2.0-or-later | KDE translators (named in each file) |
 | Colour schemes, keymaps, user action examples, UI layout files | `app/*.color`, `app/*.keymap*`, `app/*.rc`, `app/layout.xml`, `app/useraction_examples.xml` | GPL-2.0-or-later | Krusader Krew; Panero contributors for renamed/edited files |
-| Panero tests, packaging, CI, scripts, development documents | `autotests/`, `debian/`, `.github/`, `dev/`, `*.md` | GPL-2.0-or-later | Panero contributors |
+| Panero tests, packaging, CI, scripts, user guide, development documents | `autotests/`, `debian/`, `.github/`, `dev/`, `*.md` (incl. `USER-GUIDE.md`) | GPL-2.0-or-later | Panero contributors |
 | Development hand-off material | `dev/handoff/` | GPL-2.0-or-later | Panero project owner (the icon concept image in it is AI generated) |
 
 Notes:
@@ -83,7 +84,7 @@ Notes:
 - `FSFAP.txt`: FSF All Permissive License
 
 The Debian package installs them, together with this file, `README.md`,
-`AUTHORS` and `CREDITS`, in `/usr/share/doc/panero/`. Debian's packaging
+`USER-GUIDE.md`, `AUTHORS` and `CREDITS`, in `/usr/share/doc/panero/`. Debian's packaging
 tools compress the larger files there (`.gz`); read them with `zless`.
 
 ## What the installed package contains
@@ -107,8 +108,10 @@ plugins other than Panero's own two KIO workers.
 
 Panero links dynamically against Qt 5, KDE Frameworks 5, glibc, libstdc++,
 zlib and libacl from the Ubuntu archive, and uses further Ubuntu packages at
-runtime (for example `kio`, `ktexteditor-katepart` and
-`breeze-icon-theme`). These are installed by the package manager as separate
+runtime (for example `kio`, `ktexteditor-katepart`, `breeze-icon-theme`
+and, for the optional KDiff3 installation, the PackageKit D-Bus service of
+`packagekit`). Panero's look uses Qt's built-in Fusion style; no style,
+theme or font is bundled. These are installed by the package manager as separate
 packages, each with its own `/usr/share/doc/<package>/copyright`. Their
 licenses (mostly LGPL-2.1/LGPL-3.0, GPL-compatible) are listed in
 [`dev/PROVENANCE.md`](dev/PROVENANCE.md). Their source code is available

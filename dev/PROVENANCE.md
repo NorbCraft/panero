@@ -3,8 +3,9 @@
 Inventory of everything Panero ships or relies on, where it comes from and
 under which license. Companion to [`../LICENSING.md`](../LICENSING.md) (the
 readable overview) and `debian/copyright` (machine-readable). Checked on
-2026-11-17 against the tree of the `feature/packaging` branch (based on
-`main` at `7b4e8d0f5`) with `reuse lint` (compliant, REUSE 3.0),
+2026-11-17 against the tree of the `feature/packaging` branch (rebased on
+`main` at `bfa10f64b`, which includes the commander input, appearance,
+thumbnails, navigation sidebar and KDiff3 installer work) with `reuse lint` (compliant, REUSE 3.0),
 `licensecheck -r`, the Git history and the copyright files of the Ubuntu
 24.04 packages. Open items are listed at the end; nothing here is a legal
 opinion.
@@ -31,7 +32,7 @@ opinion.
 | krarc KIO worker | `plugins/krarc/` | Krusader | GPL-2.0-or-later | `/usr/lib/x86_64-linux-gnu/panero/plugins/kf5/kio/kio_krarc.so` |
 | iso KIO worker | `plugins/iso/` | Krusader | GPL-2.0-or-later | `.../kio_iso.so`, `/etc/xdg/panero_kio_isorc` |
 | libisofs 0.2 | `plugins/iso/libisofs/` | Szombathelyi György, <http://libcdrom.sourceforge.net/libisofs.html>, imported into Krusader 2004 (`dd9d71dd2`); `iso_fs.h`, `rock.h` "From the linux kernel", `el_torito.h` "borrowed from the bsd386 isofs", `bswap.h` "From the mplayer project" with glibc `bits/byteswap.h` lines | declared GPL-2.0-or-later (see open item O-1); `COPYING` = GPL-2.0 text | in `kio_iso.so` |
-| Panero additions | `app/paneroimport.*`, parts of `app/main.cpp`, `autotests/` | Panero contributors, 2026 | GPL-2.0-or-later | `/usr/bin/panero` (tests not installed) |
+| Panero additions | `app/paneroimport.*` (settings import), `app/paneronavigation.*` (sidebar, folder tree, pins), `app/paneropackageinstaller.*` (KDiff3 install via PackageKit D-Bus), `app/Panel/panerotheme.*`, `app/Panel/paneroappearance.*`, `app/Dialogs/paneroviewcolorsdialog.*` (appearance), `app/Panel/PanelView/commandergesture.*` (cursor/marks, hold-for-menu), `app/Panel/PanelView/krinterthumbnailview.*` (thumbnails view), edits in Krusader files, `autotests/` | Panero contributors, 2026 (all new files: SPDX headers, GPL-2.0-or-later; written for Panero, no third-party code noted) | GPL-2.0-or-later | `/usr/bin/panero` (tests not installed) |
 
 ### 2.2 Icons, images and artwork
 
@@ -62,7 +63,7 @@ from the user's icon theme or from the `breeze-icon-theme` package.
 | UI translations (51 languages) | `po/*/panero.po` | KDE translation teams for Krusader (renamed catalogs) | GPL-2.0-or-later ("same license as the Krusader package") | `/usr/share/locale/*/LC_MESSAGES/panero.mo` |
 | Handbook and man page | `doc/handbook/` | Krusader handbook: Shie Erlich, Rafi Yanai, Frank Schoolmeesters, Krusader Krew | GFDL-1.1-or-later, no invariant sections | `/usr/share/doc/HTML/en/panero/`, `/usr/share/man/man1/panero.1.gz` |
 | Translated handbooks (12 directories; 7 languages complete enough to install: ca, de, it, nl, pt, sv, uk) | `po/*/docs/panero/` | KDE translation teams | GFDL-1.1-or-later | `/usr/share/doc/HTML/<lang>/panero/` |
-| Panero documentation, packaging, CI, scripts | `*.md`, `debian/`, `.github/`, `dev/` | Panero contributors | GPL-2.0-or-later | `README.md`, `LICENSING.md`, `copyright` in `/usr/share/doc/panero/` |
+| Panero documentation, user guide, packaging, CI, scripts | `*.md` (incl. `USER-GUIDE.md`), `debian/`, `.github/`, `dev/` | Panero contributors | GPL-2.0-or-later | `README.md`, `USER-GUIDE.md`, `LICENSING.md`, `copyright` in `/usr/share/doc/panero/` |
 
 ## 3. Build-time tools (not shipped)
 
@@ -132,10 +133,23 @@ first one.
 
 ### 4.3 Suggests (all optional, detected at runtime)
 
-`kdiff3` (default compare tool), `kompare | xxdiff`, `7zip`, `arj`, `ark`,
-`bzip2`, `cpio`, `hashdeep`, `kate`, `konsole` (embedded terminal),
-`krename`, `lhasa`, `okteta` (hex viewer), `rpm`, `unace`,
-`unrar | unrar-free | rar`, `unzip`, `zip`. Their licenses are in their own
+`kdiff3` (default compare tool; Panero offers to install it through
+PackageKit), `kompare | xxdiff`, `7zip`, `arj`, `ark`, `bzip2`, `cpio`,
+`hashdeep`, `kate`, `konsole` (embedded terminal), `krename`, `lhasa`,
+`okteta` (hex viewer), `qt5-gtk-platformtheme` (GTK dialogs/fonts when
+Panero's own look is off), `rpm`, `unace`, `unrar | unrar-free | rar`,
+`unzip`, `zip`.
+
+### 4.4 Provided by the desktop (not declared)
+
+- The **Fusion** widget style used by Panero's look is built into Qt
+  (`libqt5widgets5t64`); nothing extra is needed.
+- Light/dark detection asks the XDG desktop portal
+  (`org.freedesktop.portal.Settings`, `xdg-desktop-portal`) and falls back
+  to `gsettings` (`libglib2.0-bin`); both are part of Zorin/Ubuntu desktops.
+  Without them Panero uses its light look.
+- The **polkit authentication agent** that authorises a PackageKit
+  installation comes with the desktop session (GNOME Shell on Zorin). Their licenses are in their own
 copyright files; none of them is required to install or run Panero.
 
 ## 5. Open items
