@@ -56,6 +56,8 @@ Scheme defaultScheme(bool dark);
 /// Effective scheme including user overrides for the current light/dark mode.
 const Scheme &scheme();
 QString keyPrefix(bool dark);
+/// Read a colour stored as "#rrggbb" (Panero) or "r,g,b" (KDE); invalid if absent.
+QColor readColor(const QString &value);
 
 bool alternatingRows();
 bool markIndicator();

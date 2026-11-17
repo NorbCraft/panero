@@ -188,7 +188,7 @@ void PaneroViewColorsDialog::load()
     rowHeightEdited();
 
     for (auto it = m_colorButtons.constBegin(); it != m_colorButtons.constEnd(); ++it) {
-        const QColor c = g.readEntry(it.key(), QColor());
+        const QColor c = PaneroTheme::readColor(g.readEntry(it.key(), QString()));
         it.value()->setColor(c.isValid() ? c : it.value()->defaultColor());
     }
 }
@@ -261,7 +261,7 @@ void PaneroViewColorsDialog::apply()
         if (it.value()->color() == it.value()->defaultColor())
             g.deleteEntry(it.key());
         else
-            g.writeEntry(it.key(), it.value()->color());
+            g.writeEntry(it.key(), it.value()->color().name());
     }
     const int iconSize = m_iconSize->currentData().toInt();
     KConfigGroup(krConfig, DETAILED_VIEW_GROUP).writeEntry("IconSize", QString::number(iconSize));

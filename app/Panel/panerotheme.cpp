@@ -109,6 +109,24 @@ Scheme defaultScheme(bool dark)
     return s;
 }
 
+QColor readColor(const QString &value)
+{
+    const QString v = value.trimmed();
+    if (v.isEmpty())
+        return QColor();
+    if (v.contains(QLatin1Char(','))) {
+        const QStringList parts = v.split(QLatin1Char(','));
+        if (parts.size() >= 3) {
+            bool okR, okG, okB;
+            const int r = parts[0].trimmed().toInt(&okR), g = parts[1].trimmed().toInt(&okG), b = parts[2].trimmed().toInt(&okB);
+            if (okR && okG && okB)
+                return QColor(r, g, b);
+        }
+        return QColor();
+    }
+    return QColor(v);
+}
+
 QString keyPrefix(bool dark)
 {
     return dark ? QStringLiteral("Dark ") : QStringLiteral("Light ");
@@ -124,7 +142,7 @@ const Scheme &scheme()
     const KConfigGroup g = group();
     const QString prefix = keyPrefix(dark);
     for (const ColorKey &k : colorKeys()) {
-        const QColor configured = g.readEntry(prefix + QLatin1String(k.key), QColor());
+        const QColor configured = readColor(g.readEntry(prefix + QLatin1String(k.key), QString()));
         if (configured.isValid())
             s.*(k.member) = configured;
     }
