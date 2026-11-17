@@ -56,11 +56,9 @@ Depends: breeze-icon-theme,
 # kio-extras: sftp/smb/fish/man/... protocols and the basic thumbnailers;
 # kdegraphics-thumbnailers, ffmpegthumbs, kimageformat-plugins: PDF/RAW, video
 #   and extra image format previews (same set the Ubuntu dolphin package recommends);
-# kde-cli-tools: provides kdesu for "Start Root Mode Panero" and root user actions;
 # packagekit: Panero offers to install KDiff3 through PackageKit's D-Bus
 #   service (authorised by the desktop's polkit agent) when it is missing.
 Recommends: ffmpegthumbs,
-            kde-cli-tools,
             kdegraphics-thumbnailers,
             kimageformat-plugins,
             kio-extras,
@@ -70,6 +68,10 @@ Recommends: ffmpegthumbs,
 # it is missing, Panero offers to install it through PackageKit.
 # qt5-gtk-platformtheme: GTK file dialogs/fonts on GNOME-based desktops when
 #   Panero's own look (Fusion style, built into Qt) is switched off.
+# kde-cli-tools: kdesu for "Start Root Mode Panero" and root user actions. Only
+#   suggested: it recommends systemsettings, which would add a "KDE System
+#   Settings" launcher to a GNOME/Zorin desktop (see D-011). Panero explains what to
+#   install if root mode is started without it.
 Suggests: 7zip,
           arj,
           ark,
@@ -77,6 +79,7 @@ Suggests: 7zip,
           cpio,
           hashdeep,
           kate,
+          kde-cli-tools,
           kdiff3,
           kompare | xxdiff,
           konsole,
