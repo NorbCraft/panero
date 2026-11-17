@@ -110,11 +110,18 @@ QStringList KrArcHandler::supportedPackers()
     return packers;
 }
 
+QStringList KrArcHandler::configuredPackers()
+{
+    KConfigGroup group(krConfig, "Archives");
+    if (!group.hasKey("Supported Packers"))
+        group.writeEntry("Supported Packers", supportedPackers());
+    return group.readEntry("Supported Packers", QStringList());
+}
+
 bool KrArcHandler::arcSupported(QString type)
 {
     // lst will contain the supported unpacker list...
-    const KConfigGroup group(krConfig, "Archives");
-    const QStringList lst = group.readEntry("Supported Packers", QStringList());
+    const QStringList lst = configuredPackers();
 
     // Let's notice that in some cases the QString `type` that arrives here
     // represents a mimetype, and in some other cases it represents
