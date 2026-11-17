@@ -1117,8 +1117,17 @@ void kio_krarcProtocol::copy(const QUrl &url, const QUrl &dest, int, KIO::JobFla
     if (encrypted)
         KRDEBUG("ERROR: " << url.path() << " is encrypted.");
     if (!dest.isLocalFile())
-        KRDEBUG("ERROR: " << url.path() << " is not a local file.");
+        KRDEBUG("ERROR: " << dest.path() << " is not a local file.");
 
+    // if the destination is an archive, avoid that get/put is tried instead - which will fail
+    if (dest.scheme() == "krarc") {
+#if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
+        return WorkerResult::fail(ERR_UNKNOWN, i18n("Copying from archive to archive is not supported."));
+#else
+        error(ERR_UNKNOWN, i18n("Copying from archive to archive is not supported."));
+        return;
+#endif
+    }
     // CMD_COPY is no more in KF5 - replaced with 74 value (as stated in https://invent.kde.org/frameworks/kio/-/blob/master/src/core/commands_p.h)
 #if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
     return WorkerResult::fail(ERR_UNSUPPORTED_ACTION, unsupportedActionErrorString("kio_krarc", 74));
