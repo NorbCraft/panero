@@ -26,11 +26,12 @@ set -uo pipefail
 MODE="$1"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null
-apt-get install -y -qq /work/panero.deb packagekit polkitd dbus xvfb xauth xdotool x11-utils imagemagick procps >/dev/null 2>&1 \
+apt-get install -y -qq /work/panero.deb packagekit polkitd dbus xvfb xauth xdotool x11-utils imagemagick procps python3 >/dev/null 2>&1 \
   || { echo "RESULT: setup failed"; exit 2; }
 dpkg -s kdiff3 >/dev/null 2>&1 && { echo "RESULT: kdiff3 unexpectedly preinstalled"; exit 2; }
 
-useradd -m tester
+userdel -r ubuntu 2>/dev/null || true
+useradd -m -u 1000 tester   # uid 1000: may write the mounted /out
 case "$MODE" in
   allow) RESULT_JS='return polkit.Result.YES;';;
   *)     RESULT_JS='return polkit.Result.NO;';;
@@ -61,8 +62,16 @@ Xvfb :5 -screen 0 1400x900x24 -nolisten tcp >/dev/null 2>&1 & sleep 1
 export DISPLAY=:5
 panero --left="$HOME/A" --right="$HOME/B" >/tmp/panero.log 2>&1 &
 sleep 8
-read X Y < <(xwininfo -root -tree | awk 'tolower($0) ~ /panero/ {for(i=1;i<=NF;i++) if ($i ~ /^\+[0-9]+\+[0-9]+$/) {split($i,a,"+"); print a[2], a[3]; exit}}')
-X=${X:-0}; Y=${Y:-0}
+eval $(xwininfo -root -tree | python3 -I -c '
+import re,sys
+b=None
+for l in sys.stdin:
+    if "panero" not in l.lower(): continue
+    m=re.search(r"(\d+)x(\d+)\+-?\d+\+-?\d+\s+\+(-?\d+)\+(-?\d+)",l)
+    if m:
+        w,h,x,y=map(int,m.groups())
+        if b is None or w*h>b[0]: b=(w*h,x,y)
+print("X=%d Y=%d"%(b[1:] if b else (0,0)))')
 # right panel: first file row, then the toolbar's Compare button
 xdotool mousemove $((X+830)) $((Y+174)) click 1; sleep 0.5
 xdotool mousemove $((X+275)) $((Y+40)) click 1; sleep 2

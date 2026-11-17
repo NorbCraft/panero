@@ -134,3 +134,12 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   hash and the dated change list since Krusader 2.8.1),
   `panero-<version>-licenses.tar.gz`, `SHA256SUMS`; notes from
   `dev/release-notes/<tag>.md` plus generated build details.
+
+## D-011 — kde-cli-tools only suggested (2026-11-17, accepted)
+
+- kde-cli-tools (kdesu, used only by "Start Root Mode Panero" and root user
+  actions) recommends systemsettings; apt installs recommends recursively, so
+  recommending it would add a "KDE System Settings" launcher to a Zorin/GNOME
+  menu just for a rarely used, discouraged feature. It is now in Suggests; the
+  root mode action already tells the user to install kde-cli-tools if kdesu is
+  missing.

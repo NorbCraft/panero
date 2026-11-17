@@ -57,6 +57,9 @@ public:
     static bool arcSupported(QString type);
     // return the list of supported packers
     static QStringList supportedPackers();
+    /// Panero: the configured packer list; detected and stored if not configured yet
+    /// (e.g. when the first-run configuration was skipped or settings were imported)
+    static QStringList configuredPackers();
     // returns `true` if the url is an archive (ie: tar:/home/test/file.tar.bz2)
     static bool isArchive(const QUrl &url);
     // used to determine the type of the archive

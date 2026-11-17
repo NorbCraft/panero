@@ -7,6 +7,7 @@
 */
 
 #include "packgui.h"
+#include "../Archive/krarchandler.h"
 #include "../krglobal.h"
 #include "../defaults.h"
 
@@ -45,7 +46,7 @@ PackGUI::PackGUI(const QString& defaultName, const QString& defaultPath, int noO
     // now, according to the Konfigurator, fill the combobox with the information
     // about what kind of packing we can do
     KConfigGroup group(krConfig, "Archives");
-    QStringList lst = group.readEntry("Supported Packers", QStringList());
+    QStringList lst = KrArcHandler::configuredPackers();
     // now, clear the type combo and begin...
     typeData->clear();
     if (PS("tar")) typeData->addItem("tar");

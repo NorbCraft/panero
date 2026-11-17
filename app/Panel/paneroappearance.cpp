@@ -96,53 +96,54 @@ void PaneroAppearance::portalSettingChanged(const QString &ns, const QString &ke
 QPalette PaneroAppearance::paneroPalette(bool dark)
 {
     QPalette p;
-    auto set = [&p](QPalette::ColorRole role, const QColor &c, const QColor &disabled = QColor()) {
+    // (C++11: no default arguments for lambda parameters)
+    auto set3 = [&p](QPalette::ColorRole role, const QColor &c, const QColor &disabled) {
         p.setColor(QPalette::Active, role, c);
         p.setColor(QPalette::Inactive, role, c);
         p.setColor(QPalette::Disabled, role, disabled.isValid() ? disabled : c);
     };
     if (!dark) {
-        set(QPalette::Window, QColor(0xf5, 0xf6, 0xf8));
-        set(QPalette::WindowText, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
-        set(QPalette::Base, QColor(0xff, 0xff, 0xff), QColor(0xf5, 0xf6, 0xf8));
-        set(QPalette::AlternateBase, QColor(0xf3, 0xf5, 0xf8));
-        set(QPalette::Text, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
-        set(QPalette::Button, QColor(0xee, 0xf0, 0xf3));
-        set(QPalette::ButtonText, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
-        set(QPalette::BrightText, QColor(0xff, 0xff, 0xff));
-        set(QPalette::Highlight, QColor(0x25, 0x63, 0xeb), QColor(0xc4, 0xc9, 0xd0));
-        set(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff));
-        set(QPalette::ToolTipBase, QColor(0xff, 0xff, 0xff));
-        set(QPalette::ToolTipText, QColor(0x1f, 0x23, 0x28));
-        set(QPalette::PlaceholderText, QColor(0x8a, 0x91, 0x99));
-        set(QPalette::Link, QColor(0x1d, 0x4e, 0xd8));
-        set(QPalette::LinkVisited, QColor(0x6d, 0x28, 0xd9));
-        set(QPalette::Light, QColor(0xff, 0xff, 0xff));
-        set(QPalette::Midlight, QColor(0xe6, 0xe8, 0xec));
-        set(QPalette::Mid, QColor(0xc9, 0xcd, 0xd3));
-        set(QPalette::Dark, QColor(0xa3, 0xa9, 0xb1));
-        set(QPalette::Shadow, QColor(0x6b, 0x72, 0x7b));
+        set3(QPalette::Window, QColor(0xf5, 0xf6, 0xf8), QColor());
+        set3(QPalette::WindowText, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
+        set3(QPalette::Base, QColor(0xff, 0xff, 0xff), QColor(0xf5, 0xf6, 0xf8));
+        set3(QPalette::AlternateBase, QColor(0xf3, 0xf5, 0xf8), QColor());
+        set3(QPalette::Text, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
+        set3(QPalette::Button, QColor(0xee, 0xf0, 0xf3), QColor());
+        set3(QPalette::ButtonText, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
+        set3(QPalette::BrightText, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::Highlight, QColor(0x25, 0x63, 0xeb), QColor(0xc4, 0xc9, 0xd0));
+        set3(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::ToolTipBase, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::ToolTipText, QColor(0x1f, 0x23, 0x28), QColor());
+        set3(QPalette::PlaceholderText, QColor(0x8a, 0x91, 0x99), QColor());
+        set3(QPalette::Link, QColor(0x1d, 0x4e, 0xd8), QColor());
+        set3(QPalette::LinkVisited, QColor(0x6d, 0x28, 0xd9), QColor());
+        set3(QPalette::Light, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::Midlight, QColor(0xe6, 0xe8, 0xec), QColor());
+        set3(QPalette::Mid, QColor(0xc9, 0xcd, 0xd3), QColor());
+        set3(QPalette::Dark, QColor(0xa3, 0xa9, 0xb1), QColor());
+        set3(QPalette::Shadow, QColor(0x6b, 0x72, 0x7b), QColor());
     } else {
-        set(QPalette::Window, QColor(0x23, 0x26, 0x2b));
-        set(QPalette::WindowText, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
-        set(QPalette::Base, QColor(0x1d, 0x20, 0x25), QColor(0x23, 0x26, 0x2b));
-        set(QPalette::AlternateBase, QColor(0x24, 0x28, 0x2e));
-        set(QPalette::Text, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
-        set(QPalette::Button, QColor(0x2c, 0x30, 0x36));
-        set(QPalette::ButtonText, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
-        set(QPalette::BrightText, QColor(0xff, 0xff, 0xff));
-        set(QPalette::Highlight, QColor(0x3b, 0x82, 0xf6), QColor(0x3a, 0x3f, 0x47));
-        set(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff));
-        set(QPalette::ToolTipBase, QColor(0x2c, 0x30, 0x36));
-        set(QPalette::ToolTipText, QColor(0xe4, 0xe7, 0xeb));
-        set(QPalette::PlaceholderText, QColor(0x80, 0x87, 0x91));
-        set(QPalette::Link, QColor(0x6e, 0xa8, 0xff));
-        set(QPalette::LinkVisited, QColor(0xb3, 0x92, 0xf0));
-        set(QPalette::Light, QColor(0x3a, 0x3f, 0x47));
-        set(QPalette::Midlight, QColor(0x33, 0x37, 0x3e));
-        set(QPalette::Mid, QColor(0x2a, 0x2e, 0x34));
-        set(QPalette::Dark, QColor(0x15, 0x17, 0x1a));
-        set(QPalette::Shadow, QColor(0x0b, 0x0c, 0x0e));
+        set3(QPalette::Window, QColor(0x23, 0x26, 0x2b), QColor());
+        set3(QPalette::WindowText, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
+        set3(QPalette::Base, QColor(0x1d, 0x20, 0x25), QColor(0x23, 0x26, 0x2b));
+        set3(QPalette::AlternateBase, QColor(0x24, 0x28, 0x2e), QColor());
+        set3(QPalette::Text, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
+        set3(QPalette::Button, QColor(0x2c, 0x30, 0x36), QColor());
+        set3(QPalette::ButtonText, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
+        set3(QPalette::BrightText, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::Highlight, QColor(0x3b, 0x82, 0xf6), QColor(0x3a, 0x3f, 0x47));
+        set3(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff), QColor());
+        set3(QPalette::ToolTipBase, QColor(0x2c, 0x30, 0x36), QColor());
+        set3(QPalette::ToolTipText, QColor(0xe4, 0xe7, 0xeb), QColor());
+        set3(QPalette::PlaceholderText, QColor(0x80, 0x87, 0x91), QColor());
+        set3(QPalette::Link, QColor(0x6e, 0xa8, 0xff), QColor());
+        set3(QPalette::LinkVisited, QColor(0xb3, 0x92, 0xf0), QColor());
+        set3(QPalette::Light, QColor(0x3a, 0x3f, 0x47), QColor());
+        set3(QPalette::Midlight, QColor(0x33, 0x37, 0x3e), QColor());
+        set3(QPalette::Mid, QColor(0x2a, 0x2e, 0x34), QColor());
+        set3(QPalette::Dark, QColor(0x15, 0x17, 0x1a), QColor());
+        set3(QPalette::Shadow, QColor(0x0b, 0x0c, 0x0e), QColor());
     }
     return p;
 }
