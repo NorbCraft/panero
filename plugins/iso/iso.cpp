@@ -11,10 +11,12 @@
 
 #include "iso.h"
 
+#include <cstdlib>
 #include <zlib.h>
 
 // QtCore
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -44,14 +46,19 @@ extern "C"
 
         if (argc != 4) {
             fprintf(stderr, "Usage: kio_iso protocol domain-socket1 domain-socket2\n");
-            exit(-1);
+            return -1;
         }
+
+        // KIO::SlaveBase needs a QCoreApplication (it queries the
+        // application's thread); without one the worker crashes on start
+        QCoreApplication app(argc, argv);
+        app.setApplicationName(QStringLiteral("kio_iso"));
 
         kio_isoProtocol slave(argv[2], argv[3]);
         slave.dispatchLoop();
 
         //qDebug()   << "Done" << endl;
-        return 0;
+        return EXIT_SUCCESS;
     }
 
 } // extern "C"
