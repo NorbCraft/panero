@@ -4,6 +4,19 @@ panero (0.1.0~preview.1-1) noble; urgency=medium
     Krusader 2.8.1.
   * Own application identity (io.github.norbcraft.panero): executable,
     desktop entry, AppStream metainfo, icons, configuration, data and
-    private KIO worker directory, so Panero installs next to krusader.
+    private KIO worker directory, so Panero installs next to krusader;
+    optional import of Krusader settings.
+  * Commander input model: cursor and marks independent, short right click
+    marks, holding the right button opens the native context menu.
+  * Appearance: light/dark following the desktop, alternating rows,
+    adjustable row height, red marks with check badge, framed cursor row,
+    View & Colors dialog; Thumbnails view with KIO previews.
+  * Navigation sidebar with pins and folder tree; drive selector labels;
+    simplified default toolbar.
+  * Compare by content with KDiff3, with an offer to install it through
+    PackageKit.
+  * Fixes: Restore/Empty Trash for trash:/ items, pack types without
+    first-run setup; 39 fixes backported from Krusader 2.9.0/master,
+    including ISO images on Ubuntu 24.04 and several crashes.
 
  -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Tue, 17 Nov 2026 17:20:11 +0100
