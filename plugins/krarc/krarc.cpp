@@ -1369,8 +1369,6 @@ bool kio_krarcProtocol::setArcFile(const QUrl &url)
     if (arcType.isEmpty()) {
         arcType = arcFile->mimetype();
         arcType = getShortTypeFromMime(arcType);
-        if (arcType == "jar")
-            arcType = "zip";
     }
 
     return initArcParameters();
