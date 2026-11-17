@@ -22,6 +22,8 @@
 #include "defaults.h"
 #include "krusader.h"
 #include "paneroimport.h"
+#include "Panel/krpanel.h"
+#include "Panel/panelfunc.h"
 #include "Dialogs/paneroviewcolorsdialog.h"
 #include "icon.h"
 #include "krusaderview.h"
@@ -54,6 +56,7 @@ QAction *KrActions::actAddBookmark = nullptr;
 QAction *KrActions::actSavePosition = nullptr;
 QAction *KrActions::actImportKrusader = nullptr;
 QAction *KrActions::actViewColors = nullptr;
+QAction *KrActions::actOpenTrash = nullptr;
 QAction *KrActions::actSelectColorMask = nullptr;
 QAction *KrActions::actOpenLeftBm = nullptr;
 QAction *KrActions::actOpenRightBm = nullptr;
@@ -196,6 +199,14 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actSwapPanels, i18n("S&wap Panels"), nullptr, Qt::CTRL + Qt::Key_U, SLOTS, SLOT(swapPanels()), "swap panels");
 
     NEW_KACTION(actEmptyTrash, i18n("Empty Trash"), "trash-empty", 0, SLOTS, SLOT(emptyTrash()), "emptytrash");
+
+    // Panero: open the Trash (trash:/) in the active panel; deleting stays on F8/Delete
+    actOpenTrash = new QAction(Icon(KrTrashHandler::trashIconName()), i18n("Open &Trash"), krusaderApp);
+    actOpenTrash->setToolTip(i18n("Show the Trash in the active panel"));
+    krusaderApp->actionCollection()->addAction("panero open trash", actOpenTrash);
+    QObject::connect(actOpenTrash, &QAction::triggered, krusaderApp, []() {
+        ACTIVE_FUNC->openUrl(QUrl(QStringLiteral("trash:/")));
+    });
 
     NEW_KACTION(actTrashBin, i18n("Trash Popup Menu"), KrTrashHandler::trashIconName(), 0, SLOTS, SLOT(trashPopupMenu()), "trashbin");
 

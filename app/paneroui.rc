@@ -2,7 +2,7 @@
 <!-- NOTE: Always update the version in the gui tag below if you make changes to the menu bar and its actions!
            This will trigger an update of the ~/.local/share/kxmlgui5/krusader/krusaderui.rc file next time
            user opens the application: the menu bar will be replaced with the new version, toolbars updated.  -->
-<gui version="29" name="panero" >
+<gui version="30" name="panero" >
  <MenuBar>
   <Menu name="file" >
    <text>&amp;File</text>
@@ -76,6 +76,7 @@
    <Separator/>
    <Action name="toggle previews" />
    <Action name="panero view colors" />
+   <Action name="panero toggle navigation" />
    <Separator/>
    <Action name="changeremoteencoding" />
    <Separator/>
@@ -88,6 +89,7 @@
    <text>&amp;Go</text>
    <Action name="root" />
    <Action name="Popular_Urls" />
+   <Action name="panero open trash" />
    <Action name="recently_closed_tabs" />
    <Separator/>
    <Action name="set_jump_back" />
@@ -168,32 +170,30 @@
    <text>&amp;Help</text>
   </Menu>
  </MenuBar>
- <ToolBar iconText="icononly" noMerge="1" name="mainToolBar" fullWidth="true" >
+ <!-- Panero default toolbars: file operations stay on the function key bar
+      (F5 copy, F6 move, F7 new folder) and in the menus -->
+ <ToolBar iconText="textbesideicon" iconSize="16" noMerge="1" name="mainToolBar" fullWidth="false" >
   <text>Main Toolbar</text>
-  <Action name="go_back"/>
-  <Action name="go_forward"/>
   <Action name="go_up" />
   <Action name="go_home" />
   <Action name="std_redisplay" />
-  <Separator name="separator_2" />
-  <Action name="select all" />
-  <Action name="unselect all" />
-  <Action name="select group" />
-  <Separator name="separator_1" />
-  <Action name="find" />
-  <Action name="edit_new_file" />
-  <Action name="compare" />
-  <Action name="unpack" />
-  <Action name="pack" />
   <Separator name="separator_0" />
-  <Action name="mountman" />
-  <Action name="ftp connect" />
-  <Action name="ftp new connection" />
-  <Action name="profile" />
-  <Action name="trashbin" />
-  <Separator/>
-  <Action name="zoom_in" />
-  <Action name="zoom_out" />
+  <Action name="compare" />
+  <Action name="pack" />
+  <Action name="unpack" />
+  <Action name="find" />
+  <Separator name="separator_1" />
+  <Action name="panero open trash" />
+ </ToolBar>
+ <ToolBar iconText="textbesideicon" iconSize="16" noMerge="1" name="viewToolBar" fullWidth="false" >
+  <text>View Toolbar</text>
+  <Action name="panero toggle navigation" />
+  <Action name="toggle hidden files" />
+  <Separator name="separator_2" />
+  <Action name="view0" />
+  <Action name="view2" />
+  <Separator name="separator_3" />
+  <Action name="panero view colors" />
  </ToolBar>
  <ToolBar iconText="icononly" noMerge="1" name="actionsToolBar" fullWidth="false" >
   <text>Actions Toolbar</text>

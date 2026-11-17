@@ -41,6 +41,8 @@ public slots:
     void showMenu();
     void slotCheckMounts();
     void updateIcon(const QString &mountPoint);
+    /// Panero: show the drive/location of @p url as the button text ("System (/)", host, ...)
+    void updateLabel(const QUrl &url, const QString &mountPoint);
 
 signals:
     void openUrl(const QUrl&);
