@@ -110,7 +110,9 @@ void KrInterThumbnailView::updateGridSize()
     const QFontMetrics fm(_viewFont);
     // tile: thumbnail on top, two lines of (wrapped/elided) name below
     const int width = qMax(icon + 24, fm.averageCharWidth() * 14);
-    const int height = icon + 2 * fm.lineSpacing() + 14;
+    // 6 px above the icon, 4 px gap, two text lines, 6 px below, plus the item spacing
+    // (the tile is the grid size minus 2 * spacing())
+    const int height = icon + 2 * fm.lineSpacing() + 16 + 2 * spacing() + 2;
     setGridSize(QSize(width, height));
     setIconSize(QSize(icon, icon));
     doItemsLayout();
