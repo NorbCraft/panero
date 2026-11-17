@@ -14,6 +14,12 @@ on x86_64; no KDE Plasma desktop is required.
 - Based on Krusader 2.8.1 (<https://krusader.org/>,
   <https://invent.kde.org/utilities/krusader>)
 
+![Panero in light mode: marked files in red, the cursor row framed in blue, pins and folder tree on the left](docs/screenshots/details-light.png)
+
+| Dark appearance | Thumbnails | Hold the right button: context menu for the marked files |
+|---|---|---|
+| ![dark](docs/screenshots/details-dark.png) | ![thumbnails](docs/screenshots/thumbnails.png) | ![context menu](docs/screenshots/context-menu.png) |
+
 ## Installing
 
 Download `panero_<version>_amd64.deb` from the
@@ -22,7 +28,7 @@ the Software installer, or install it from a terminal (this resolves
 dependencies from the Ubuntu/Zorin archives):
 
 ```bash
-sudo apt install ./panero_<version>_amd64.deb
+sudo apt install ./panero_<version>_amd64.deb   # e.g. panero_0.1.0.preview.1-1_amd64.deb
 ```
 
 Panero installs next to an existing Krusader without touching its files or its

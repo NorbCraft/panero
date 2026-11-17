@@ -75,3 +75,8 @@ Copyright: 2026 Panero project owner
 License: GPL-2.0-or-later
 Comment: Requirements and visual references supplied by the project owner for
  development. references/icon-a-reference.png is an AI-generated concept image.
+
+Files: docs/screenshots/*
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
+Comment: Screenshots of Panero with demo files (dev/scripts/make-screenshots-host.sh)
