@@ -49,6 +49,8 @@ public:
     int tabCount() {
         return _tabbar->count();
     }
+    /// The panel shown in tab @p index (nullptr if out of range).
+    ListPanel *tabAt(int index);
     int activeTab();
     void setActiveTab(int index);
     void moveTabToOtherSide();

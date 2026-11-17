@@ -155,7 +155,7 @@ int effectiveRowHeight(const QFontMetrics &fm, int iconSize, int configured)
     // text needs its line height plus a little air; icons need their size plus 2 px
     const int needed = qMax(fm.height() + 2, iconSize > 0 ? iconSize + 2 : 0);
     if (configured <= 0)
-        return qMax(needed + 4, ComfortableRowHeight); // automatic: comfortable
+        return qMax(needed, int(ComfortableRowHeight)); // automatic: comfortable
     return qBound(needed, configured, qMax(needed, int(MaxRowHeight)));
 }
 

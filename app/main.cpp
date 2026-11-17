@@ -43,6 +43,7 @@
 #include "krusaderview.h"
 #include "panelmanager.h"
 #include "paneroimport.h"
+#include "Panel/paneroappearance.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
@@ -280,6 +281,9 @@ int main(int argc, char *argv[])
     // Panero: offer a one-time, explicit import of an existing Krusader configuration
     // (or perform an import requested from the Settings menu) before the configuration is used.
     PaneroImport::offerImportOnFirstRun(nullptr);
+
+    // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
+    PaneroAppearance::instance()->apply();
 
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;

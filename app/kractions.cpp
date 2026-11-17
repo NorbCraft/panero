@@ -22,6 +22,7 @@
 #include "defaults.h"
 #include "krusader.h"
 #include "paneroimport.h"
+#include "Dialogs/paneroviewcolorsdialog.h"
 #include "icon.h"
 #include "krusaderview.h"
 #include "krslots.h"
@@ -52,6 +53,7 @@ QAction *KrActions::actSwitchFullScreenTE = nullptr;
 QAction *KrActions::actAddBookmark = nullptr;
 QAction *KrActions::actSavePosition = nullptr;
 QAction *KrActions::actImportKrusader = nullptr;
+QAction *KrActions::actViewColors = nullptr;
 QAction *KrActions::actSelectColorMask = nullptr;
 QAction *KrActions::actOpenLeftBm = nullptr;
 QAction *KrActions::actOpenRightBm = nullptr;
@@ -265,6 +267,12 @@ void KrActions::setupActions(Krusader *krusaderApp)
     krusaderApp->actionCollection()->addAction("panero import krusader settings", actImportKrusader);
     QObject::connect(actImportKrusader, &QAction::triggered, krusaderApp, [krusaderApp]() {
         PaneroImport::requestImportFromMenu(krusaderApp);
+    });
+    actViewColors = new QAction(Icon("preferences-desktop-color"), i18n("View && &Colors..."), krusaderApp);
+    actViewColors->setToolTip(i18n("Appearance, density, row colors and hidden files"));
+    krusaderApp->actionCollection()->addAction("panero view colors", actViewColors);
+    QObject::connect(actViewColors, &QAction::triggered, krusaderApp, [krusaderApp]() {
+        PaneroViewColorsDialog::showDialog(krusaderApp);
     });
     NEW_KACTION(actSavePosition, i18n("Save &Position"), nullptr, 0, krusaderApp, SLOT(savePosition()), "save position");
     NEW_KACTION(actCompare, i18n("Compare b&y Content..."), "kr_comparedirs", 0, SLOTS, SLOT(compareContent()), "compare");

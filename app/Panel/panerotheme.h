@@ -66,7 +66,7 @@ int configuredRowHeight();
 constexpr int MinRowHeight = 16;
 constexpr int MaxRowHeight = 48;
 constexpr int CompactRowHeight = 20;
-constexpr int ComfortableRowHeight = 26;
+constexpr int ComfortableRowHeight = 24;
 /**
  * Effective row height: the configured height, but never smaller than what the
  * font (and icon, when shown) needs, so text is never clipped.

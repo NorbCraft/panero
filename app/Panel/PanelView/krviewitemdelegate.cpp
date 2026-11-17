@@ -151,6 +151,14 @@ QSize KrViewItemDelegate::sizeHint(const QStyleOptionViewItem & option, const QM
         // prevent items without text from bloating the view vertically
         return QSize(0, 0);
     }
+    // Panero: adjustable row height in the detailed view (never below what the
+    // font and the icon need, so nothing is clipped)
+    if (qobject_cast<const QTreeView *>(option.widget)) {
+        const bool hasIcon = !index.data(Qt::DecorationRole).isNull();
+        const int iconSize = hasIcon ? option.decorationSize.height() : 0;
+        size.setHeight(PaneroTheme::effectiveRowHeight(option.fontMetrics, iconSize,
+                                                       PaneroTheme::configuredRowHeight()));
+    }
     return size;
 }
 

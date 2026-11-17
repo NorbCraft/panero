@@ -75,6 +75,7 @@
    <Action name="custom files" />
    <Separator/>
    <Action name="toggle previews" />
+   <Action name="panero view colors" />
    <Separator/>
    <Action name="changeremoteencoding" />
    <Separator/>
