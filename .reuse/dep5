@@ -1,18 +1,72 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Krusader
-Upstream-Contact: Krusader Krew <https://krusader.org>
-Source: https://invent.kde.org/utilities/krusader
+Upstream-Name: Panero (fork of Krusader)
+Upstream-Contact: https://github.com/NorbCraft/panero/issues
+Source: https://github.com/NorbCraft/panero
 
 Files: doc/*
 Copyright: Krusader Krew <https://krusader.org>
 License: GFDL-1.1-or-later
+
+Files: po/*/docs/*
+Copyright: 2000-2003 Shie Erlich and Rafi Yanai
+ 2004-2010 Frank Schoolmeesters
+ Krusader Krew <https://krusader.org>
+ KDE translators (named in the header of each translated file)
+License: GFDL-1.1-or-later
+Comment: Translated Krusader handbook. The header of each translated docbook
+ file carries the GFDL 1.1-or-later notice (no Invariant Sections, no
+ Front-Cover Texts, no Back-Cover Texts).
+
+Files: po/*/panero.po
+Copyright: KDE translators (named in the header of each file)
+License: GPL-2.0-or-later
+Comment: User interface translations from KDE's Krusader translation teams.
+ The headers state "This file is distributed under the same license as the
+ Krusader package".
+
+Files: app/icons/icon-missing.svgz
+Copyright: 2018 Nikita Melnichenko <nikita+kde@melnichenko.name>
+ 2014 Uri Herrera <uri_herrera@nitrux.in> and other Breeze icon theme authors
+License: LGPL-3.0-or-later
+Comment: Fallback icon compiled into the panero executable as a Qt resource.
+ Upstream Krusader commit 86115e3b6 (2018-04-17): "The icon is based on
+ 'unknown' and 'edit-select-none' icons from Breeze and published under the
+ same license as Breeze." Breeze icons are LGPL-3.0-or-later.
+
+Files: app/resources/*.png app/resources/SVGs/* logo.png
+Copyright: 2000-2022 Krusader Krew <https://krusader.org>
+License: GPL-2.0-or-later
+Comment: Krusader artwork without per-file notices (action icons since 2003,
+ SVG sources since 2005; logo.png is the Krusader application icon, kept only
+ as upstream repository material and not installed or used as Panero
+ branding). Covered by Krusader's project license.
+
+Files: app/*.rc app/*.color app/*.keymap app/*.keymap.info app/layout.xml
+ app/useraction_examples.xml app/resources.qrc app/krusaderversion.h.cmake
+ app/ActionMan/actionproperty.ui app/io.github.norbcraft.panero.desktop
+ plugins/iso/iso.json plugins/krarc/krarc.json plugins/iso/panero_kio_isorc
+ tools/Messages.sh CMakeLists.txt */CMakeLists.txt
+ AUTHORS CREDITS ChangeLog NEWS README TODO INSTALL Mainpage.dox .krazy
+ krusader.kdev4 .gitignore
+Copyright: 2000-2003 Shie Erlich and Rafi Yanai
+ 2004-2022 Krusader Krew <https://krusader.org>
+ 2026 Panero contributors
+License: GPL-2.0-or-later
+Comment: Upstream Krusader build files, data files and project documents
+ without per-file notices (some renamed or edited for Panero). Covered by
+ Krusader's project license.
+
+Files: plugins/iso/libisofs/README plugins/iso/libisofs/ChangeLog
+Copyright: 2002 Szombathelyi György <gyurco@users.sourceforge.net>
+License: GPL-2.0-or-later
 
 Files: app/icons/panero/*
 Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 Comment: Original Panero application icon; see dev/ICON-PROVENANCE.md
 
-Files: AGENTS.md CLAUDE.md README.md USER-GUIDE.md dev/*.md dev/scripts/*
+Files: AGENTS.md CLAUDE.md README.md USER-GUIDE.md LICENSING.md dev/*.md
+ dev/*.txt dev/scripts/* dev/release-notes/* debian/* .github/*
 Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 
