@@ -30,7 +30,7 @@ public:
     explicit PanelViewerBase(QWidget *parent, KrViewer::Mode mode = KrViewer::Default);
     ~PanelViewerBase() override;
     inline QUrl url() const {
-        return curl;
+        return cpart ? cpart->url() : QUrl();
     }
     inline KParts::ReadOnlyPart* part() const {
         return cpart;
@@ -71,7 +71,6 @@ protected:
     QHash<QString, QPointer<KParts::ReadOnlyPart> > *mimes;
     QPointer<KParts::ReadOnlyPart> cpart;
 
-    QUrl curl;
     QLabel *fallback;
     KrViewer::Mode mode;
 };
