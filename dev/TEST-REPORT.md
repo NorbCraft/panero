@@ -37,6 +37,7 @@ are in `dev/TEST-REPORT-packaging.md`.
 | Appearance | light, dark (forced), dark following the host desktop via portal | Xvfb, host desktop | pass |
 | Appearance | dark mode toolbar icons visible (Breeze Dark fallback) | Xvfb | pass |
 | Density | compact/comfortable rows; text/icons never clipped; 2x scale factor | Xvfb (QT_SCALE_FACTOR=2) | pass |
+| View & Colors | Density → Compact applied live from the dialog: rows 20 px, icons 16 px, config written (`Row Height=20`, `IconSize=16`); existing marks and cursor kept | Xvfb | pass |
 | Toolbar | Up, Home, Refresh, Compare, Pack, Unpack, Search, Trash; view strip; no Copy/Move/New Folder/Sync | Xvfb | pass |
 | Sidebar | pins (Home default), tree follows active panel incl. after show; "Opens in" indicator | Xvfb | pass |
 | Drive selector | "System (/)" label + device menu per panel | Xvfb | pass |
