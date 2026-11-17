@@ -112,6 +112,9 @@ public:
                     setForeground(i, textColor);
             }
         }
+
+        void updateSortData(SynchronizerFileItem *item);
+        bool operator<(const QTreeWidgetItem &other) const override;
     };
 
 public:
