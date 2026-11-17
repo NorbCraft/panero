@@ -50,7 +50,7 @@ public:
      *
      * Operation may implemented async depending on destination filesystem.
      */
-    void startDropFiles(QDropEvent *event, const QUrl &destination);
+    void startDropFiles(QDropEvent *event, const QUrl &destination, QWidget *targetWidget);
 
     /**
      * Start a delete job for trashing or deleting files.
