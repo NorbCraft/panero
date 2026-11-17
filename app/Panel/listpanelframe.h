@@ -24,7 +24,7 @@ public:
     ListPanelFrame(QWidget *parent, const QString& color);
 
 signals:
-    void dropped(QDropEvent*, QWidget*); /**< emitted when someone drops URL onto the frame */
+    void dropped(QDropEvent *); /**< emitted when someone drops URL onto the frame */
 
 protected slots:
     void colorsChanged();
@@ -36,7 +36,7 @@ protected:
     QColor getColor(KConfigGroup &cg, const QString& name, const QColor &def, const QColor &kdedef);
 
     void dropEvent(QDropEvent *e) override {
-        emit dropped(e, this);
+        emit dropped(e);
     }
     void dragEnterEvent(QDragEnterEvent*) override;
 
