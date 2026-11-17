@@ -135,3 +135,14 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - Remaining: backports (Phase 1b, list in dev/BACKPORTS.md), Phase 7 review,
   packaging merge, VM/clean-system tests (KDiff3 real install, deb install),
   host Wayland GUI check, screenshots, user guide, release v0.1.0-preview.1.
+
+## Status notes (2026-11-17, 21:10)
+
+- main: identity, commander input, appearance/thumbnails/sidebar/KDiff3,
+  packaging + release workflow (PRs #1–#4).
+- PR #5 feature/release-prep: trash restore fix, packer detection fix,
+  kde-cli-tools → Suggests, GUI/container test scripts, release notes draft.
+- feature/backports: agent in progress (incl. kio_iso fix).
+- Remaining before release: merge #5 and backports; final .deb build + test-deb;
+  container screenshots; host install check by the owner (sudo); tag
+  v0.1.0-preview.1 → release workflow; verify published assets/checksums.

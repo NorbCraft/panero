@@ -122,3 +122,27 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   same in distro krusader; backport 4c85272cd + c6945e68e).
 - Not done: desktop GUI install test on Zorin/VM; release notes file
   `dev/release-notes/v0.1.0-preview.1.md`; first real run of release.yml.
+
+## 2026-11-17 (evening) — Claude Code (Opus 5.5) — packaging merged, verification
+
+- Hit the account's usage limit once (agents and main session paused until
+  20:20); resumed. The scratchpad (/tmp) had been cleared meanwhile; nothing in
+  the repository was lost.
+- PR #3 (appearance, thumbnails, toolbars, sidebar, KDiff3) and PR #4
+  (packaging by a worktree agent: debian/, REUSE 891/891, LICENSING.md,
+  PROVENANCE.md, build/test scripts, release workflow) merged.
+- Backports running in a worktree agent (branch feature/backports); asked it to
+  also port the kio_iso QCoreApplication fix (4c85272cd) because ISO images hang
+  on noble (found by the packaging tests; distro Krusader has the same bug).
+- Verified with real operations: dev/scripts/gui-fileops-test.sh 17/17 (copy,
+  overwrite cancel, new folder, rename, move, trash, restore, pack/unpack,
+  search). Found and fixed: Restore/Empty Trash missing for trash:/ items
+  (upstream bug), empty pack type list without first-run setup.
+- KDiff3 install flow in a clean container (own system bus, polkitd,
+  packagekitd): allow → kdiff3 installed from the Ubuntu archive and the
+  comparison resumed; deny → nothing installed, no error. Broken-sources run
+  pending at time of writing.
+- kde-cli-tools moved to Suggests (D-011).
+- Next: merge backports; rebuild the .deb from final main; screenshots via
+  dev/scripts/make-screenshots.sh; ask the owner once to install the .deb on the
+  host (needs sudo) for the launcher/coexistence check; tag v0.1.0-preview.1.
