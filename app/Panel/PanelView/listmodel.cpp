@@ -191,6 +191,8 @@ QVariant ListModel::data(const QModelIndex& index, int role) const
         return QVariant();
     }
     case Qt::TextAlignmentRole: {
+        if (_thumbnailMode)
+            return QVariant(Qt::AlignHCenter | Qt::AlignTop);
         switch (index.column()) {
         case KrViewProperties::Size:
             return QVariant(Qt::AlignRight | Qt::AlignVCenter);
@@ -211,7 +213,7 @@ QVariant ListModel::data(const QModelIndex& index, int role) const
             if ((itemNum & 1) == 0)
                 actRow += (actRow / itemNum);
         }
-        colorItemType.m_alternateBackgroundColor = (actRow & 1);
+        colorItemType.m_alternateBackgroundColor = !_thumbnailMode && (actRow & 1);
         colorItemType.m_currentItem = _view->getCurrentIndex().row() == index.row();
         colorItemType.m_selectedItem = _view->isSelected(index);
         if (fileitem->isSymLink()) {

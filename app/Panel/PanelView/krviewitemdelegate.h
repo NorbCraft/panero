@@ -32,6 +32,9 @@ public:
     /// Set the next file name selection in the editor.
     void cycleEditorSelection();
 
+    /// Paint one tile of the thumbnails grid (preview on top, wrapped name below).
+    void paintTile(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+
 private:
     mutable int _currentlyEdited;
     mutable bool _dontDraw;

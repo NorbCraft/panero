@@ -14,6 +14,8 @@
 #include <QAbstractItemView>
 #include <QTreeView>
 #include <QHeaderView>
+#include <QListView>
+#include <QTextLayout>
 #include "../krglobal.h"
 #include "../listpanel.h"
 #include "../krcolorcache.h"
@@ -34,8 +36,82 @@
 KrViewItemDelegate::KrViewItemDelegate(QObject *parent) :
     QItemDelegate(parent), _currentlyEdited(-1), _dontDraw(false), _editor(nullptr) {}
 
+void KrViewItemDelegate::paintTile(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    painter->save();
+    const QRect r = option.rect;
+    const QVariant bg = index.data(Qt::BackgroundRole); // the model returns the mark colour for marked items
+    if (bg.canConvert<QBrush>()) {
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(bg.value<QBrush>());
+        painter->drawRoundedRect(QRectF(r).adjusted(1, 1, -1, -1), 4, 4);
+    }
+
+    // preview / icon, centred at the top
+    const QSize iconSize = option.decorationSize;
+    const QRect iconRect(r.left() + (r.width() - iconSize.width()) / 2, r.top() + 6, iconSize.width(), iconSize.height());
+    const QVariant deco = index.data(Qt::DecorationRole);
+    QPixmap pixmap;
+    if (deco.canConvert<QIcon>())
+        pixmap = deco.value<QIcon>().pixmap(iconSize);
+    else if (deco.canConvert<QPixmap>())
+        pixmap = deco.value<QPixmap>();
+    if (!pixmap.isNull()) {
+        const QSize ps = pixmap.size() / pixmap.devicePixelRatio();
+        const QRect target(iconRect.left() + (iconRect.width() - ps.width()) / 2,
+                           iconRect.top() + (iconRect.height() - ps.height()) / 2, ps.width(), ps.height());
+        painter->drawPixmap(target, pixmap);
+        if (PaneroTheme::usePaneroColors() && PaneroTheme::markIndicator() && index.data(ListModel::MarkedRole).toBool())
+            PaneroTheme::paintMarkIndicator(painter, QRectF(target));
+    }
+
+    // name: up to two lines, wrapping anywhere, elided at the end of the last line
+    if (!(_dontDraw || _currentlyEdited == index.row())) {
+        const QString text = index.data(Qt::DisplayRole).toString();
+        const QRect textRect(r.left() + 4, iconRect.bottom() + 4, r.width() - 8, r.bottom() - iconRect.bottom() - 6);
+        QVariant fg = index.data(Qt::ForegroundRole);
+        painter->setPen(fg.canConvert<QBrush>() ? fg.value<QBrush>().color() : option.palette.color(QPalette::Text));
+        painter->setFont(option.font);
+        const QFontMetrics fm(option.font);
+        QTextLayout layout(text, option.font);
+        QTextOption to(Qt::AlignHCenter);
+        to.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(to);
+        layout.beginLayout();
+        QStringList lines;
+        const int maxLines = qMax(1, textRect.height() / fm.lineSpacing());
+        while (lines.size() < maxLines) {
+            QTextLine line = layout.createLine();
+            if (!line.isValid())
+                break;
+            line.setLineWidth(textRect.width());
+            if (lines.size() == maxLines - 1)
+                lines << fm.elidedText(text.mid(line.textStart()), Qt::ElideRight, textRect.width());
+            else
+                lines << text.mid(line.textStart(), line.textLength());
+        }
+        layout.endLayout();
+        int y = textRect.top();
+        for (const QString &line : qAsConst(lines)) {
+            painter->drawText(QRect(textRect.left(), y, textRect.width(), fm.lineSpacing()), Qt::AlignHCenter | Qt::AlignTop, line);
+            y += fm.lineSpacing();
+        }
+    }
+    painter->restore();
+}
+
 void KrViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
+    if (const auto *list = qobject_cast<const QListView *>(option.widget)) {
+        if (list->viewMode() == QListView::IconMode) {
+            _dontDraw = false;
+            paintTile(painter, option, index);
+            if (PaneroTheme::usePaneroColors() && list->currentIndex() == index)
+                PaneroTheme::paintCurrentFrame(painter, option.rect, index.data(ListModel::ActivePanelRole).toBool());
+            return;
+        }
+    }
     QStyleOptionViewItem opt = option;
     opt.state &= ~QStyle::State_Selected;
     const bool panero = PaneroTheme::usePaneroColors();
@@ -150,6 +226,11 @@ QSize KrViewItemDelegate::sizeHint(const QStyleOptionViewItem & option, const QM
     if (size.isEmpty()) {
         // prevent items without text from bloating the view vertically
         return QSize(0, 0);
+    }
+    // thumbnails grid: every tile has the grid size
+    if (const auto *list = qobject_cast<const QListView *>(option.widget)) {
+        if (list->viewMode() == QListView::IconMode && list->gridSize().isValid())
+            return list->gridSize() - QSize(2 * list->spacing(), 2 * list->spacing());
     }
     // Panero: adjustable row height in the detailed view (never below what the
     // font and the icon need, so nothing is clipped)

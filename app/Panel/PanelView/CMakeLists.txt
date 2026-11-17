@@ -1,5 +1,6 @@
 set(PanelView_SRCS
     krinterbriefview.cpp
+    krinterthumbnailview.cpp
     krinterdetailedview.cpp
     krinterview.cpp
     commandergesture.cpp
