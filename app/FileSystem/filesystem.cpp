@@ -280,7 +280,12 @@ FileItem *FileSystem::createFileItemFromKIO(const KIO::UDSEntry &entry, const QU
     }
 
     const QString localPath = kfi.localPath();
-    const QUrl url = !localPath.isEmpty() ? QUrl::fromLocalFile(localPath) : kfi.url();
+    // Panero: items listed from trash:/ keep their trash:/ URL (KIO also reports their
+    // local path inside ~/.local/share/Trash). With the local path, the context menu did
+    // not recognise them as trashed (no Restore / Empty Trash) and operations bypassed
+    // the trash worker.
+    const bool fromTrash = directory.scheme() == QLatin1String("trash");
+    const QUrl url = (!localPath.isEmpty() && !fromTrash) ? QUrl::fromLocalFile(localPath) : kfi.url();
     const QString fname = virt ? url.toDisplayString() : name;
 
     // get file statistics...

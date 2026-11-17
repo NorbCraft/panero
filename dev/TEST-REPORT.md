@@ -43,13 +43,12 @@ are in `dev/TEST-REPORT-packaging.md`.
 | Archives | browse zip via Panero's own krarc worker (process maps show the private plugin) while distro Krusader is installed | Xvfb | pass |
 | KDiff3 | Compare launches kdiff3 with argument array, names with spaces/unicode, left panel first | Xvfb | pass |
 | KDiff3 | kdiff3 hidden from PATH: "Install KDiff3?" offered; Install performs a real PackageKit resolve (system journal) and shows guidance + Retry | Xvfb + host PackageKit | pass |
-| File operations | `dev/scripts/gui-fileops-test.sh` (real files, names with spaces/unicode, symlink): F5 copy; second copy → "File Already Exists" → Cancel closes it and keeps the target; F7 new folder; F2 inline rename; F6 move of a folder with a space; F8 → trash confirmation lists the target → symlink in Trash (isolated profile), target kept; Pack → tar archive whose contents were checked; Unpack into a chosen folder → byte-identical file; Ctrl+S search found 2 matches. Result: **15/15 pass** | Xvfb | pass |
+| File operations | `dev/scripts/gui-fileops-test.sh` (real files, names with spaces/unicode, symlink): F5 copy; second copy → "File Already Exists" → Cancel closes it and keeps the target; F7 new folder; F2 inline rename; F6 move of a folder with a space; F8 → trash confirmation lists the target → symlink in Trash (isolated profile), target kept; Pack → tar archive whose contents were checked; Unpack into a chosen folder → byte-identical file; Toolbar Trash → context menu Restore brings the symlink back (pointing to its target); Ctrl+S search found 2 matches. Result: **17/17 pass** | Xvfb | pass |
 | Wayland | starts via XWayland (Qt 5 default on GNOME) and natively (`QT_QPA_PLATFORM=wayland`) | host desktop | pass |
 
 ## Not yet verified (open)
 
 - Real KDiff3 installation, cancelled authorisation and broken sources in an isolated system: `dev/scripts/test-kdiff3-install.sh` (pending .deb).
 - .deb install/upgrade/remove in a clean container and on the host; coexistence with the distro Krusader package (pending packaging branch).
-- Trash *restore* (moving to Trash is covered; restore from `trash:/` not yet scripted).
 - Unmounted/removable drive behaviour of pins and the drive selector (no removable media attached on the build host).
 - Native X11 (Xorg) session: only XWayland and Xvfb are covered (owner decision Q7).
