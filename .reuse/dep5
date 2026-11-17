@@ -12,7 +12,7 @@ Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 Comment: Original Panero application icon; see dev/ICON-PROVENANCE.md
 
-Files: AGENTS.md CLAUDE.md README.md dev/*.md dev/scripts/*
+Files: AGENTS.md CLAUDE.md README.md USER-GUIDE.md dev/*.md dev/scripts/*
 Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 

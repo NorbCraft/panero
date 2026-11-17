@@ -7,6 +7,11 @@
 */
 
 #include "krusader.h"
+#include "paneronavigation.h"
+#include "icon.h"
+#include "Panel/krpanel.h"
+#include "Panel/listpanel.h"
+#include "Panel/panelfunc.h"
 
 #include <QGuiApplication>
 #include <QScreen>
@@ -183,6 +188,19 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
 
     setCentralWidget(MAIN_VIEW);
 
+    // Panero: single navigation sidebar (pins + folder tree) following the active panel
+    _navigationDock = new PaneroNavigationDock(this);
+    addDockWidget(Qt::LeftDockWidgetArea, _navigationDock);
+    connect(MAIN_VIEW, &KrusaderView::activeLocationChanged, _navigationDock, &PaneroNavigationDock::activeLocationChanged);
+    {
+        QAction *toggleNavigation = _navigationDock->toggleViewAction();
+        toggleNavigation->setIcon(Icon(QStringLiteral("view-list-tree")));
+        toggleNavigation->setText(i18n("Folder &Tree and Pins"));
+        toggleNavigation->setToolTip(i18n("Show or hide the folder tree and pinned folders"));
+        actionCollection()->addAction(QStringLiteral("panero toggle navigation"), toggleNavigation);
+    }
+    setupPaneroToolbarLabels();
+
     // manage our keyboard short-cuts
     //KAcceleratorManager::manage(this,true);
 
@@ -209,9 +227,21 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
 
         const KConfigGroup cfgJobBar(krConfig, "Job Toolbar");
         toolBar("jobToolBar")->applySettings(cfgJobBar);
+        // Panero: the job toolbar starts hidden (copy/move show their own progress);
+        // Settings > Toolbars > Show Job Toolbar brings it back and is remembered
+        if (!cfgJobBar.hasKey("Hidden"))
+            toolBar("jobToolBar")->hide();
 
         const KConfigGroup cfgActionsBar(krConfig, "Actions Toolbar");
         toolBar("actionsToolBar")->applySettings(cfgActionsBar);
+
+        const KConfigGroup cfgViewBar(krConfig, "View Toolbar");
+        toolBar("viewToolBar")->applySettings(cfgViewBar);
+        // keep the view strip next to the main toolbar, the job toolbar at the end of the row
+        insertToolBar(toolBar("jobToolBar"), toolBar("viewToolBar"));
+
+        _navigationDock->restoreSettings();
+        _navigationDock->activeLocationChanged(ACTIVE_PANEL->virtualPath(), ACTIVE_PANEL->gui->isLeft());
 
         // restore toolbars position and visibility
         restoreState(startupGroup.readEntry("State", QByteArray()));
@@ -391,6 +421,12 @@ void Krusader::saveSettings() {
 
     cfg = krConfig->group("Actions Toolbar");
     toolBar("actionsToolBar")->saveSettings(cfg);
+
+    cfg = krConfig->group("View Toolbar");
+    toolBar("viewToolBar")->saveSettings(cfg);
+
+    if (_navigationDock)
+        _navigationDock->saveSettings();
 
     cfg = krConfig->group("Startup");
     // save toolbar visibility and position
@@ -619,3 +655,31 @@ AbstractPanelManager *Krusader::rightManager()
     return MAIN_VIEW->rightManager();
 }
 
+
+void Krusader::setupPaneroToolbarLabels()
+{
+    // short labels for the text-beside-icon toolbars (menus keep the full texts)
+    const QList<QPair<const char *, QString>> labels = {
+        {"go_up", i18nc("toolbar", "Up")},
+        {"go_home", i18nc("toolbar", "Home")},
+        {"std_redisplay", i18nc("toolbar", "Refresh")},
+        {"compare", i18nc("toolbar", "Compare")},
+        {"pack", i18nc("toolbar", "Pack")},
+        {"unpack", i18nc("toolbar", "Unpack")},
+        {"find", i18nc("toolbar", "Search")},
+        {"panero open trash", i18nc("toolbar", "Trash")},
+        {"panero toggle navigation", i18nc("toolbar", "Folder Tree")},
+        {"toggle hidden files", i18nc("toolbar", "Hidden Files")},
+        {"view0", i18nc("toolbar", "Details")},
+        {"view2", i18nc("toolbar", "Thumbnails")},
+        {"panero view colors", i18nc("toolbar", "View && Colors")},
+    };
+    for (const auto &label : labels) {
+        if (QAction *a = actionCollection()->action(QLatin1String(label.first)))
+            a->setIconText(label.second);
+    }
+    if (QAction *hidden = actionCollection()->action(QStringLiteral("toggle hidden files"))) {
+        if (hidden->icon().isNull())
+            hidden->setIcon(Icon(QStringLiteral("view-hidden")));
+    }
+}

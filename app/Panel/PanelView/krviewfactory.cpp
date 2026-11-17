@@ -11,6 +11,7 @@
 
 #include "krinterdetailedview.h"
 #include "krinterbriefview.h"
+#include "krinterthumbnailview.h"
 
 #include <stdio.h>
 
@@ -55,6 +56,10 @@ void KrViewFactory::init()
 
     registerView(new KrViewInstanceImpl<KrInterBriefView> (1, "KrInterBriefView",
         i18n("&Brief View"), "view-list-icons", Qt::ALT + Qt::SHIFT + Qt::Key_B));
+
+    // Panero: grid of tiles with real KIO previews
+    registerView(new KrViewInstanceImpl<KrInterThumbnailView> (2, "KrInterThumbnailView",
+        i18n("&Thumbnails View"), "view-preview", Qt::ALT + Qt::SHIFT + Qt::Key_T));
 }
 
 KrView *KrViewFactory::createView(int id, QWidget *widget, KConfig *cfg)

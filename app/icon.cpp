@@ -107,11 +107,10 @@ static inline IconSearchResult searchIcon(const QString& iconName, QStringList t
     } else if (QIcon::hasThemeIcon(iconName)) {
         // current theme has the icon - load seamlessly
         return IconSearchResult(QIcon::fromTheme(iconName), QString());
-    } else if (KIconLoader::global()->hasIcon(iconName)) {
-        // KF icon loader does a wider search and helps with mime icons
-        return IconSearchResult(KDE::icon(iconName), QString());
     } else {
-        // search the icon in fallback themes
+        // search the icon in fallback themes (Breeze / Breeze Dark matching the window
+        // theme) before KIconLoader: off Plasma, KIconLoader uses light Breeze icons,
+        // which are invisible in a dark Panero window
         auto currentTheme = QIcon::themeName();
         for (const auto& fallbackThemeName : themeFallbackList) {
             QIcon::setThemeName(fallbackThemeName);
@@ -120,6 +119,11 @@ static inline IconSearchResult searchIcon(const QString& iconName, QStringList t
             }
         }
         QIcon::setThemeName(currentTheme);
+
+        if (KIconLoader::global()->hasIcon(iconName)) {
+            // KF icon loader does a wider search: application icons and mime icon fallbacks
+            return IconSearchResult(KDE::icon(iconName), QString());
+        }
 
         // not found
         return IconSearchResult(QIcon(), QString());

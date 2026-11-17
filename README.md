@@ -59,6 +59,11 @@ original `README`). Panero preserves their copyright notices and credits.
 The Panero name and icon are not trademark-cleared; other, unrelated software
 named "PANERO" exists.
 
+## Using Panero
+
+See [USER-GUIDE.md](USER-GUIDE.md) for marks and the cursor, the right mouse
+button, pins and the folder tree, View & Colors and KDiff3.
+
 ## For contributors and agents
 
 Development documentation, the plan, the work log and decisions are in `dev/`

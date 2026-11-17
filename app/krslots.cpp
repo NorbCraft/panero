@@ -7,6 +7,10 @@
 */
 
 #include "krslots.h"
+#include "paneropackageinstaller.h"
+
+#include <QFileInfo>
+#include <QMimeDatabase>
 
 // QtCore
 #include <QDir>
@@ -154,8 +158,9 @@ void KrSlots::compareContent()
         name2 = ACTIVE_PANEL->func->files()->getUrl(lstActive[1]);
     } else if (ACTIVE_PANEL->otherPanel()->func->files()->getFileItem(ACTIVE_VIEW->getCurrentItem())) {
         // next try: is in the other panel a file with the same name?
-        name1 = ACTIVE_PANEL->func->files()->getUrl(ACTIVE_VIEW->getCurrentItem());
-        name2 = ACTIVE_PANEL->otherPanel()->func->files()->getUrl(ACTIVE_VIEW->getCurrentItem());
+        // (Panero: always left panel first, so the comparison sides are predictable)
+        name1 = LEFT_PANEL->func->files()->getUrl(ACTIVE_VIEW->getCurrentItem());
+        name2 = RIGHT_PANEL->func->files()->getUrl(ACTIVE_VIEW->getCurrentItem());
     } else  {
         // if we got here, then we can't be sure what file to diff
         KMessageBox::error(nullptr, "<qt>" + i18n("Do not know which files to compare.") + "<br/><br/>" + i18n("To compare two files by content, you can either:<ul><li>Select one file in the left panel, and one in the right panel.</li><li>Select exactly two files in the active panel.</li><li>Make sure there is a file in the other panel, with the same name as the current file in the active panel.</li></ul>") + "</qt>");
@@ -184,14 +189,95 @@ bool downloadToTemp(const QUrl &url, QString &dest) {
     return false;
 }
 
+// Panero: find the content comparison tool (configured path, else KDiff3, Kompare, xxdiff)
+static QString findDiffTool()
+{
+    const QStringList lst = KrServices::supportedTools();
+    const int i = lst.indexOf("DIFF");
+    return i >= 0 ? lst.value(i + 1) : QString();
+}
+
+// Panero: offer to install KDiff3 through PackageKit; true once a diff tool is available
+static bool offerKDiff3Install()
+{
+    for (;;) {
+        const auto answer = KMessageBox::questionTwoActions(krApp,
+            i18n("<p>Comparing files by content uses <b>KDiff3</b>, which is not installed.</p>"
+                 "<p>Install KDiff3 now? It is installed from your system's software sources; "
+                 "your system will ask you to authorize the installation.</p>"),
+            i18n("Install KDiff3?"),
+            KGuiItem(i18n("Install"), QStringLiteral("download")), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return false;
+
+        QString error;
+        const auto result = PaneroPackageInstaller::install(krApp, QStringLiteral("kdiff3"), QStringLiteral("KDiff3"), &error);
+        if (result == PaneroPackageInstaller::Result::Cancelled)
+            return false;
+        if (!findDiffTool().isEmpty())
+            return true; // installed (or it was there all along)
+
+        // no automatic installation possible: give actionable guidance and a retry path
+        QString reason = error.toHtmlEscaped();
+        if (result == PaneroPackageInstaller::Result::AlreadyInstalled)
+            reason = i18n("The KDiff3 package is installed, but the <tt>kdiff3</tt> program was not found. "
+                          "You can set its location in <b>Configure Panero &gt; Dependencies</b>.");
+        else if (reason.isEmpty())
+            reason = i18n("KDiff3 could not be installed automatically.");
+        const QString message = reason
+            + i18n("<p>You can install KDiff3 with the <b>Software</b> application, or in a terminal with:</p>"
+                   "<p><tt>sudo apt install kdiff3</tt></p><p>Click <b>Retry</b> afterwards.</p>");
+        const auto retry = KMessageBox::warningTwoActions(krApp, message, i18n("KDiff3 Not Installed"),
+                                                          KGuiItem(i18n("Retry"), QStringLiteral("view-refresh")),
+                                                          KStandardGuiItem::cancel());
+        if (retry != KMessageBox::PrimaryAction)
+            return false;
+        if (!findDiffTool().isEmpty())
+            return true;
+    }
+}
+
 void KrSlots::compareContent(const QUrl& url1, const QUrl& url2)
 {
-    QString diffProg;
-    QStringList lst = KrServices::supportedTools();
-    if (lst.contains("DIFF")) diffProg = lst[lst.indexOf("DIFF") + 1];
-    else {
-        KMessageBox::error(nullptr, i18n("Panero cannot find any of the supported diff-frontends. Please install one to your path. Hint: Panero supports Kompare, KDiff3 and Xxdiff."));
-        return;
+    QString diffProg = findDiffTool();
+    if (diffProg.isEmpty()) {
+        if (!offerKDiff3Install())
+            return;
+        diffProg = findDiffTool();
+        if (diffProg.isEmpty())
+            return;
+        // the files may have changed while installing: revalidate before comparing
+        for (const QUrl &url : {url1, url2}) {
+            if (url.isLocalFile() && !QFileInfo::exists(url.toLocalFile())) {
+                KMessageBox::error(krApp, i18n("%1 no longer exists.", url.toDisplayString(QUrl::PreferLocalFile)));
+                return;
+            }
+        }
+    }
+
+    // a folder can only be compared with a folder, a file with a file
+    if (url1.isLocalFile() && url2.isLocalFile()) {
+        const QFileInfo fi1(url1.toLocalFile()), fi2(url2.toLocalFile());
+        if (fi1.isDir() != fi2.isDir()) {
+            KMessageBox::error(krApp, i18n("A folder can only be compared with a folder, and a file with a file."));
+            return;
+        }
+        if (!fi1.isDir()) {
+            // be honest about what a text diff tool can do with binary formats (CAD, images, ...)
+            QMimeDatabase db;
+            const bool text1 = db.mimeTypeForFile(fi1).inherits(QStringLiteral("text/plain"));
+            const bool text2 = db.mimeTypeForFile(fi2).inherits(QStringLiteral("text/plain"));
+            if (!text1 || !text2) {
+                if (KMessageBox::warningContinueCancel(krApp,
+                        i18n("<p>At least one of the files is not a text file.</p><p>%1 compares files line by line; "
+                             "for binary formats (for example CAD models, images or archives) it can only show "
+                             "whether the files differ, not what changed in them.</p>",
+                             QFileInfo(diffProg).fileName()),
+                        i18n("Compare by Content"), KStandardGuiItem::cont(), KStandardGuiItem::cancel(),
+                        QStringLiteral("PaneroCompareBinaryFiles")) != KMessageBox::Continue)
+                    return;
+            }
+        }
     }
 
     QString tmp1;

@@ -610,3 +610,10 @@ void PanelManager::newTabs(const QStringList& urls) {
     for(int i = 0; i < urls.count(); i++)
         slotNewTab(QUrl::fromUserInput(urls[i], QString(), QUrl::AssumeLocalFile));
 }
+
+ListPanel *PanelManager::tabAt(int index)
+{
+    if (index < 0 || index >= _tabbar->count())
+        return nullptr;
+    return _tabbar->getPanel(index);
+}

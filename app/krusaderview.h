@@ -32,6 +32,11 @@ class KrusaderView : public QWidget
 
 public:
     explicit KrusaderView(QWidget *parent = nullptr);
+
+signals:
+    /// The active panel changed or navigated (Panero navigation sidebar follows it).
+    void activeLocationChanged(const QUrl &url, bool leftPanel);
+public:
     ~KrusaderView() override = default;
     void start(const KConfigGroup &cfg, bool restoreSettings, const QList<QUrl> &leftTabs, const QList<QUrl> &rightTabs);
     void updateGUI(const KConfigGroup &cfg);

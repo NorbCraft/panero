@@ -7,6 +7,8 @@
 
 #include "mediabutton.h"
 
+#include <QFileInfo>
+
 #include "../krglobal.h"
 #include "../icon.h"
 #include "../MountMan/kmountman.h"
@@ -622,3 +624,35 @@ void MediaButton::slotCheckMounts()
     mountCheckerTimer.start(1000);
 }
 
+
+void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
+{
+    QString name;
+    if (!mountPoint.isEmpty()) {
+        if (mountPoint == QLatin1String("/")) {
+            name = i18nc("the root file system", "System");
+        } else {
+            Solid::Device device(krMtMan.findUdiForPath(mountPoint, Solid::DeviceInterface::StorageAccess));
+            if (device.isValid()) {
+                auto *vol = device.as<Solid::StorageVolume>();
+                name = (vol && !vol->label().isEmpty()) ? vol->label() : device.description();
+            }
+            if (name.isEmpty())
+                name = QFileInfo(mountPoint).fileName();
+        }
+        name = i18nc("drive name (mount point)", "%1 (%2)", name, mountPoint);
+    } else if (url.scheme() == QLatin1String("trash")) {
+        name = i18n("Trash");
+    } else if (!url.isLocalFile() && !url.host().isEmpty()) {
+        name = url.host();
+    } else if (!url.isLocalFile()) {
+        name = url.scheme() + QLatin1Char(':');
+    }
+    if (name.isEmpty()) {
+        setToolButtonStyle(Qt::ToolButtonIconOnly);
+        return;
+    }
+    setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    setText(fontMetrics().elidedText(name, Qt::ElideMiddle, 220));
+    setToolTip(i18n("%1\nChoose a drive or device", name));
+}

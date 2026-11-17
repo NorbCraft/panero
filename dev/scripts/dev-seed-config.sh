@@ -5,7 +5,12 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DEVHOME="${PANERO_DEV_HOME:-$ROOT/build/dev-home}"
-mountpoint -q "$DEVHOME/runtime/gvfs" 2>/dev/null && fusermount -u "$DEVHOME/runtime/gvfs" || true
+# headless runs may start gvfs / xdg-document-portal on the private bus: unmount their
+# FUSE mounts below the dev home and stop leftover helpers before deleting it
+for m in $(awk -v d="$DEVHOME" '$2 ~ "^"d {print $2}' /proc/mounts | sort -r); do
+  fusermount -u "$m" 2>/dev/null || fusermount -uz "$m" 2>/dev/null || true
+done
+pkill -f "XDG_RUNTIME_DIR=$DEVHOME" 2>/dev/null || true
 rm -rf "$DEVHOME"; mkdir -p "$DEVHOME/config"
 cat > "$DEVHOME/config/panerorc" <<CFG
 First Time=false

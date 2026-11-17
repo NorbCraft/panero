@@ -39,6 +39,7 @@ class KStartupInfoData;
 class KStartupInfoId;
 
 class KrusaderStatus;
+class PaneroNavigationDock;
 class KrPleaseWaitHandler;
 class PopularUrls;
 class ViewActions;
@@ -153,6 +154,9 @@ private:
     QTimer      _openUrlTimer;
     QString     _urlToOpen;
     bool        _quit;
+
+    PaneroNavigationDock *_navigationDock = nullptr; ///< Panero: pins + folder tree sidebar
+    void setupPaneroToolbarLabels();
 };
 
 

@@ -56,6 +56,8 @@ Scheme defaultScheme(bool dark);
 /// Effective scheme including user overrides for the current light/dark mode.
 const Scheme &scheme();
 QString keyPrefix(bool dark);
+/// Read a colour stored as "#rrggbb" (Panero) or "r,g,b" (KDE); invalid if absent.
+QColor readColor(const QString &value);
 
 bool alternatingRows();
 bool markIndicator();
@@ -66,7 +68,7 @@ int configuredRowHeight();
 constexpr int MinRowHeight = 16;
 constexpr int MaxRowHeight = 48;
 constexpr int CompactRowHeight = 20;
-constexpr int ComfortableRowHeight = 26;
+constexpr int ComfortableRowHeight = 24;
 /**
  * Effective row height: the configured height, but never smaller than what the
  * font (and icon, when shown) needs, so text is never clipped.

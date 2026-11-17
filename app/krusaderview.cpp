@@ -191,6 +191,7 @@ void KrusaderView::updateCurrentActivePath()
     const QString path = activePanel()->gui->lastLocalPath();
 
     _cmdLine->setCurrent(path);
+    emit activeLocationChanged(activePanel()->virtualPath(), activePanel()->gui->isLeft());
     KConfigGroup cfg = krConfig->group("General");
     if (_terminalDock->isInitialised() && cfg.readEntry("Send CDs", _SendCDs)) {
         _terminalDock->sendCd(path);

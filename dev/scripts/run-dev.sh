@@ -13,12 +13,13 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD="$ROOT/build"
 STAGE="$BUILD/stage"
 DEVHOME="${PANERO_DEV_HOME:-$BUILD/dev-home}"
-XVFB=0; DOBUILD=1; ARGS=(); SHOT=""; DELAY=6
+XVFB=0; DOBUILD=1; ARGS=(); SHOT=""; DELAY=6; SESSIONBUS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --xvfb) XVFB=1;; --no-build) DOBUILD=0;;
     --screenshot) SHOT="$2"; XVFB=1; shift;;   # write PNG of the Xvfb screen and quit
     --delay) DELAY="$2"; shift;;
+    --session-bus) SESSIONBUS=1;;   # desktop run on the real session bus (portal, theme)
     --) shift; ARGS=("$@"); break;;
     *) echo "unknown option $1" >&2; exit 2;;
   esac; shift
@@ -36,6 +37,13 @@ export HOME="$DEVHOME" XDG_CONFIG_HOME="$DEVHOME/config" XDG_DATA_HOME="$DEVHOME
        PANERO_PLUGIN_DIR="$STAGE/usr/lib/$LIBDIR/plugins" \
        QT_PLUGIN_PATH="$STAGE/usr/lib/$LIBDIR/plugins"
 CMD=("$STAGE/usr/bin/panero" "${ARGS[@]}")
+if [[ -n "${PANERO_HIDE_TOOLS:-}" ]]; then
+  # simulate missing external tools (e.g. PANERO_HIDE_TOOLS="kdiff3 kompare xxdiff")
+  FAKEBIN="$DEVHOME/fakebin"; rm -rf "$FAKEBIN"; mkdir -p "$FAKEBIN"
+  for f in /usr/bin/*; do ln -s "$f" "$FAKEBIN/$(basename "$f")"; done
+  for t in $PANERO_HIDE_TOOLS; do rm -f "$FAKEBIN/$t"; done
+  export PATH="$FAKEBIN:/usr/sbin:/sbin"
+fi
 if [[ -n "$SHOT" ]]; then
   unset WAYLAND_DISPLAY; export QT_QPA_PLATFORM=xcb XDG_RUNTIME_DIR="$DEVHOME/runtime" GIO_USE_VFS=local
   DISP=":$((90 + RANDOM % 9))"
@@ -56,7 +64,8 @@ elif [[ $XVFB == 1 ]]; then
   unset WAYLAND_DISPLAY; export QT_QPA_PLATFORM=xcb XDG_RUNTIME_DIR="$DEVHOME/runtime" GIO_USE_VFS=local
   exec xvfb-run -a -s "-screen 0 ${PANERO_XVFB_SIZE:-1400x900x24}" dbus-run-session -- "${CMD[@]}"
 else
-  # keep the desktop's display/session bus, but a private D-Bus session avoids
-  # clashing with a running Panero/Krusader instance
+  # keep the desktop's display; a private D-Bus session avoids clashing with a running
+  # Panero instance unless --session-bus is given
+  if [[ $SESSIONBUS == 1 ]]; then exec "${CMD[@]}"; fi
   exec dbus-run-session -- "${CMD[@]}"
 fi

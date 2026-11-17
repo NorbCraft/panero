@@ -74,6 +74,10 @@ public:
     }
     Qt::SortOrder lastSortDir() const;
     int lastSortOrder() const;
+    /// Panero thumbnails grid: centred tile labels, no row striping
+    void setThumbnailMode(bool thumbnails) {
+        _thumbnailMode = thumbnails;
+    }
     void setAlternatingTable(bool altTable) {
         _alternatingTable = altTable;
     }
@@ -110,6 +114,7 @@ private:
     QFont                       _defaultFont;
     bool                        _justForSizeHint;
     bool                        _alternatingTable;
+    bool                        _thumbnailMode = false;
 };
 
 #endif // __listmodel__

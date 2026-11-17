@@ -797,6 +797,7 @@ void ListPanel::updateFilesystemStats(const QString &metaInfo, const QString &fs
     status->setText(statusText);
     freeSpace->setText(freeSpaceText);
     mediaButton->updateIcon(mountPoint);
+    mediaButton->updateLabel(virtualPath(), mountPoint);
 }
 
 void ListPanel::handleDrop(QDropEvent *event, bool onView)
