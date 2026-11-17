@@ -216,11 +216,6 @@ KrActionProc::KrActionProc(KrActionBase* action) : _action(action), _proc(nullpt
 {
 }
 
-KrActionProc::~KrActionProc()
-{
-    delete _proc;
-}
-
 void KrActionProc::start(const QString& cmdLine)
 {
     QStringList list;
