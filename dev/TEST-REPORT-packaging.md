@@ -231,3 +231,17 @@ The `krusader --version` check printed `krusader 2.8.1 "A New Day"`.
   archive with `SOURCE-INFO.txt`, licenses archive, `SHA256SUMS` with the
   `~`→`.` asset name) was dry-run locally against commit `1f417981d`; all
   three checksums verified.
+
+## Release candidate re-run (2026-11-17, after backports and D-011)
+
+Package built from `main` (backports merged) with `dev/scripts/build-deb.sh`,
+tested with `dev/scripts/test-deb.sh` in fresh ubuntu:24.04 containers:
+
+- Full run: `PASS: 84  FAIL: 1` — the remaining failure was the test itself
+  (wrong path inside the ISO); `kde-cli-tools` / `systemsettings` are no longer
+  pulled in (D-011) and the test now installs kde-cli-tools only as a test tool
+  for `kioclient5`.
+- Install scenario after fixing the ISO path (kio_iso lists a session folder,
+  `ISO9660`, at the image root): `PASS: 57  FAIL: 0  KNOWN: 0` including
+  `PASS: kio_iso.so reads a file from an ISO image` (`iso: hello panero`).
+- Coexistence, upgrade, remove/purge scenarios: all PASS in the full run.

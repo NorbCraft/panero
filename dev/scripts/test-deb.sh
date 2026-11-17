@@ -110,10 +110,12 @@ info "packages newly installed: $(comm -13 <(echo "$before") <(echo "$after") | 
 check "dpkg status is 'install ok installed'" \
     test "$(dpkg-query -W -f '${Status}' panero)" = "install ok installed"
 info "installed version: $(installed_version)"
-for p in kio kinit ktexteditor-katepart breeze-icon-theme kde-cli-tools kio-extras packagekit; do
+for p in kio kinit ktexteditor-katepart breeze-icon-theme kio-extras packagekit; do
     check "dependency/recommendation $p installed" pkg_installed "$p"
 done
-for p in kdiff3 krusader; do
+# kde-cli-tools is only suggested (D-011): it would pull in systemsettings and add a
+# KDE System Settings launcher to Zorin/GNOME
+for p in kdiff3 krusader kde-cli-tools systemsettings; do
     check "$p NOT pulled in (optional)" bash -c "! dpkg-query -W -f '\${Status}' $p 2>/dev/null | grep -q 'ok installed'"
 done
 info "desktop launchers added by Panero and its dependencies (excluding NoDisplay):"
@@ -177,8 +179,9 @@ as_status=$?; sed 's/^/    /' /tmp/as.log
 check "appstreamcli validate (no errors)" test "$as_status" -eq 0
 
 # KIO workers: load Panero's private workers through the system KIO with a
-# real archive (kioclient5 comes from kde-cli-tools, a Recommends).
-apt_install zip xorriso dbus >/dev/null
+# real archive. kioclient5 comes from kde-cli-tools, which Panero only suggests
+# (D-011): it is installed here as a test tool, after the dependency checks above.
+apt_install zip xorriso dbus kde-cli-tools >/dev/null
 mkdir -p /tmp/kio/content && echo "hello panero" > /tmp/kio/content/hello.txt
 (cd /tmp/kio/content && zip -q ../test.zip hello.txt)
 xorriso -as mkisofs -quiet -R -o /tmp/kio/test.iso /tmp/kio/content 2>/dev/null
@@ -190,10 +193,11 @@ kio_cat() {
 }
 out=$(kio_cat "krarc:/tmp/kio/test.zip/hello.txt"); echo "    krarc: ${out:-<empty>} $(head -c 300 /tmp/kio.err)"
 check "kio_krarc.so reads a file from a zip archive" test "$out" = "hello panero"
-out=$(kio_cat "iso:/tmp/kio/test.iso/hello.txt"); echo "    iso: ${out:-<empty>} $(head -c 300 /tmp/kio.err)"
-known "kio_iso.so reads a file from an ISO image" \
-    "Krusader 2.8.1's kio_iso does not recognise noble's application/vnd.efi.iso mime type (distro krusader behaves the same); fixed upstream in 4c85272cd and c6945e68e, backport pending" \
-    test "$out" = "hello panero"
+# kio_iso shows each ISO with a session folder at its root (ISO9660, Joliet level 3)
+out=$(kio_cat "iso:/tmp/kio/test.iso/ISO9660/hello.txt"); echo "    iso: ${out:-<empty>} $(head -c 300 /tmp/kio.err)"
+# (needs the kio_iso backports of upstream 4c85272cd and c6945e68e: vnd.efi.iso mime
+# type and a QCoreApplication in kdemain(); Krusader 2.8.1's worker crashed on noble)
+check "kio_iso.so reads a file from an ISO image" test "$out" = "hello panero"
 
 # Smoke start of the GUI (offscreen, temporary HOME): must still be running
 # after 15 s (exit 124 from timeout) or exit cleanly.
