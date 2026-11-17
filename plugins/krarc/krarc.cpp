@@ -2263,7 +2263,7 @@ QString kio_krarcProtocol::getPassword()
     authInfo.url.setScheme("krarc");
 
     if (checkCachedAuthentication(authInfo) && !authInfo.password.isNull()) {
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
     }
 
@@ -2272,7 +2272,7 @@ QString kio_krarcProtocol::getPassword()
 #if KSERVICE_VERSION >= QT_VERSION_CHECK(5, 96, 0)
     int errCode = openPasswordDialog(authInfo, i18n("Accessing the file requires a password."));
     if (!errCode && !authInfo.password.isNull()) {
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
     } else {
         password.clear();
@@ -2285,7 +2285,7 @@ QString kio_krarcProtocol::getPassword()
 #else
     if (openPasswordDialog(authInfo, i18n("Accessing the file requires a password.")) && !authInfo.password.isNull()) {
 #endif
-        KRDEBUG(authInfo.password);
+        // KRDEBUG(authInfo.password);
         return (password = authInfo.password);
 #if KIO_VERSION_MINOR >= 24
     } else {
@@ -2295,7 +2295,7 @@ QString kio_krarcProtocol::getPassword()
 
 #endif
 
-    KRDEBUG(password);
+    // KRDEBUG(password);
     return password;
 }
 
