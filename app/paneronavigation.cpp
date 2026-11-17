@@ -132,11 +132,18 @@ void PaneroNavigationDock::updateTitle(bool leftPanel)
 void PaneroNavigationDock::activeLocationChanged(const QUrl &url, bool leftPanel)
 {
     updateTitle(leftPanel);
-    if (url == m_currentUrl)
-        return;
+    const bool changed = url != m_currentUrl;
     m_currentUrl = url;
-    if (isVisible())
+    if (changed && isVisible())
         m_tree->setCurrentUrl(url);
+}
+
+void PaneroNavigationDock::showEvent(QShowEvent *event)
+{
+    QDockWidget::showEvent(event);
+    // the tree is only updated while visible: catch up with the active panel
+    if (m_currentUrl.isValid())
+        m_tree->setCurrentUrl(m_currentUrl);
 }
 
 void PaneroNavigationDock::treeUrlActivated(const QUrl &url)

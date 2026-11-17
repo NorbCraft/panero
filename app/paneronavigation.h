@@ -43,6 +43,9 @@ public slots:
     /// The active panel changed or navigated.
     void activeLocationChanged(const QUrl &url, bool leftPanel);
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private slots:
     void openPin(QListWidgetItem *item);
     void pinContextMenu(const QPoint &pos);

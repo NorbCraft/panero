@@ -36,6 +36,13 @@ export HOME="$DEVHOME" XDG_CONFIG_HOME="$DEVHOME/config" XDG_DATA_HOME="$DEVHOME
        PANERO_PLUGIN_DIR="$STAGE/usr/lib/$LIBDIR/plugins" \
        QT_PLUGIN_PATH="$STAGE/usr/lib/$LIBDIR/plugins"
 CMD=("$STAGE/usr/bin/panero" "${ARGS[@]}")
+if [[ -n "${PANERO_HIDE_TOOLS:-}" ]]; then
+  # simulate missing external tools (e.g. PANERO_HIDE_TOOLS="kdiff3 kompare xxdiff")
+  FAKEBIN="$DEVHOME/fakebin"; rm -rf "$FAKEBIN"; mkdir -p "$FAKEBIN"
+  for f in /usr/bin/*; do ln -s "$f" "$FAKEBIN/$(basename "$f")"; done
+  for t in $PANERO_HIDE_TOOLS; do rm -f "$FAKEBIN/$t"; done
+  export PATH="$FAKEBIN:/usr/sbin:/sbin"
+fi
 if [[ -n "$SHOT" ]]; then
   unset WAYLAND_DISPLAY; export QT_QPA_PLATFORM=xcb XDG_RUNTIME_DIR="$DEVHOME/runtime" GIO_USE_VFS=local
   DISP=":$((90 + RANDOM % 9))"

@@ -40,6 +40,7 @@ set(krusader_SRCS
     krdebuglogger.cpp
     paneroimport.cpp
     paneronavigation.cpp
+    paneropackageinstaller.cpp
 )
 
 qt5_add_resources(krusader_RC_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc" )
