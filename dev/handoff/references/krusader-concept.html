@@ -1,0 +1,420 @@
+<div id="krusader-workflow" aria-label="Krusader · Commander workflow concept">
+  <header class="kw-titlebar">
+    <span class="kw-brand"><i data-lucide="panels-top-left" aria-hidden="true"></i>Krusader</span>
+    <span class="kw-title-context">Downloads &nbsp; / &nbsp; Workshop</span>
+    <div class="kw-menus" aria-label="Application menus"><button type="button" data-action="menu">File</button><button type="button" data-action="menu">Edit</button><button type="button" data-action="view">View</button><button type="button" data-action="menu">Tools</button></div>
+    <span class="kw-window-buttons" aria-hidden="true"><i data-lucide="minus"></i><i data-lucide="square"></i><i data-lucide="x"></i></span>
+  </header>
+  <nav class="kw-toolbar" aria-label="Main toolbar">
+    <div class="kw-toolgroup"><button type="button" data-action="up"><i data-lucide="arrow-up" aria-hidden="true"></i>Up</button><button type="button" data-action="home"><i data-lucide="house" aria-hidden="true"></i>Home</button><button type="button" data-action="refresh"><i data-lucide="refresh-cw" aria-hidden="true"></i>Refresh</button></div>
+    <div class="kw-toolgroup"><button type="button" data-action="compare" data-tooltip="Compare file contents with KDiff3"><i data-lucide="columns-2" aria-hidden="true"></i>Compare</button><button type="button" data-action="pack"><i data-lucide="archive" aria-hidden="true"></i>Pack</button><button type="button" data-action="unpack"><i data-lucide="package-open" aria-hidden="true"></i>Unpack</button></div>
+    <div class="kw-toolgroup"><button type="button" data-action="search"><i data-lucide="search" aria-hidden="true"></i>Search</button></div>
+    <button type="button" class="kw-trash-button" data-action="trash" data-tooltip="Open Trash in the active panel"><i data-lucide="trash-2" aria-hidden="true"></i>Trash</button>
+  </nav>
+  <div class="kw-viewbar">
+    <button type="button" data-action="tree" aria-pressed="true"><i data-lucide="panel-left" aria-hidden="true"></i>Folder tree</button>
+    <span class="kw-view-separator"></span>
+    <button type="button" data-action="hidden" aria-pressed="false"><i data-lucide="eye-off" aria-hidden="true"></i>Hidden files</button>
+    <div class="kw-view-switch" aria-label="Active panel view"><button type="button" data-mode="details" aria-pressed="true" data-tooltip="Details view"><i data-lucide="list" aria-hidden="true"></i><span>Details</span></button><button type="button" data-mode="thumbnails" aria-pressed="false" data-tooltip="Thumbnail view"><i data-lucide="layout-grid" aria-hidden="true"></i><span>Thumbnails</span></button></div>
+    <button type="button" class="kw-settings-button" data-action="view" aria-expanded="false"><i data-lucide="sliders-horizontal" aria-hidden="true"></i>View &amp; colors</button>
+  </div>
+  <div class="kw-workspace">
+    <aside class="kw-navigation" aria-label="Navigation for the active panel">
+      <div class="kw-nav-top"><span>Navigation</span><span class="kw-follows">Left panel</span><button type="button" data-action="tree" aria-label="Hide folder tree"><i data-lucide="panel-left-close" aria-hidden="true"></i></button></div>
+      <div class="kw-nav-heading"><span><i data-lucide="pin" aria-hidden="true"></i>Pinned</span><button type="button" data-action="pin" aria-label="Pin current folder" data-tooltip="Pin the active panel’s folder"><i data-lucide="plus" aria-hidden="true"></i></button></div>
+      <div class="kw-pins"></div>
+      <div class="kw-nav-heading kw-tree-heading"><span><i data-lucide="folder-tree" aria-hidden="true"></i>Folders</span></div>
+      <div class="kw-tree"></div>
+      <div class="kw-nav-storage"><i data-lucide="hard-drive" aria-hidden="true"></i><div><span class="kw-nav-drive">System</span><small class="kw-nav-free">204.7 GB free of 473 GB</small></div></div>
+    </aside>
+    <div class="kw-panels">
+      <section class="kw-panel kw-active" data-panel="0" aria-label="Left file panel"></section>
+      <section class="kw-panel" data-panel="1" aria-label="Right file panel"></section>
+    </div>
+  </div>
+  <div class="kw-statusbar"><div class="kw-status-message" aria-live="polite">2 files marked · selection stays until you clear it</div><span class="kw-selection-legend"><span class="kw-cursor-dot"></span>Cursor <span class="kw-mark-dot"></span>Marked</span><button type="button" data-action="clear">Clear marks</button></div>
+  <div class="kw-commandline" hidden><i data-lucide="terminal" aria-hidden="true"></i><label for="kw-command">~/Downloads $</label><input id="kw-command" aria-label="Command line preview" placeholder="Command line" autocomplete="off"></div>
+  <nav class="kw-keybar" aria-label="File operations"><button type="button" data-action="rename"><kbd>F2</kbd>Rename</button><button type="button" data-action="viewfile"><kbd>F3</kbd>View</button><button type="button" data-action="edit"><kbd>F4</kbd>Edit</button><button type="button" data-action="copy" class="kw-copy"><kbd>F5</kbd><span>Copy →</span></button><button type="button" data-action="move"><kbd>F6</kbd>Move</button><button type="button" data-action="folder"><kbd>F7</kbd>New folder</button><button type="button" data-action="delete"><kbd>F8</kbd>Delete</button><button type="button" data-action="terminal"><kbd>F9</kbd>Terminal</button></nav>
+  <section class="kw-settings" role="dialog" aria-label="View and colors" hidden>
+    <div class="kw-popover-title"><span>View &amp; colors</span><button type="button" data-action="close-settings" aria-label="Close view settings"><i data-lucide="x" aria-hidden="true"></i></button></div>
+    <div class="kw-setting-row"><label for="kw-row-height">Row height</label><input id="kw-row-height" type="range" min="29" max="44" value="35"><output for="kw-row-height">35 px</output></div>
+    <div class="kw-color-controls"><label for="kw-mark-color">Marked files<input id="kw-mark-color" type="color" value="#b3393f"></label><label for="kw-cursor-color">Cursor / active panel<input id="kw-cursor-color" type="color" value="#326fd1"></label></div>
+    <label class="kw-check"><input type="checkbox" id="kw-show-hidden">Show hidden files and folders</label>
+    <label class="kw-check"><input type="checkbox" id="kw-show-command">Show command line</label>
+    <label class="kw-check"><input type="checkbox" id="kw-show-modified" checked>Show Modified column</label>
+    <div class="kw-setting-section">Selection</div>
+    <div class="kw-setting-note">Right-click or Space to mark<br>Click or ↑ ↓ to move the cursor<br>Hold right-click for the context menu</div>
+    <div class="kw-setting-row"><label for="kw-hold-delay">Right-click hold</label><select id="kw-hold-delay"><option value="450">Short · 0.45 s</option><option value="600" selected>Normal · 0.6 s</option><option value="850">Long · 0.85 s</option></select></div>
+  </section>
+  <div class="kw-context" role="menu" aria-label="File context menu" hidden></div>
+  <div class="kw-overlay" hidden><section class="kw-dialog" role="dialog" aria-modal="true" aria-labelledby="kw-dialog-title"></section></div>
+</div>
+<style>
+#krusader-workflow { color-scheme:light dark; --kw-bg:light-dark(#fff,#1d222b); --kw-chrome:light-dark(#f4f6f9,#252b35); --kw-soft:light-dark(#f8f9fb,#212630); --kw-text:light-dark(#273243,#e4eaf3); --kw-muted:light-dark(#69778a,#9eacbf); --kw-border:light-dark(#e1e7ef,#374151); --kw-hover:light-dark(#edf1f6,#2b3340); --kw-cursor:#326fd1; --kw-mark:#b3393f; --kw-cursor-text:light-dark(var(--kw-cursor),color-mix(in srgb,var(--kw-cursor) 60%,#fff)); --kw-mark-text:light-dark(var(--kw-mark),color-mix(in srgb,var(--kw-mark) 55%,#fff)); --kw-folder:light-dark(#b68430,#d5b171); --kw-row:35px; --kw-sidebar:180px; font:400 13px/1.45 Inter,"Segoe UI",sans-serif; border:1px solid var(--kw-border); border-radius:12px; background:var(--kw-bg); color:var(--kw-text); min-height:875px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+#krusader-workflow * { box-sizing:border-box; }
+#krusader-workflow [hidden] { display:none!important; }
+#krusader-workflow button, #krusader-workflow input, #krusader-workflow select { font:inherit; color:inherit; }
+#krusader-workflow button { border:0; background:transparent; border-radius:6px; padding:6px 9px; display:inline-flex; align-items:center; justify-content:center; gap:7px; cursor:default; min-width:0; }
+#krusader-workflow button:hover { background:var(--kw-hover); }
+#krusader-workflow button:focus-visible, #krusader-workflow input:focus-visible, #krusader-workflow select:focus-visible, #krusader-workflow summary:focus-visible { outline:2px solid var(--kw-cursor); outline-offset:-2px; }
+#krusader-workflow svg { width:16px; height:16px; flex:none; stroke-width:1.65; }
+#krusader-workflow .kw-titlebar { display:flex; align-items:center; gap:15px; padding:10px 16px; min-height:45px; background:var(--kw-chrome); }
+#krusader-workflow .kw-brand { display:flex; align-items:center; gap:8px; font-weight:500; }
+#krusader-workflow .kw-brand svg { width:20px; height:20px; color:var(--kw-cursor-text); }
+#krusader-workflow .kw-title-context { color:var(--kw-muted); font-size:12px; }
+#krusader-workflow .kw-menus { display:flex; margin-left:auto; gap:1px; }
+#krusader-workflow .kw-menus button { padding:3px 8px; font-size:12px; }
+#krusader-workflow .kw-window-buttons { display:flex; gap:16px; margin-left:12px; color:var(--kw-muted); }
+#krusader-workflow .kw-window-buttons svg { width:12px; height:12px; }
+#krusader-workflow .kw-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:9px 12px; border-bottom:1px solid var(--kw-border); }
+#krusader-workflow .kw-toolgroup { display:flex; flex-wrap:wrap; align-items:center; gap:3px; }
+#krusader-workflow .kw-toolgroup + .kw-toolgroup { border-left:1px solid var(--kw-border); padding-left:8px; }
+#krusader-workflow .kw-toolbar button { white-space:nowrap; }
+#krusader-workflow .kw-toolbar button[data-action="compare"] { background:color-mix(in srgb,var(--kw-cursor) 8%,var(--kw-bg)); color:var(--kw-cursor-text); }
+#krusader-workflow .kw-trash-button { margin-left:auto; color:var(--kw-muted); }
+#krusader-workflow .kw-viewbar { display:flex; flex-wrap:wrap; align-items:center; gap:5px; padding:6px 12px; border-bottom:1px solid var(--kw-border); background:var(--kw-soft); font-size:12px; }
+#krusader-workflow .kw-viewbar button { padding:5px 8px; }
+#krusader-workflow .kw-viewbar button[aria-pressed="true"] { background:var(--kw-bg); color:var(--kw-cursor-text); box-shadow:0 0 0 1px var(--kw-border); }
+#krusader-workflow .kw-view-separator { height:18px; width:1px; background:var(--kw-border); margin:0 5px; }
+#krusader-workflow .kw-view-switch { display:flex; gap:3px; margin-left:auto; }
+#krusader-workflow .kw-settings-button { margin-left:10px; }
+#krusader-workflow .kw-workspace { display:flex; min-width:0; flex:1; }
+#krusader-workflow .kw-navigation { width:var(--kw-sidebar); flex:none; padding:12px 8px; border-right:1px solid var(--kw-border); background:var(--kw-soft); display:flex; flex-direction:column; }
+#krusader-workflow.kw-tree-hidden .kw-navigation { display:none; }
+#krusader-workflow .kw-nav-top { display:flex; align-items:center; gap:5px; padding:0 3px 14px; font-size:11px; font-weight:500; }
+#krusader-workflow .kw-nav-top .kw-follows { margin-left:auto; color:var(--kw-cursor-text); font-size:10px; font-weight:400; }
+#krusader-workflow .kw-nav-top button { padding:2px; color:var(--kw-muted); }
+#krusader-workflow .kw-nav-top svg { width:13px; height:13px; }
+#krusader-workflow .kw-nav-heading { display:flex; justify-content:space-between; align-items:center; margin:0 4px 4px; color:var(--kw-muted); font-size:11px; }
+#krusader-workflow .kw-nav-heading > span { display:flex; align-items:center; gap:6px; }
+#krusader-workflow .kw-nav-heading svg { width:13px; height:13px; }
+#krusader-workflow .kw-nav-heading button { padding:3px; }
+#krusader-workflow .kw-tree-heading { margin-top:23px; margin-bottom:9px; }
+#krusader-workflow .kw-pin-row { display:flex; align-items:center; gap:2px; }
+#krusader-workflow .kw-pin-row > button:first-child { flex:1; justify-content:flex-start; text-align:left; padding:7px 8px; font-size:12px; }
+#krusader-workflow .kw-pin-row .kw-unpin { padding:3px; color:var(--kw-muted); }
+#krusader-workflow .kw-unpin svg { width:12px; height:12px; }
+#krusader-workflow .kw-pin-row.kw-here > button:first-child { color:var(--kw-cursor-text); background:color-mix(in srgb,var(--kw-cursor) 9%,var(--kw-soft)); }
+#krusader-workflow .kw-tree details { min-width:0; }
+#krusader-workflow .kw-tree summary { display:flex; align-items:center; gap:6px; padding:6px 5px; font-size:12px; list-style:none; cursor:default; }
+#krusader-workflow .kw-tree summary::-webkit-details-marker { display:none; }
+#krusader-workflow .kw-tree summary > svg:first-child { width:12px; height:12px; transform:rotate(-90deg); color:var(--kw-muted); }
+#krusader-workflow .kw-tree details[open] > summary > svg:first-child { transform:rotate(0deg); }
+#krusader-workflow .kw-tree .kw-branch { margin-left:14px; padding-left:6px; border-left:1px solid var(--kw-border); }
+#krusader-workflow .kw-tree button[data-location] { display:flex; justify-content:flex-start; width:100%; font-size:12px; padding:6px; }
+#krusader-workflow .kw-tree .kw-here { color:var(--kw-cursor-text); background:color-mix(in srgb,var(--kw-cursor) 9%,var(--kw-soft)); }
+#krusader-workflow .kw-tree button svg { color:var(--kw-folder); width:15px; height:15px; }
+#krusader-workflow .kw-nav-storage { display:flex; align-items:center; gap:9px; padding:20px 4px 3px; margin-top:auto; font-size:11px; color:var(--kw-muted); }
+#krusader-workflow .kw-nav-storage small { display:block; font-size:10px; margin-top:3px; }
+#krusader-workflow .kw-panels { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-width:0; flex:1; }
+#krusader-workflow .kw-panel { min-width:0; display:flex; flex-direction:column; border-top:2px solid transparent; }
+#krusader-workflow .kw-panel + .kw-panel { border-left:1px solid var(--kw-border); }
+#krusader-workflow .kw-panel.kw-active { border-top-color:var(--kw-cursor); }
+#krusader-workflow .kw-tabs { display:flex; align-items:center; gap:3px; padding:7px 8px 0; background:var(--kw-soft); border-bottom:1px solid var(--kw-border); min-height:37px; flex-wrap:wrap; }
+#krusader-workflow .kw-tab { font-size:12px; padding:5px 9px 7px; border-bottom:2px solid transparent; border-radius:5px 5px 0 0; color:var(--kw-muted); }
+#krusader-workflow .kw-tab[aria-selected="true"] { color:var(--kw-text); border-bottom-color:var(--kw-cursor); background:var(--kw-bg); font-weight:500; }
+#krusader-workflow .kw-tab-plus { margin-left:auto; padding:4px; color:var(--kw-muted); }
+#krusader-workflow .kw-tab-plus svg { width:13px; height:13px; }
+#krusader-workflow .kw-drivebar { display:flex; gap:7px; align-items:center; padding:8px 10px; }
+#krusader-workflow .kw-drivebar > svg { color:var(--kw-muted); }
+#krusader-workflow .kw-drivebar select { min-width:0; max-width:100%; flex:1; background:var(--kw-bg); border:1px solid var(--kw-border); border-radius:5px; padding:4px 5px; font-size:12px; }
+#krusader-workflow .kw-free-space { font-size:10px; color:var(--kw-muted); white-space:nowrap; }
+#krusader-workflow .kw-path { display:flex; align-items:center; gap:5px; padding:3px 10px 9px; font-size:12px; min-height:33px; }
+#krusader-workflow .kw-path button { padding:2px; color:var(--kw-muted); }
+#krusader-workflow .kw-path > svg { width:12px; height:12px; color:var(--kw-muted); }
+#krusader-workflow .kw-path .kw-folder-name { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#krusader-workflow .kw-panel-label { margin-left:auto; color:var(--kw-muted); font-size:10px; white-space:nowrap; }
+#krusader-workflow .kw-active .kw-panel-label { color:var(--kw-cursor-text); }
+#krusader-workflow .kw-file-area { flex:1; display:flex; flex-direction:column; min-height:350px; }
+#krusader-workflow .kw-table { width:100%; table-layout:fixed; border-collapse:collapse; }
+#krusader-workflow .kw-table thead { color:var(--kw-muted); background:var(--kw-soft); border-top:1px solid var(--kw-border); border-bottom:1px solid var(--kw-border); }
+#krusader-workflow .kw-table th { padding:0 8px; height:30px; font-size:11px; font-weight:400; text-align:left; }
+#krusader-workflow .kw-table th button { color:var(--kw-muted); padding:0; font-size:11px; gap:3px; }
+#krusader-workflow .kw-table th button svg { width:11px; height:11px; }
+#krusader-workflow .kw-ext { width:42px; color:var(--kw-muted); }
+#krusader-workflow .kw-size { width:62px; color:var(--kw-muted); text-align:right!important; font-variant-numeric:tabular-nums; }
+#krusader-workflow .kw-modified { width:76px; color:var(--kw-muted); text-align:right!important; }
+#krusader-workflow .kw-table td { height:var(--kw-row); padding:0 8px; font-size:12px; border-bottom:1px solid color-mix(in srgb,var(--kw-border) 35%,transparent); }
+#krusader-workflow .kw-table td.kw-ext, #krusader-workflow .kw-table td.kw-size, #krusader-workflow .kw-table td.kw-modified { font-size:11px; }
+#krusader-workflow .kw-table td:first-child { padding-left:9px; }
+#krusader-workflow .kw-table tr:hover { background:var(--kw-hover); }
+#krusader-workflow .kw-file-button { width:100%; padding:0!important; justify-content:flex-start!important; gap:7px!important; text-align:left; border-radius:0!important; background:transparent!important; min-height:calc(var(--kw-row) - 1px); }
+#krusader-workflow .kw-mark-indicator { width:12px; flex:none; display:flex; justify-content:center; }
+#krusader-workflow .kw-mark-indicator svg { width:12px; height:12px; stroke-width:2.4; }
+#krusader-workflow .kw-file-button .kw-file-icon { display:flex; color:var(--kw-muted); flex:none; }
+#krusader-workflow .kw-file-icon.kw-is-folder { color:var(--kw-folder); }
+#krusader-workflow .kw-file-name { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#krusader-workflow .kw-marked { background:color-mix(in srgb,var(--kw-mark) 9%,var(--kw-bg))!important; }
+#krusader-workflow .kw-marked .kw-file-name, #krusader-workflow .kw-marked .kw-mark-indicator { color:var(--kw-mark-text); font-weight:500; }
+#krusader-workflow .kw-current { background:color-mix(in srgb,var(--kw-cursor) 9%,var(--kw-bg)); box-shadow:inset 3px 0 var(--kw-cursor); }
+#krusader-workflow .kw-current td { border-top:1px solid color-mix(in srgb,var(--kw-cursor) 65%,var(--kw-border)); border-bottom:1px solid color-mix(in srgb,var(--kw-cursor) 65%,var(--kw-border)); }
+#krusader-workflow .kw-current td:last-child { box-shadow:inset -1px 0 var(--kw-cursor); }
+#krusader-workflow .kw-current .kw-file-button { color:var(--kw-cursor-text); font-weight:500; }
+#krusader-workflow .kw-panel:not(.kw-active) .kw-current { box-shadow:inset 2px 0 var(--kw-muted); background:var(--kw-soft); }
+#krusader-workflow .kw-panel:not(.kw-active) .kw-current td { border-color:var(--kw-border); }
+#krusader-workflow .kw-panel:not(.kw-active) .kw-current .kw-file-button { color:var(--kw-text); }
+#krusader-workflow .kw-file-button:focus-visible { outline:2px solid var(--kw-cursor); outline-offset:-2px; border-radius:3px!important; }
+#krusader-workflow .kw-hidden-entry .kw-file-icon { opacity:.55; }
+#krusader-workflow .kw-file-empty { flex:1; min-height:58px; }
+#krusader-workflow .kw-panel-summary { border-top:1px solid var(--kw-border); padding:9px 10px; font-size:11px; color:var(--kw-muted); display:flex; justify-content:space-between; gap:8px; min-height:36px; }
+#krusader-workflow .kw-panel-summary .kw-marked-summary { color:var(--kw-mark-text); }
+#krusader-workflow .kw-thumbnails { display:grid; grid-template-columns:repeat(auto-fill,minmax(102px,1fr)); gap:10px; padding:12px 10px; }
+#krusader-workflow .kw-thumb { position:relative; display:flex; flex-direction:column; align-items:stretch; border:1px solid transparent; border-radius:7px; padding:6px; min-width:0; }
+#krusader-workflow .kw-thumb button { padding:0; display:flex; flex-direction:column; align-items:stretch; gap:7px; background:transparent; }
+#krusader-workflow .kw-thumb .kw-file-name { font-size:11px; font-weight:400; text-align:center; }
+#krusader-workflow .kw-thumb-image { display:flex; align-items:center; justify-content:center; aspect-ratio:1.6; overflow:hidden; border-radius:4px; background:var(--kw-soft); }
+#krusader-workflow .kw-thumb-image img { width:100%; height:100%; object-fit:cover; }
+#krusader-workflow .kw-thumb-image > svg { width:38px; height:38px; color:var(--kw-muted); stroke-width:1.15; }
+#krusader-workflow .kw-thumb[data-kind="folder"] .kw-thumb-image > svg { color:var(--kw-folder); }
+#krusader-workflow .kw-thumb .kw-mark-indicator { position:absolute; top:8px; left:8px; background:var(--kw-bg); border-radius:3px; padding:2px; width:16px; z-index:1; }
+#krusader-workflow .kw-thumb.kw-current { border:2px solid var(--kw-cursor); padding:5px; box-shadow:none; }
+#krusader-workflow .kw-statusbar { display:flex; gap:12px; align-items:center; border-top:1px solid var(--kw-border); background:var(--kw-soft); padding:7px 12px; font-size:11px; color:var(--kw-muted); min-height:36px; }
+#krusader-workflow .kw-status-message { overflow-wrap:anywhere; }
+#krusader-workflow .kw-statusbar button { padding:2px 5px; font-size:11px; white-space:nowrap; }
+#krusader-workflow .kw-selection-legend { margin-left:auto; display:flex; align-items:center; gap:6px; white-space:nowrap; }
+#krusader-workflow .kw-cursor-dot, #krusader-workflow .kw-mark-dot { width:7px; height:7px; border-radius:2px; background:var(--kw-cursor); }
+#krusader-workflow .kw-mark-dot { margin-left:8px; background:var(--kw-mark); }
+#krusader-workflow .kw-commandline { display:flex; gap:8px; align-items:center; padding:7px 12px; border-top:1px solid var(--kw-border); font-size:11px; color:var(--kw-muted); background:var(--kw-soft); }
+#krusader-workflow .kw-commandline label { font:11px ui-monospace,monospace; }
+#krusader-workflow .kw-commandline input { flex:1; min-width:0; border:0; background:transparent; padding:4px; font:12px ui-monospace,monospace; }
+#krusader-workflow .kw-keybar { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:4px; padding:8px; border-top:1px solid var(--kw-border); }
+#krusader-workflow .kw-keybar button { border:1px solid var(--kw-border); padding:7px 3px; gap:5px; font-size:12px; white-space:nowrap; }
+#krusader-workflow kbd { font:inherit; font-size:10px; border-radius:3px; padding:1px 3px; color:var(--kw-muted); background:var(--kw-soft); }
+#krusader-workflow .kw-keybar .kw-copy { background:var(--kw-cursor); border-color:var(--kw-cursor); color:#fff; }
+#krusader-workflow .kw-copy kbd { color:#fff; background:color-mix(in srgb,#fff 18%,var(--kw-cursor)); }
+#krusader-workflow .kw-settings { position:absolute; z-index:6; right:10px; top:137px; width:310px; max-width:calc(100% - 20px); padding:15px; border:1px solid var(--kw-border); border-radius:10px; background:var(--kw-bg); box-shadow:0 12px 40px #0002; }
+#krusader-workflow .kw-popover-title { display:flex; align-items:center; gap:10px; font-weight:500; margin-bottom:15px; }
+#krusader-workflow .kw-popover-title button { margin-left:auto; padding:2px; color:var(--kw-muted); }
+#krusader-workflow .kw-setting-row { display:flex; gap:8px; align-items:center; margin:14px 0; font-size:12px; }
+#krusader-workflow .kw-setting-row input[type="range"] { min-width:50px; flex:1; width:80px; accent-color:var(--kw-cursor); }
+#krusader-workflow .kw-setting-row output { color:var(--kw-muted); font-size:11px; white-space:nowrap; }
+#krusader-workflow .kw-setting-row select { margin-left:auto; min-width:0; padding:5px; border:1px solid var(--kw-border); border-radius:5px; background:var(--kw-bg); font-size:11px; }
+#krusader-workflow .kw-color-controls { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:18px 0; }
+#krusader-workflow .kw-color-controls label { display:flex; flex-direction:column; gap:8px; font-size:11px; }
+#krusader-workflow .kw-color-controls input { width:100%; height:29px; background:var(--kw-bg); border:1px solid var(--kw-border); border-radius:5px; padding:3px; }
+#krusader-workflow .kw-check { display:flex; align-items:center; gap:8px; margin:12px 0; font-size:12px; }
+#krusader-workflow .kw-check input { accent-color:var(--kw-cursor); }
+#krusader-workflow .kw-setting-section { border-top:1px solid var(--kw-border); padding-top:15px; margin-top:17px; font-weight:500; font-size:12px; }
+#krusader-workflow .kw-setting-note { color:var(--kw-muted); font-size:11px; line-height:1.8; margin-top:8px; }
+#krusader-workflow .kw-context { position:absolute; z-index:8; min-width:205px; max-width:calc(100% - 20px); padding:5px; border:1px solid var(--kw-border); border-radius:9px; background:var(--kw-bg); box-shadow:0 10px 35px #0003; }
+#krusader-workflow .kw-context-title { padding:7px 8px; font-size:11px; color:var(--kw-muted); border-bottom:1px solid var(--kw-border); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#krusader-workflow .kw-context button { display:flex; justify-content:flex-start; width:100%; padding:7px 9px; font-size:12px; }
+#krusader-workflow .kw-context .kw-shortcut { margin-left:auto; color:var(--kw-muted); font-size:11px; }
+#krusader-workflow .kw-overlay { position:absolute; inset:0; z-index:9; background:light-dark(#25344a40,#0009); padding:22px; display:flex; justify-content:center; align-items:center; }
+#krusader-workflow .kw-dialog { width:480px; max-width:100%; padding:23px; border:1px solid var(--kw-border); border-radius:12px; background:var(--kw-bg); box-shadow:0 16px 60px #0003; }
+#krusader-workflow .kw-dialog.kw-wide-dialog { width:800px; }
+#krusader-workflow .kw-dialog-heading { display:flex; gap:10px; align-items:center; margin-bottom:18px; }
+#krusader-workflow .kw-dialog-heading > svg { color:var(--kw-cursor-text); width:21px; height:21px; }
+#krusader-workflow .kw-dialog-heading h3 { margin:0; font-size:17px; font-weight:500; }
+#krusader-workflow .kw-dialog-heading button { margin-left:auto; padding:3px; }
+#krusader-workflow .kw-dialog label { display:block; color:var(--kw-muted); font-size:11px; margin:12px 0 5px; }
+#krusader-workflow .kw-dialog input, #krusader-workflow .kw-dialog select { width:100%; min-width:0; border:1px solid var(--kw-border); border-radius:6px; padding:8px 10px; background:var(--kw-bg); }
+#krusader-workflow .kw-dialog-summary { color:var(--kw-muted); font-size:12px; overflow-wrap:anywhere; margin-bottom:16px; }
+#krusader-workflow .kw-dialog-route { padding:12px; display:grid; gap:13px; border-radius:7px; background:var(--kw-soft); font-size:12px; overflow-wrap:anywhere; }
+#krusader-workflow .kw-dialog-route label { margin:0 0 2px; text-transform:uppercase; letter-spacing:.5px; font-size:10px; }
+#krusader-workflow .kw-dialog-buttons { display:flex; justify-content:flex-end; gap:8px; margin-top:22px; }
+#krusader-workflow .kw-dialog-buttons button { border:1px solid var(--kw-border); padding:8px 13px; }
+#krusader-workflow .kw-dialog-buttons .kw-primary { color:#fff; background:var(--kw-cursor); border-color:var(--kw-cursor); }
+#krusader-workflow .kw-preview { display:flex; justify-content:center; padding:15px; border-radius:8px; background:var(--kw-soft); }
+#krusader-workflow .kw-preview img { width:100%; max-width:300px; border-radius:5px; }
+#krusader-workflow .kw-preview pre { margin:0; width:100%; font:11px/1.9 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+#krusader-workflow .kw-compare-files { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#krusader-workflow .kw-diff { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--kw-border); margin-top:18px; border:1px solid var(--kw-border); border-radius:6px; overflow:hidden; }
+#krusader-workflow .kw-diff > div { padding:12px 0; min-width:0; background:var(--kw-bg); }
+#krusader-workflow .kw-diff-code { display:block; padding:3px 12px; font:11px/1.6 ui-monospace,monospace; overflow-wrap:anywhere; }
+#krusader-workflow .kw-diff-code.kw-removed { background:color-mix(in srgb,var(--kw-mark) 13%,var(--kw-bg)); }
+#krusader-workflow .kw-diff-code.kw-added { background:light-dark(#e6f3ec,#283d35); }
+#krusader-workflow .kw-menu-list button { display:flex; justify-content:flex-start; width:100%; }
+#krusader-workflow .kw-empty-label { padding:25px 14px; font-size:12px; color:var(--kw-muted); }
+#krusader-workflow.kw-no-modified .kw-modified { display:none; }
+@media(max-width:950px) {
+ #krusader-workflow { --kw-sidebar:166px; }
+ #krusader-workflow .kw-title-context { display:none; }
+ #krusader-workflow .kw-modified { display:none; }
+ #krusader-workflow .kw-free-space { display:none; }
+ #krusader-workflow .kw-keybar button { flex-direction:column; gap:3px; font-size:11px; }
+ #krusader-workflow .kw-nav-top { flex-wrap:wrap; }
+ #krusader-workflow .kw-nav-top .kw-follows { margin-left:0; }
+ #krusader-workflow .kw-nav-top button { margin-left:auto; }
+}
+@media(max-width:670px) {
+ #krusader-workflow .kw-workspace { flex-direction:column; }
+ #krusader-workflow .kw-navigation { width:100%; border-right:0; border-bottom:1px solid var(--kw-border); display:grid; grid-template-columns:1fr 1fr; gap:0 12px; padding:10px; }
+ #krusader-workflow .kw-nav-top { grid-column:1/-1; padding-bottom:9px; }
+ #krusader-workflow .kw-nav-heading { grid-column:1; }
+ #krusader-workflow .kw-pins { grid-column:1; }
+ #krusader-workflow .kw-tree-heading { grid-column:2; grid-row:2; margin-top:0; }
+ #krusader-workflow .kw-tree { grid-column:2; grid-row:3/5; }
+ #krusader-workflow .kw-nav-storage { grid-column:1; align-self:end; margin-top:12px; }
+ #krusader-workflow .kw-panels { grid-template-columns:minmax(0,1fr); }
+ #krusader-workflow .kw-panel + .kw-panel { border-left:0; border-top:2px solid var(--kw-border); }
+ #krusader-workflow .kw-panel + .kw-panel.kw-active { border-top-color:var(--kw-cursor); }
+ #krusader-workflow .kw-modified { display:table-cell; }
+ #krusader-workflow .kw-keybar { grid-template-columns:repeat(4,minmax(0,1fr)); }
+ #krusader-workflow .kw-keybar button { flex-direction:row; }
+ #krusader-workflow .kw-toolbar { gap:4px; padding:8px; }
+ #krusader-workflow .kw-toolbar button { padding:6px; font-size:12px; }
+ #krusader-workflow .kw-toolgroup { gap:0; }
+ #krusader-workflow .kw-toolgroup + .kw-toolgroup { border-left:0; padding-left:0; }
+ #krusader-workflow .kw-menus { display:none; }
+ #krusader-workflow .kw-window-buttons { margin-left:auto; }
+ #krusader-workflow .kw-viewbar { gap:5px; padding:7px 8px; }
+ #krusader-workflow .kw-view-switch { margin-left:0; }
+ #krusader-workflow .kw-settings-button { margin-left:auto; }
+ #krusader-workflow .kw-view-separator { display:none; }
+ #krusader-workflow .kw-statusbar { flex-wrap:wrap; gap:5px 10px; }
+ #krusader-workflow .kw-selection-legend { margin-left:0; }
+ #krusader-workflow .kw-statusbar button { margin-left:auto; }
+ #krusader-workflow .kw-compare-files { grid-template-columns:1fr; }
+ #krusader-workflow .kw-diff { grid-template-columns:1fr; }
+ #krusader-workflow .kw-settings { top:175px; }
+ #krusader-workflow .kw-overlay { align-items:flex-start; padding-top:160px; }
+}
+@media(max-width:380px) {
+ #krusader-workflow .kw-modified { display:none; }
+ #krusader-workflow .kw-nav-storage small { font-size:10px; }
+ #krusader-workflow .kw-thumbnails { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #krusader-workflow .kw-panel-label { font-size:9px; }
+ #krusader-workflow .kw-ext { width:39px; }
+ #krusader-workflow .kw-size { width:60px; }
+ #krusader-workflow .kw-commandline label { display:none; }
+}
+@media(pointer:coarse) {
+ #krusader-workflow button { min-height:44px; }
+ #krusader-workflow .kw-file-button { min-height:44px; }
+ #krusader-workflow .kw-table td { height:48px; }
+ #krusader-workflow input, #krusader-workflow select { font-size:16px; }
+}
+</style>
+<script>
+(() => {
+ const root=document.getElementById('krusader-workflow');
+ const icon=n=>`<i data-lucide="${n}" aria-hidden="true"></i>`;
+ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const thumbnails={"cad": "data:image/png;base64,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", "photo": "data:image/png;base64,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", "document": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAACWCAIAAABvmpKCAAAD80lEQVR4nO3dMU4bQRhA4SVKQyRQTJNT5AAp0qXJJXKBSLlBKm4QKRfgEmnoKDgANaULCkxkhN2m2MjZCLxae2c9M+9/X0eBNYOffs8uBh8tlk+NRPEq9wKklAxaKAYtFIMWikELxaCF8jr3AkaZnbzJvYSKPTyuci8hvVqDNuXx2p8hLGuPHEKpMmjHc0KwH2aVQUvbGLSaxXK9WK5zryINg9ZfjKwNWigGrf/UPqQNWigGLRSDFopBC8WghWLQQjFoodT69tHhPn/9kXsJafz6+S33EioAn9CYmhvWXqYDD1rRGLRQDFooBi0UeNCkOwOkvUznqMb/Pgr7M7jsbuf33S/PTo9zrWQ8+IRWNAYtFIMWikELxaCFYtBCMWihGLRQDFoo/Df4X17f5F7CQX368D73EnKCT+hoNTcht9wFD1rRwIMO+PobcMtd/DN08Cc4GviEVjQGLRSDFopBC4V/UYi5L+vV7RDwCY2puWHtZTrwoBUNPGjSyzRpL9Phn6HtIBT4hFY0Bi0UgxaKQQuFf1EY4fatF74b8AkdoeYmzDaHgAetaOBBB3ktDrLNIfhnaJ/sUOATWtEYtFAMWigGLRSDFopBC8WghWLQQjFooRi0UPi/+r77vcq9hEN79zbuR0c7oYVi0EIxaKEY9OGcX1ydX1zlXgUc/6KwBN2Onzf9/cvHwy6HzKD7tPGNDG5T8IuP83xs2/cYR4vlU+417Gx2ssNtqb1v243vrPsIw799/Ajf9bbd7fy+++XZ6fFO314Ug37B8xD7p2z/g6Qa8F39j2nQlZk06J4QBzaaKuWexzfobQz6n+EnhG3J7nfGSM6gKzNF0OMPFVMP5uEMujJpgx45Vgu8RxE56Oi37caP1c14LiFlxQ067XnXmgsRNOhyzrtKK+h7OdqOrZknaNCNNUPFDVpIBi0UgxaKQQuFf9su8p9AB+SEFopBC8WghWLQQjFooRi0UAxaKAYtFIMWCv83hZfXN7mXMDk//nkDPqEj1NyE2eYQ8KAVDTzoIK/FQbY5BP8M7ZMdCnxCKxqDFopBC8WghcK/KOTdo/Uytwd8QvNqbqCbSgUetKKBB418dUZuKhX+GdqnPxT4hFY0Bi0UgxaKQQuFf1FY8l1bL1iTg0/okmtuil9ejeBBKxp40IW/phe+vBrxz9BGEwp8QisagxaKQQvFoIVi0EIxaKEYtFAMWigGLZQqg354XOVeAsft/D73ElKqMmhpm1rfy9EO6dmJn+O9P9hsbtUadKvNerFc516ISuGRQyiEoM9Oj3MvgaP2HyYhaGmj7jP0RjtXPEyPUftsbkGCbjGeEo3hkUMoBi0UgxaKQQvlD9J3DIkAJ9QdAAAAAElFTkSuQmCC"};
+ const file=(id,name,kind,size,date,preview=null)=>({id,name,kind,size,date,preview});
+ const initial={
+  Downloads:[file('refs','Reference photos','folder','—','Yesterday'),file('profiles','Print profiles','folder','—','15 Nov'),file('bracket','bracket-v4.step','box','2.4 MB','10:42','cad'),file('lid','enclosure-lid.3mf','box','18.6 MB','10:38','cad'),file('guide','assembly-guide.pdf','file-text','1.2 MB','09:51','document'),file('ini','printer-profile.ini','file-cog','8 KB','Yesterday'),file('zip','workshop-parts.zip','archive','42.8 MB','Yesterday'),file('csv','dimensions.csv','sheet','12 KB','16 Nov'),file('image','reference-front.png','image','3.8 MB','15 Nov','photo'),file('readme','release-notes.md','file-text','4 KB','14 Nov'),file('hidden-dir','.staging','folder','—','Yesterday'),file('hidden-file','.project-config','file-cog','2 KB','14 Nov')],
+  Projects:[file('enclosure','Enclosure','folder','—','10:12'),file('mounts','Mounting brackets','folder','—','Yesterday'),file('reference','Reference','folder','—','16 Nov'),file('archive','Archive','folder','—','12 Nov'),file('assembly','assembly.step','box','12.3 MB','Yesterday','cad'),file('parts','parts-list.csv','sheet','16 KB','16 Nov'),file('notes','project-notes.md','file-text','6 KB','15 Nov'),file('readme','README.md','file-text','3 KB','14 Nov')],
+  Home:[file('desktop','Desktop','folder','—','Today'),file('documents','Documents','folder','—','Yesterday'),file('downloads','Downloads','folder','—','Today'),file('projects','Projects','folder','—','Today'),file('pictures','Pictures','folder','—','14 Nov'),file('config','.config','folder','—','Today')],
+  Documents:[file('manuals','Manuals','folder','—','Yesterday'),file('invoices','Invoices','folder','—','16 Nov'),file('checklist','workshop-checklist.pdf','file-text','640 KB','15 Nov','document')],
+  Workshop:[file('projects','Projects','folder','—','Today'),file('models','Models','folder','—','Yesterday'),file('reference','Reference photos','folder','—','16 Nov'),file('materials','materials.csv','sheet','4 KB','14 Nov')],
+  Data:[file('workshop','Workshop','folder','—','Today'),file('backups','Backups','folder','—','Yesterday'),file('photos','Photos','folder','—','16 Nov')],
+  Backup:[file('backup-workshop','Workshop backup','folder','—','Yesterday'),file('backup-docs','Documents backup','folder','—','15 Nov')],
+  Trash:[file('old','bracket-v2.step','box','1.8 MB','12 Nov','cad'),file('draft','draft-notes.md','file-text','2 KB','11 Nov')]
+ };
+ const drives={system:{label:'System (/)',space:'204.7 GB free',full:'204.7 GB free of 473 GB',start:'Home'},data:{label:'Data (/mnt/data)',space:'682 GB free',full:'682 GB free of 1 TB',start:'Data'},backup:{label:'USB Backup',space:'74 GB free',full:'74 GB free of 256 GB',start:'Backup'}};
+ const state={active:0,tree:true,hidden:false,command:false,modified:true,rowHeight:35,cursorColor:'#326fd1',markColor:'#b3393f',holdDelay:600,pins:['Downloads','Projects','Documents'],pinDrives:{Downloads:'system',Projects:'data',Documents:'system'},panes:[{dir:'Downloads',drive:'system',tabs:['Downloads','Home'],cursor:'guide',marks:['bracket','lid'],mode:'details',sort:1},{dir:'Projects',drive:'data',tabs:['Projects','Documents'],cursor:'assembly',marks:[],mode:'details',sort:1}],status:'2 files marked · selection stays until you clear it'};
+ const fs=structuredClone(initial);
+ let serial=0,dialogAction=null,contextTarget=null,previousFocus=null,press=null;
+ function restore(saved){if(!saved||saved.version!==2)return;['tree','hidden','command','modified'].forEach(k=>{if(typeof saved[k]==='boolean')state[k]=saved[k];});['cursorColor','markColor'].forEach(k=>{if(/^#[a-f\d]{6}$/i.test(saved[k]||''))state[k]=saved[k];});if(saved.rowHeight>=29&&saved.rowHeight<=44)state.rowHeight=saved.rowHeight;if([450,600,850].includes(saved.holdDelay))state.holdDelay=saved.holdDelay;if(Array.isArray(saved.pins))state.pins=saved.pins.filter(x=>fs[x]);if(saved.active===0||saved.active===1)state.active=saved.active;if(Array.isArray(saved.panes))saved.panes.slice(0,2).forEach((p,i)=>{if(fs[p.dir])state.panes[i].dir=p.dir;if(drives[p.drive])state.panes[i].drive=p.drive;if(p.mode==='details'||p.mode==='thumbnails')state.panes[i].mode=p.mode;if(Array.isArray(p.tabs))state.panes[i].tabs=[...new Set(p.tabs.filter(x=>fs[x]).concat(state.panes[i].dir))];if(Array.isArray(p.marks))state.panes[i].marks=p.marks.filter(x=>typeof x==='string');if(typeof p.cursor==='string')state.panes[i].cursor=p.cursor;});}
+ restore(window.openai?.widgetState?.privateContent);
+ function save(){window.openai?.setWidgetState?.({modelContent:{concept:'Krusader Commander workflow',tree:state.tree,hiddenFiles:state.hidden,commandLine:state.command,markedColor:state.markColor,cursorColor:state.cursorColor,rowHeight:state.rowHeight,views:state.panes.map(p=>p.mode),pinnedFolders:state.pins},privateContent:{version:2,...state,status:undefined}})?.catch(()=>{});}
+ const list=p=>(fs[p.dir]||[]).filter(f=>state.hidden||!f.name.startsWith('.'));
+ const current=p=>list(p).find(f=>f.id===p.cursor)||list(p)[0];
+ const marked=p=>list(p).filter(f=>p.marks.includes(f.id));
+ const operationFiles=p=>marked(p).length?marked(p):(current(p)?[current(p)]:[]);
+ const splitName=f=>{if(f.kind==='folder'||!f.name.includes('.')||f.name.startsWith('.')&&!f.name.slice(1).includes('.'))return [f.name,'—'];const dot=f.name.lastIndexOf('.');return [f.name.slice(0,dot),f.name.slice(dot+1)];};
+ function fullPath(p){return p.dir==='Trash'?'trash:/':p.drive==='data'?'/mnt/data/'+(p.dir==='Data'?'':p.dir==='Projects'?'Workshop/Projects':p.dir):p.drive==='backup'?'/media/user/Backup/'+(p.dir==='Backup'?'':p.dir):'/home/user/'+(p.dir==='Home'?'':p.dir);}
+ function setStatus(text){state.status=text;root.querySelector('.kw-status-message').textContent=text;}
+ function initIcons(){if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});}
+ function navigate(dir,side=state.active,drive=null){if(!fs[dir])fs[dir]=[];const p=state.panes[side];p.dir=dir;if(drive)p.drive=drive;p.cursor=list(p)[0]?.id||'';p.marks=[];if(!p.tabs.includes(dir))p.tabs.push(dir);state.active=side;state.status='Browsing '+fullPath(p);hideContext();paint();save();}
+ function rowMarkup(f,p,side,thumb=false){const isCurrent=f.id===current(p)?.id,isMarked=p.marks.includes(f.id);const [name,ext]=splitName(f);const classes=[isCurrent?'kw-current':'',isMarked?'kw-marked':'',f.name.startsWith('.')?'kw-hidden-entry':''].join(' ');const check=`<span class="kw-mark-indicator">${isMarked?icon('check'):isCurrent?icon('chevron-right'):''}</span>`;
+  if(thumb)return `<div class="kw-thumb ${classes}" data-entry="${esc(f.id)}" data-side="${side}" data-kind="${f.kind}" aria-selected="${isMarked}"><button type="button" data-file="${esc(f.id)}" data-side="${side}" aria-label="${esc(f.name)}${isMarked?', marked':''}${isCurrent?', current':''}">${isMarked?check:''}<span class="kw-thumb-image">${f.preview?`<img src="${thumbnails[f.preview]}" alt="${esc(f.name)} preview">`:icon(f.kind)}</span><span class="kw-file-name" data-tooltip="${esc(f.name)}">${esc(f.name)}</span></button></div>`;
+  return `<tr class="${classes}" data-entry="${esc(f.id)}" data-side="${side}" aria-selected="${isMarked}" ${isCurrent?'aria-current="true"':''}><td><button type="button" class="kw-file-button" data-file="${esc(f.id)}" data-side="${side}" aria-label="${esc(f.name)}${isMarked?', marked':''}${isCurrent?', current':''}">${check}<span class="kw-file-icon ${f.kind==='folder'?'kw-is-folder':''}">${icon(f.kind)}</span><span class="kw-file-name" data-tooltip="${esc(f.name)}">${esc(name)}</span></button></td><td class="kw-ext">${esc(ext)}</td><td class="kw-size">${f.size}</td><td class="kw-modified">${f.date}</td></tr>`;
+ }
+ function paintPanel(side){const p=state.panes[side],panel=root.querySelector(`[data-panel="${side}"]`),files=list(p),marks=marked(p);if(!files.some(f=>f.id===p.cursor))p.cursor=files[0]?.id||'';panel.classList.toggle('kw-active',side===state.active);
+  panel.innerHTML=`<nav class="kw-tabs" aria-label="${side===0?'Left':'Right'} folder tabs">${p.tabs.map(dir=>`<button type="button" class="kw-tab" data-tab="${esc(dir)}" data-side="${side}" aria-selected="${dir===p.dir}">${esc(dir)}</button>`).join('')}<button type="button" class="kw-tab-plus" data-new-tab="${side}" aria-label="New folder tab">${icon('plus')}</button></nav><div class="kw-drivebar">${icon('hard-drive')}<select data-drive="${side}" aria-label="${side===0?'Left':'Right'} panel drive">${Object.entries(drives).map(([k,d])=>`<option value="${k}" ${p.drive===k?'selected':''}>${d.label}</option>`).join('')}</select><span class="kw-free-space">${drives[p.drive].space}</span></div><div class="kw-path"><button type="button" data-home="${side}" aria-label="Go to home folder">${icon(p.dir==='Trash'?'trash-2':'house')}</button>${icon('chevron-right')}${p.dir==='Projects'?`<button type="button" data-location="Workshop" data-side="${side}">Workshop</button>${icon('chevron-right')}`:''}<span class="kw-folder-name">${esc(p.dir)}</span><span class="kw-panel-label">${side===state.active?'Active panel':'Other panel'}</span></div><div class="kw-file-area" data-file-area="${side}">${p.mode==='details'?`<table class="kw-table" aria-label="${side===0?'Left':'Right'} files"><thead><tr><th><button type="button" data-sort="${side}">Name ${icon('chevron-up')}</button></th><th class="kw-ext">Ext</th><th class="kw-size">Size</th><th class="kw-modified">Modified</th></tr></thead><tbody>${files.map(f=>rowMarkup(f,p,side)).join('')}</tbody></table>`:`<div class="kw-thumbnails">${files.map(f=>rowMarkup(f,p,side,true)).join('')}</div>`}${files.length?'':'<div class="kw-empty-label">This folder is empty</div>'}<div class="kw-file-empty" data-empty-space="${side}"></div></div><footer class="kw-panel-summary"><span class="${marks.length?'kw-marked-summary':''}">${marks.length?`${marks.length} marked · ${marks.reduce((sum,f)=>sum+(f.size.endsWith('MB')?parseFloat(f.size):0),0).toFixed(1)} MB`:`${files.length} items`}</span><span>${marks.length?`${files.length} items`:state.hidden?'Hidden files visible':'Hidden files off'}</span></footer>`;
+ }
+ function paintNavigation(){const p=state.panes[state.active];root.querySelector('.kw-follows').textContent=(state.active===0?'Left':'Right')+' panel';root.querySelector('.kw-pins').innerHTML=state.pins.map(dir=>`<div class="kw-pin-row ${dir===p.dir?'kw-here':''}"><button type="button" data-location="${esc(dir)}" data-target-drive="${state.pinDrives[dir]||'system'}">${icon(dir==='Downloads'?'download':dir==='Projects'?'folder-open':'folder')}<span>${esc(dir)}</span></button><button type="button" class="kw-unpin" data-unpin="${esc(dir)}" aria-label="Unpin ${esc(dir)}">${icon('pin-off')}</button></div>`).join('');
+  const treeButton=(label,dir,extra='')=>`<button type="button" data-location="${dir}" class="${p.dir===dir?'kw-here':''}" ${extra}>${icon('folder')}<span>${label}</span></button>`;
+  root.querySelector('.kw-tree').innerHTML=`<details open><summary>${icon('chevron-down')}${icon('hard-drive')}System (/)</summary><div class="kw-branch"><details open><summary>${icon('chevron-down')}${icon('house')}Home</summary><div class="kw-branch">${treeButton('Downloads','Downloads')}${treeButton('Documents','Documents')}${treeButton('Projects','Projects')}${state.hidden?treeButton('.config','Config'):''}</div></details></div></details><details ${p.drive==='data'?'open':''}><summary>${icon('chevron-down')}${icon('hard-drive')}Data</summary><div class="kw-branch">${treeButton('Workshop','Workshop','data-target-drive="data"')}${treeButton('Projects','Projects','data-target-drive="data"')}</div></details><details ${p.drive==='backup'?'open':''}><summary>${icon('chevron-down')}${icon('usb')}USB Backup</summary><div class="kw-branch">${treeButton('Backups','Backup','data-target-drive="backup"')}</div></details>`;
+  root.querySelector('.kw-nav-drive').textContent=drives[p.drive].label;root.querySelector('.kw-nav-free').textContent=drives[p.drive].full;
+ }
+ function paint(){root.style.setProperty('--kw-cursor',state.cursorColor);root.style.setProperty('--kw-mark',state.markColor);root.style.setProperty('--kw-row',state.rowHeight+'px');root.classList.toggle('kw-tree-hidden',!state.tree);root.classList.toggle('kw-no-modified',!state.modified);[0,1].forEach(paintPanel);paintNavigation();root.querySelector('[data-action="tree"]').setAttribute('aria-pressed',String(state.tree));root.querySelector('[data-action="hidden"]').setAttribute('aria-pressed',String(state.hidden));root.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===state.panes[state.active].mode)));root.querySelector('.kw-commandline').hidden=!state.command;root.querySelector('.kw-commandline label').textContent=fullPath(state.panes[state.active])+' $';root.querySelector('.kw-keybar .kw-copy span').textContent='Copy '+(state.active===0?'→':'←');root.querySelector('#kw-row-height').value=state.rowHeight;root.querySelector('output[for="kw-row-height"]').textContent=state.rowHeight+' px';root.querySelector('#kw-mark-color').value=state.markColor;root.querySelector('#kw-cursor-color').value=state.cursorColor;root.querySelector('#kw-show-hidden').checked=state.hidden;root.querySelector('#kw-show-command').checked=state.command;root.querySelector('#kw-show-modified').checked=state.modified;root.querySelector('#kw-hold-delay').value=state.holdDelay;root.querySelector('.kw-status-message').textContent=state.status;root.querySelector('.kw-title-context').textContent=state.panes[0].dir+' / '+state.panes[1].dir;initIcons();}
+ function focusCursor(){const p=state.panes[state.active];const b=[...root.querySelectorAll(`[data-panel="${state.active}"] [data-file]`)].find(b=>b.dataset.file===p.cursor);b?.focus({preventScroll:true});}
+ function moveCursor(side,id){state.active=side;state.panes[side].cursor=id;state.status=(side===0?'Left':'Right')+' panel · '+(current(state.panes[side])?.name||'empty')+' · '+marked(state.panes[side]).length+' marked';paint();focusCursor();save();}
+ function toggleMark(side,id){const p=state.panes[side];state.active=side;p.cursor=id;p.marks=p.marks.includes(id)?p.marks.filter(x=>x!==id):[...p.marks,id];state.status=marked(p).length+' marked · click or ↑ ↓ moves the cursor without clearing marks';paint();focusCursor();save();}
+ function hideContext(){root.querySelector('.kw-context').hidden=true;contextTarget=null;}
+ function closeSettings(){root.querySelector('.kw-settings').hidden=true;root.querySelector('.kw-settings-button').setAttribute('aria-expanded','false');}
+ function showContext(side,id,x,y){state.active=side;const p=state.panes[side],row=fs[p.dir].find(f=>f.id===id);contextTarget={side,dir:p.dir,ids:id?(marked(p).length?marked(p).map(f=>f.id):[id]):[],folder:!id};const menu=root.querySelector('.kw-context');const files=contextTarget.ids.map(i=>fs[p.dir].find(f=>f.id===i)).filter(Boolean);const label=!id?p.dir+' folder':files.length===1?files[0].name:files.length+' marked files';menu.innerHTML=`<div class="kw-context-title">${esc(label)}</div>${(!id?[['folder-plus','New folder','folder','F7'],['pin','Pin this folder','pin',''],['refresh-cw','Refresh','refresh','']]:[['external-link','Open','open','Enter'],['eye','View','viewfile','F3'],['pencil','Rename','rename','F2'],['copy','Copy to other panel','copy','F5'],['arrow-right-left','Move to other panel','move','F6'],['archive','Pack','pack',''],...(files.some(f=>f.kind==='archive')?[['package-open','Unpack','unpack','']]:[]),['trash-2','Move to Trash','delete','F8']]).map(([i,t,a,k])=>`<button type="button" role="menuitem" data-context-action="${a}">${icon(i)}${t}<span class="kw-shortcut">${k}</span></button>`).join('')}`;menu.hidden=false;const r=root.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(x-r.left,r.width-menu.offsetWidth-8))+'px';menu.style.top=Math.max(8,Math.min(y-r.top,r.height-menu.offsetHeight-8))+'px';paintPanel(side);paintNavigation();initIcons();menu.querySelector('button')?.focus({preventScroll:true});save();}
+ function closeDialog(){root.querySelector('.kw-overlay').hidden=true;dialogAction=null;if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});else focusCursor();}
+ function dialog(title,body,action=null,wide=false){previousFocus=document.activeElement;closeSettings();root.querySelector('.kw-context').hidden=true;const box=root.querySelector('.kw-dialog');box.classList.toggle('kw-wide-dialog',wide);box.innerHTML=`<div class="kw-dialog-heading">${icon(action==='compare'?'columns-2':action==='pack'?'archive':action==='unpack'?'package-open':'panels-top-left')}<h3 id="kw-dialog-title">${esc(title)}</h3><button type="button" data-close-dialog aria-label="Close dialog">${icon('x')}</button></div>${body}`;root.querySelector('.kw-overlay').hidden=false;dialogAction=action;initIcons();(box.querySelector('input,select')||box.querySelector('[data-confirm]')||box.querySelector('button'))?.focus();}
+ const buttons=(label,action)=>`<div class="kw-dialog-buttons"><button type="button" data-close-dialog>Cancel</button><button type="button" class="kw-primary" data-confirm="${action}">${label}</button></div>`;
+ function compareDialog(){const opts=side=>list(state.panes[side]).filter(f=>f.kind!=='folder').map(f=>`<option value="${esc(f.id)}" ${f.id===current(state.panes[side])?.id?'selected':''}>${esc(f.name)}</option>`).join('');dialog('Compare file contents',`<div class="kw-dialog-summary">KDiff3 · file comparison</div><div class="kw-compare-files"><div><label for="kw-compare-left">Left panel</label><select id="kw-compare-left">${opts(0)}</select></div><div><label for="kw-compare-right">Right panel</label><select id="kw-compare-right">${opts(1)}</select></div></div>${buttons('Compare','compare')}`,'compare');}
+ function act(action,explicit=null){const p=state.panes[state.active],target=state.panes[1-state.active];const files=explicit||operationFiles(p),names=files.map(f=>esc(f.name)).join('<br>');hideContext();
+  if(action==='tree'){state.tree=!state.tree;paint();save();return;}
+  if(action==='hidden'){state.hidden=!state.hidden;state.status=state.hidden?'Hidden files and folders are visible':'Hidden files and folders are hidden';paint();save();return;}
+  if(action==='view'){const box=root.querySelector('.kw-settings');box.hidden=!box.hidden;root.querySelector('.kw-settings-button').setAttribute('aria-expanded',String(!box.hidden));return;}
+  if(action==='close-settings'){closeSettings();return;}
+  if(action==='home'){navigate('Home');return;}
+  if(action==='up'){navigate(p.dir==='Projects'?'Workshop':p.drive==='data'?'Data':p.drive==='backup'?'Backup':'Home');return;}
+  if(action==='trash'){navigate('Trash');return;}
+  if(action==='refresh'){setStatus('Folder refreshed');return;}
+  if(action==='pin'){if(!state.pins.includes(p.dir))state.pins.push(p.dir);state.pinDrives[p.dir]=p.drive;state.status='Pinned '+p.dir;paint();save();return;}
+  if(action==='clear'){p.marks=[];state.status='Marks cleared · the blue cursor remains';paint();focusCursor();save();return;}
+  if(action==='terminal'){state.command=!state.command;paint();save();if(state.command)root.querySelector('#kw-command').focus();return;}
+  if(action==='compare'){compareDialog();return;}
+  if(action==='search'){dialog('Search files',`<label for="kw-search-name">File name contains</label><input id="kw-search-name" placeholder="e.g. bracket"><div class="kw-dialog-summary" style="margin-top:12px">Search in ${esc(fullPath(p))}</div>${buttons('Find files','search')}`,'search');return;}
+  if(action==='menu'){dialog('File commands',`<div class="kw-menu-list">${[['compare','columns-2','Compare file contents'],['pack','archive','Pack selected files'],['unpack','package-open','Unpack archive'],['search','search','Search files'],['pin','pin','Pin current folder'],['clear','list-x','Clear marked files']].map(([a,i,t])=>`<button type="button" data-dialog-command="${a}">${icon(i)}${t}</button>`).join('')}</div>`);return;}
+  if(action==='folder'){dialog('New folder',`<label for="kw-folder-name">Folder name</label><input id="kw-folder-name" value="New project">${buttons('Create folder','folder')}`,'folder');return;}
+  if(!files.length){setStatus('This folder is empty');return;}
+  if(action==='open'){const f=files[0];if(f.kind==='folder'){navigate(fs[f.name]?f.name:f.name);return;}action='viewfile';}
+  if(['copy','move','delete'].includes(action)){const title=action==='delete'?'Move to Trash':action==='copy'?'Copy to other panel':'Move to other panel';dialog(title,`<div class="kw-dialog-summary">${names}</div><div class="kw-dialog-route"><div><label>From</label>${esc(fullPath(p))}</div><div><label>To</label>${action==='delete'?'trash:/':esc(fullPath(target))}</div></div>${buttons(action==='delete'?'Move to Trash':action==='copy'?'Copy here':'Move here',action)}`,action);root.querySelector('.kw-dialog').dataset.operationIds=JSON.stringify(files.map(f=>f.id));return;}
+  if(action==='pack'){dialog('Pack files',`<div class="kw-dialog-summary">${files.length} ${files.length===1?'item':'items'} · ${names}</div><label for="kw-archive-name">Archive name</label><input id="kw-archive-name" value="workshop-files.zip"><label for="kw-archive-format">Format</label><select id="kw-archive-format"><option>ZIP</option><option>7z</option><option>tar.gz</option></select><label for="kw-archive-destination">Destination</label><select id="kw-archive-destination"><option value="other">Other panel · ${esc(target.dir)}</option><option value="current">Current panel · ${esc(p.dir)}</option></select>${buttons('Create archive','pack')}`,'pack');return;}
+  if(action==='unpack'){const archives=list(p).filter(f=>f.kind==='archive');if(!archives.length){setStatus('Choose an archive to unpack');return;}dialog('Unpack archive',`<label for="kw-unpack-archive">Archive</label><select id="kw-unpack-archive">${archives.map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('')}</select><label for="kw-unpack-destination">Destination</label><select id="kw-unpack-destination"><option value="other">Other panel · ${esc(target.dir)}</option><option value="current">Current panel · ${esc(p.dir)}</option></select>${buttons('Unpack','unpack')}`,'unpack');return;}
+  if(action==='rename'){dialog('Rename file',`<label for="kw-rename">Name</label><input id="kw-rename" value="${esc(files[0].name)}">${buttons('Rename','rename')}`,'rename');root.querySelector('.kw-dialog').dataset.operationIds=JSON.stringify([files[0].id]);return;}
+  if(action==='viewfile'||action==='edit'){const f=files[0];dialog(f.name,`<div class="kw-dialog-summary">${esc(fullPath(p))} · ${f.size}</div><div class="kw-preview">${f.preview?`<img src="${thumbnails[f.preview]}" alt="${esc(f.name)} preview">`:`<pre>${f.kind==='archive'?'Archive contents\n\nbracket.step\nassembly-guide.pdf\nparts-list.csv':f.name.endsWith('.csv')?'part,quantity,material\nbracket,4,PETG\nenclosure,1,PLA':f.name.endsWith('.ini')?'[printer]\nnozzle = 0.4\nlayer_height = 0.20\nmaterial = PETG':'# Workshop project\n\nAssembly notes and reference files.'}</pre>`}</div><div class="kw-dialog-buttons"><button type="button" data-close-dialog>Close</button></div>`);return;}
+ }
+ function confirm(action){const p=state.panes[state.active],target=state.panes[1-state.active];const box=root.querySelector('.kw-dialog');
+  if(action==='compare'){const a=fs[state.panes[0].dir].find(f=>f.id===root.querySelector('#kw-compare-left').value),b=fs[state.panes[1].dir].find(f=>f.id===root.querySelector('#kw-compare-right').value);if(!a||!b){setStatus('Choose one file in each panel');return;}const text=/\.(md|txt|csv|ini|cfg|json|py|cpp|h|step)$/i.test(a.name)&&/\.(md|txt|csv|ini|cfg|json|py|cpp|h|step)$/i.test(b.name);dialog('KDiff3 · '+a.name+' ↔ '+b.name,`<div class="kw-dialog-summary">${text?'Content comparison · illustrative preview':'These file types need a suitable viewer; this comparison preview does not parse binary content.'}</div>${text?`<div class="kw-diff"><div><span class="kw-diff-code">${esc(a.name)}</span><span class="kw-diff-code"># Workshop settings</span><span class="kw-diff-code kw-removed">revision = 3</span><span class="kw-diff-code kw-removed">clearance = 0.20</span><span class="kw-diff-code">material = PETG</span></div><div><span class="kw-diff-code">${esc(b.name)}</span><span class="kw-diff-code"># Workshop settings</span><span class="kw-diff-code kw-added">revision = 4</span><span class="kw-diff-code kw-added">clearance = 0.25</span><span class="kw-diff-code">material = PETG</span></div></div>`:''}<div class="kw-dialog-buttons"><button type="button" data-close-dialog>Close</button></div>`,null,true);return;}
+  if(action==='search'){const term=root.querySelector('#kw-search-name').value.toLowerCase();p.marks=list(p).filter(f=>term&&f.name.toLowerCase().includes(term)).map(f=>f.id);if(p.marks.length)p.cursor=p.marks[0];state.status=p.marks.length+' matches marked';}
+  if(action==='folder'){const name=root.querySelector('#kw-folder-name').value.trim()||'New project';fs[p.dir].push(file('new-'+(++serial),name,'folder','—','Just now'));state.status='Created '+name+' · preview only';}
+  if(action==='rename'){const ids=JSON.parse(box.dataset.operationIds||'[]');const f=fs[p.dir].find(f=>f.id===ids[0]);if(f)f.name=root.querySelector('#kw-rename').value.trim()||f.name;state.status='File renamed · preview only';}
+  if(action==='pack'){const format=root.querySelector('#kw-archive-format').value,raw=root.querySelector('#kw-archive-name').value.trim()||'archive.zip';const ext={ZIP:'zip','7z':'7z','tar.gz':'tar.gz'}[format];const name=raw.replace(/\.(zip|7z|tar\.gz)$/i,'')+'.'+ext;const dir=root.querySelector('#kw-archive-destination').value==='other'?target.dir:p.dir;fs[dir].push(file('archive-'+(++serial),name,'archive','8.6 MB','Just now'));state.status='Archive created in '+dir+' · preview only';}
+  if(action==='unpack'){const dir=root.querySelector('#kw-unpack-destination').value==='other'?target.dir:p.dir;fs[dir].push(file('unpacked-'+(++serial),'workshop-parts','folder','—','Just now'));state.status='Archive unpacked to '+dir+' · preview only';}
+  if(['copy','move','delete'].includes(action)){const ids=JSON.parse(box.dataset.operationIds||'[]'),selected=fs[p.dir].filter(f=>ids.includes(f.id));const dir=action==='delete'?'Trash':target.dir;selected.forEach(f=>{fs[dir].push({...f,id:f.id+'-copy-'+(++serial),date:'Just now'});});if(action!=='copy'){fs[p.dir]=fs[p.dir].filter(f=>!ids.includes(f.id));p.marks=p.marks.filter(id=>!ids.includes(id));}state.status=selected.length+' items '+(action==='copy'?'copied':action==='move'?'moved':'sent to Trash')+' · preview only';}
+  closeDialog();paint();focusCursor();save();
+ }
+ root.addEventListener('click',e=>{if(e.button!==0)return;const b=e.target.closest('button'),entry=e.target.closest('[data-entry]');if(!b&&!entry){if(!e.target.closest('.kw-context'))hideContext();const panel=e.target.closest('[data-panel]');if(panel){state.active=+panel.dataset.panel;paint();save();}return;}
+  if(b?.hasAttribute('data-close-dialog')){closeDialog();return;}
+  if(b?.dataset.confirm){confirm(b.dataset.confirm);return;}
+  if(b?.dataset.contextAction){const ctx=contextTarget;const files=ctx.ids.map(id=>fs[ctx.dir].find(f=>f.id===id)).filter(Boolean);act(b.dataset.contextAction,files);return;}
+  if(b?.dataset.dialogCommand){const action=b.dataset.dialogCommand;closeDialog();act(action);return;}
+  if(b?.dataset.action){act(b.dataset.action);return;}
+  if(b?.dataset.mode){state.panes[state.active].mode=b.dataset.mode;state.status=(state.active===0?'Left':'Right')+' panel · '+b.dataset.mode+' view';paint();save();return;}
+  if(b?.dataset.location){navigate(b.dataset.location,b.hasAttribute('data-side')?+b.dataset.side:state.active,b.dataset.targetDrive||null);return;}
+  if(b?.dataset.unpin){state.pins=state.pins.filter(dir=>dir!==b.dataset.unpin);paint();save();return;}
+  if(b?.dataset.tab){navigate(b.dataset.tab,+b.dataset.side);return;}
+  if(b?.hasAttribute('data-home')){navigate('Home',+b.dataset.home,'system');return;}
+  if(b?.hasAttribute('data-new-tab')){navigate('Home',+b.dataset.newTab,'system');return;}
+  if(b?.hasAttribute('data-sort')){const p=state.panes[+b.dataset.sort];p.sort=-p.sort;fs[p.dir].sort((a,b)=>a.kind==='folder'&&b.kind!=='folder'?-1:a.kind!=='folder'&&b.kind==='folder'?1:p.sort*a.name.localeCompare(b.name));paint();save();return;}
+  if(entry){hideContext();moveCursor(+entry.dataset.side,entry.dataset.entry);}
+ });
+ root.addEventListener('dblclick',e=>{const row=e.target.closest('[data-entry]');if(row){state.active=+row.dataset.side;state.panes[state.active].cursor=row.dataset.entry;const f=current(state.panes[state.active]);if(f?.kind==='folder')navigate(f.name);else act('viewfile',[f]);}});
+ root.addEventListener('pointerdown',e=>{if(e.button!==2)return;const row=e.target.closest('[data-entry]'),area=e.target.closest('[data-file-area]');if(!area)return;e.preventDefault();hideContext();const side=+(row?.dataset.side??area.dataset.fileArea),id=row?.dataset.entry||null;press={side,id,x:e.clientX,y:e.clientY,long:false,timer:null};const thisPress=press;press.timer=setTimeout(()=>{if(press!==thisPress)return;press.long=true;showContext(side,id,e.clientX,e.clientY);},state.holdDelay);});
+ window.addEventListener('pointerup',e=>{if(e.button!==2||!press)return;clearTimeout(press.timer);const {side,id,long}=press;press=null;if(!long&&id)toggleMark(side,id);});
+ window.addEventListener('pointermove',e=>{if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10){clearTimeout(press.timer);press=null;}});
+ window.addEventListener('pointercancel',()=>{if(press)clearTimeout(press.timer);press=null;});
+ root.addEventListener('contextmenu',e=>{if(e.target.closest('[data-file-area]'))e.preventDefault();});
+ root.addEventListener('change',e=>{const t=e.target;if(t.hasAttribute('data-drive')){navigate(drives[t.value].start,+t.dataset.drive,t.value);return;}if(t.id==='kw-show-hidden')state.hidden=t.checked;else if(t.id==='kw-show-command')state.command=t.checked;else if(t.id==='kw-show-modified')state.modified=t.checked;else if(t.id==='kw-hold-delay')state.holdDelay=+t.value;else return;paint();save();});
+ root.addEventListener('input',e=>{const t=e.target;if(t.id==='kw-row-height')state.rowHeight=+t.value;else if(t.id==='kw-mark-color')state.markColor=t.value;else if(t.id==='kw-cursor-color')state.cursorColor=t.value;else return;paint();save();});
+ root.addEventListener('keydown',e=>{if(e.key==='Escape'){hideContext();closeSettings();if(!root.querySelector('.kw-overlay').hidden)closeDialog();return;}
+  if(!root.querySelector('.kw-overlay').hidden){if(e.key==='Tab'){const controls=[...root.querySelector('.kw-dialog').querySelectorAll('button,input,select')],first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}return;}
+  if(e.target.matches('input,select')){if(e.key==='Enter'&&e.target.id==='kw-command'){e.preventDefault();setStatus('Command preview: '+e.target.value);}return;}
+  if(e.ctrlKey&&e.key.toLowerCase()==='h'){e.preventDefault();act('hidden');return;}
+  if(e.ctrlKey&&e.key.toLowerCase()==='a'){e.preventDefault();const p=state.panes[state.active];p.marks=list(p).map(f=>f.id);paint();focusCursor();save();return;}
+  const p=state.panes[state.active],files=list(p),index=Math.max(0,files.findIndex(f=>f.id===p.cursor));
+  if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)&&e.target.closest('[data-file]')){e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?files.length-1:Math.max(0,Math.min(files.length-1,index+(e.key==='ArrowDown'?1:-1)));if(files[next])moveCursor(state.active,files[next].id);return;}
+  if((e.code==='Space'||e.key==='Insert')&&e.target.closest('[data-file]')){e.preventDefault();if(current(p))toggleMark(state.active,current(p).id);return;}
+  if((e.shiftKey&&e.key==='F10'||e.key==='ContextMenu')&&e.target.closest('[data-file]')){e.preventDefault();const r=e.target.getBoundingClientRect();showContext(state.active,p.cursor,r.x+30,r.y+r.height);return;}
+  if(e.key==='Tab'&&!e.shiftKey&&e.target.closest('[data-file]')){e.preventDefault();state.active=1-state.active;paint();focusCursor();save();return;}
+  const keyMap={F2:'rename',F3:'viewfile',F4:'edit',F5:'copy',F6:'move',F7:'folder',F8:'delete',F9:'terminal',Delete:'delete'};
+  if(keyMap[e.key]){e.preventDefault();act(keyMap[e.key]);return;}
+  if(e.key==='Enter'&&e.target.closest('[data-file]')){e.preventDefault();act('open',[current(p)]);}
+ });
+ window.addEventListener('openai:set_globals',e=>{const saved=e.detail?.globals?.widgetState?.privateContent;if(saved){restore(saved);paint();}});
+ paint();
+ if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:()=>{paint();save();}});tweak.addSlider(state,'rowHeight',{label:'Row height',min:29,max:44,unit:'px'});tweak.addColorPicker(state,'cursorColor',{label:'Cursor color',reference:'--kw-cursor'});tweak.addColorPicker(state,'markColor',{label:'Marked file color',reference:'--kw-mark'});tweak.addToggle(state,'tree',{label:'Folder tree'});}
+})();
+</script>
