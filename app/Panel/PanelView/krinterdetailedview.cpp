@@ -7,6 +7,7 @@
 */
 
 #include "krinterdetailedview.h"
+#include "../panerotheme.h"
 
 // QtCore
 #include <QDir>
@@ -405,6 +406,19 @@ void KrInterDetailedView::drawRow(QPainter *painter, const QStyleOptionViewItem 
                                   const QModelIndex &index) const
 {
     QTreeView::drawRow(painter, options, index);
+    if (PaneroTheme::usePaneroColors()) {
+        // Panero: solid frame + accent bar across the whole cursor row (grey when the
+        // panel is inactive), replacing the dotted focus rectangle
+        const QModelIndex current = currentIndex();
+        if (current.isValid() && current.row() == index.row()) {
+            const int left = -header()->offset();
+            const QRect r(qMax(options.rect.left(), left), options.rect.y(),
+                          qMin(header()->length(), viewport()->width() - qMax(options.rect.left(), left)),
+                          options.rect.height());
+            PaneroTheme::paintCurrentFrame(painter, r, _focused);
+        }
+        return;
+    }
     // (may) draw dashed line border around current item row. This is done internally in
     // QTreeView::drawRow() only when panel is focused, we have to repeat it here.
     if (index == currentIndex() && drawCurrent()) {

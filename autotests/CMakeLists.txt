@@ -7,3 +7,8 @@ ecm_add_test(paneroimporttest.cpp ../app/paneroimport.cpp
     TEST_NAME paneroimporttest
     LINK_LIBRARIES Qt5::Test KF5::ConfigCore KF5::I18n KF5::WidgetsAddons)
 target_include_directories(paneroimporttest PRIVATE ${CMAKE_SOURCE_DIR}/app)
+
+ecm_add_test(commandergesturetest.cpp ../app/Panel/PanelView/commandergesture.cpp
+    TEST_NAME commandergesturetest
+    LINK_LIBRARIES Qt5::Test Qt5::Core)
+target_include_directories(commandergesturetest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel/PanelView)

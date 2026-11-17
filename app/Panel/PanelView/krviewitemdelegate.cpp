@@ -8,6 +8,12 @@
 #include "krviewitemdelegate.h"
 
 #include "krviewproperties.h"
+#include "listmodel.h"
+#include "../panerotheme.h"
+
+#include <QAbstractItemView>
+#include <QTreeView>
+#include <QHeaderView>
 #include "../krglobal.h"
 #include "../listpanel.h"
 #include "../krcolorcache.h"
@@ -32,14 +38,71 @@ void KrViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &op
 {
     QStyleOptionViewItem opt = option;
     opt.state &= ~QStyle::State_Selected;
+    const bool panero = PaneroTheme::usePaneroColors();
+    if (panero) {
+        // Panero draws a solid cursor-row frame instead of the style's dotted focus rect
+        opt.state &= ~QStyle::State_HasFocus;
+    }
     _dontDraw = (_currentlyEdited == index.row()) && (index.column() == KrViewProperties::Ext);
+    _paintIndex = index;
+    _decorationDrawn = false;
+    if (panero) {
+        // leave room for the cursor accent bar in the first visible column of the detailed view
+        const auto *tree = qobject_cast<const QTreeView *>(option.widget);
+        if (tree) {
+            const QHeaderView *header = tree->header();
+            int first = -1;
+            for (int v = 0; v < header->count() && first < 0; ++v) {
+                const int logical = header->logicalIndex(v);
+                if (!header->isSectionHidden(logical))
+                    first = logical;
+            }
+            if (index.column() == first) {
+                const QVariant bg = index.data(Qt::BackgroundRole);
+                if (bg.canConvert<QBrush>())
+                    painter->fillRect(option.rect, bg.value<QBrush>());
+                opt.rect.setLeft(opt.rect.left() + 5);
+            }
+        }
+    }
     QItemDelegate::paint(painter, opt, index);
+    _paintIndex = QModelIndex();
+
+    // Item-based views (brief/thumbnail mode) draw the cursor frame per item;
+    // the detailed view draws it across the whole row in drawRow().
+    if (panero) {
+        const auto *view = qobject_cast<const QAbstractItemView *>(option.widget);
+        if (view && !qobject_cast<const QTreeView *>(view) && view->currentIndex() == index)
+            PaneroTheme::paintCurrentFrame(painter, option.rect, index.data(ListModel::ActivePanelRole).toBool());
+    }
+}
+
+void KrViewItemDelegate::drawDecoration(QPainter *painter, const QStyleOptionViewItem &option, const QRect &rect,
+                                        const QPixmap &pixmap) const
+{
+    QItemDelegate::drawDecoration(painter, option, rect, pixmap);
+    if (pixmap.isNull() || !_paintIndex.isValid())
+        return;
+    _decorationDrawn = true;
+    if (PaneroTheme::usePaneroColors() && PaneroTheme::markIndicator()
+            && _paintIndex.data(ListModel::MarkedRole).toBool())
+        PaneroTheme::paintMarkIndicator(painter, QRectF(rect));
 }
 
 void KrViewItemDelegate::drawDisplay(QPainter * painter, const QStyleOptionViewItem & option, const QRect & rect, const QString & text) const
 {
-    if (!_dontDraw)
-        QItemDelegate::drawDisplay(painter, option, rect, text);
+    if (_dontDraw)
+        return;
+    QRect textRect = rect;
+    // no icon shown (icons disabled): put the mark indicator in front of the name
+    if (!_decorationDrawn && _paintIndex.isValid() && _paintIndex.column() == KrViewProperties::Name
+            && PaneroTheme::usePaneroColors() && PaneroTheme::markIndicator()
+            && _paintIndex.data(ListModel::MarkedRole).toBool()) {
+        const int d = qMin(rect.height(), option.fontMetrics.height());
+        PaneroTheme::paintMarkIndicator(painter, QRectF(rect.left(), rect.center().y() - d / 2.0, d, d));
+        textRect.setLeft(rect.left() + d + 3);
+    }
+    QItemDelegate::drawDisplay(painter, option, textRect, text);
 }
 
 QWidget * KrViewItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &sovi, const QModelIndex &index) const

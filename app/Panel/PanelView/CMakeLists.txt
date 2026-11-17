@@ -2,6 +2,7 @@ set(PanelView_SRCS
     krinterbriefview.cpp
     krinterdetailedview.cpp
     krinterview.cpp
+    commandergesture.cpp
     krmousehandler.cpp
     krselectionmode.cpp
     krsort.cpp

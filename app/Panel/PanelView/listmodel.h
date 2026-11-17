@@ -25,6 +25,13 @@ class KrViewProperties;
  */
 class ListModel: public QAbstractListModel
 {
+public:
+    /// Extra data roles used by Panero's item painting
+    enum PaneroRoles {
+        MarkedRole = Qt::UserRole + 100, ///< bool: the item is marked (persistent selection)
+        ActivePanelRole                  ///< bool: the view belongs to the active panel
+    };
+
     Q_OBJECT
 
 public:

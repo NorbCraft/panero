@@ -16,6 +16,7 @@
 #include <QTabWidget>
 #include <QFrame>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -599,18 +600,34 @@ void KgPanel::setupMouseModeTab()
 
     KONFIGURATOR_NAME_VALUE_TIP mouseSelection[] = {
         //     name           value          tooltip
+        { i18n("Panero Commander Mode"), "5", i18n("The cursor (current row) and the marked files are independent. Left click and the arrow keys only move the cursor and never clear marks. A short right click, Space or Insert toggles a mark; Ctrl+click and Shift+click mark too. Holding the right mouse button opens the context menu without changing marks.") },
         { i18n("Krusader Mode"), "0", i18n("Both keys allow selecting files. To select more than one file, hold the Ctrl key and click the left mouse button. Right-click menu is invoked using a short click on the right mouse button.") },
         { i18n("Konqueror Mode"), "1", i18n("Pressing the left mouse button selects files - you can click and select multiple files. Right-click menu is invoked using a short click on the right mouse button.") },
         { i18n("Total-Commander Mode"), "2", i18n("The left mouse button does not select, but sets the current file without affecting the current selection. The right mouse button selects multiple files and the right-click menu is invoked by pressing and holding the right mouse button.") },
         { i18n("Ergonomic Mode"), "4", i18n("The left mouse button does not select, but sets the current file without affecting the current selection. The right mouse button invokes the context-menu. You can select with Ctrl key and the left button.") },
         { i18n("Custom Selection Mode"), "3", i18n("Design your own selection mode.") }
     };
-    mouseRadio = createRadioButtonGroup("Look&Feel", "Mouse Selection", "0", 1, 5, mouseSelection, 5, mouseGeneralGroup, true, PAGE_MOUSE);
+    mouseRadio = createRadioButtonGroup("Look&Feel", "Mouse Selection", QString::number(_MouseSelection), 1, 6, mouseSelection, 6, mouseGeneralGroup, true, PAGE_MOUSE);
     mouseRadio->layout()->setContentsMargins(0, 0, 0, 0);
     mouseGeneralGrid->addWidget(mouseRadio, 0, 0);
 
     for (int i = 0; i != mouseRadio->count(); i++)
         connect(mouseRadio->find(i), &QRadioButton::clicked, this, &KgPanel::slotSelectionModeChanged);
+
+    // hold time for the context menu (Panero Commander / Total Commander / custom modes)
+    auto *holdBox = new QWidget(mouseGeneralGroup);
+    auto *holdLayout = new QHBoxLayout(holdBox);
+    holdLayout->setContentsMargins(0, 6, 0, 0);
+    auto *holdLabel = new QLabel(i18n("Hold right button for context menu (ms):"), holdBox);
+    holdLayout->addWidget(holdLabel);
+    KonfiguratorSpinBox *holdSpin = createSpinBox("Look&Feel", "Context Menu Hold Delay", _ContextMenuHoldDelay,
+                                                  _ContextMenuHoldDelayMin, _ContextMenuHoldDelayMax, holdLabel, holdBox, true,
+                                                  i18n("How long the right mouse button must be held to open the context menu. A shorter click toggles the mark of the file."),
+                                                  PAGE_MOUSE);
+    holdSpin->setSingleStep(50);
+    holdLayout->addWidget(holdSpin);
+    holdLayout->addStretch();
+    mouseGeneralGrid->addWidget(holdBox, 1, 0);
 
     mouseLayout->addWidget(mouseGeneralGroup, 0, 0);
 
@@ -665,13 +682,16 @@ void KgPanel::setupMouseModeTab()
          i18n("If checked, pressing Insert will select the current item, and move down to the next item.\nOtherwise, current item is not changed.") },
         {"Custom Selection Mode",  "Immediate Context Menu",  _ImmediateContextMenu,
          i18n("Right clicking pops context menu immediately"), true,
-         i18n("If checked, right clicking will result in an immediate showing of the context menu.\nOtherwise, user needs to click and hold the right mouse button for 500ms.") },
+         i18n("If checked, right clicking will result in an immediate showing of the context menu.\nOtherwise, user needs to click and hold the right mouse button (see the hold time setting).") },
         {"Custom Selection Mode",  "Reset Selection Items", _ResetSelectionItems,
          i18n("A plain mouse button resets selection"), true,
          i18n("Reset selection on a mouse click without modifiers (i.e. Shift or Ctrl).\nSelection with Shift/Ctrl for the mouse button have to be enabled for this setting to work.") },
+        {"Custom Selection Mode",  "Deferred Right Toggle", _DeferredRightToggle,
+         i18n("Short right click toggles, holding opens the menu"), true,
+         i18n("If checked, a short right click toggles the mark of the file on release, and holding the right button opens the context menu without changing marks.") },
     };
 
-    mouseCheckboxes = createCheckBoxGroup(1, 0, mouseCheckboxesParam, 12 /*count*/, mouseDetailGroup, PAGE_MOUSE);
+    mouseCheckboxes = createCheckBoxGroup(1, 0, mouseCheckboxesParam, 13 /*count*/, mouseDetailGroup, PAGE_MOUSE);
     mouseDetailGrid->addWidget(mouseCheckboxes, 1, 0);
 
     for (int i = 0; i < mouseCheckboxes->count(); i++)
@@ -828,6 +848,7 @@ void KgPanel::slotSelectionModeChanged()
     mouseCheckboxes->find("Insert Moves Down")->setChecked(selectionMode->insertMovesDown());
     mouseCheckboxes->find("Immediate Context Menu")->setChecked(selectionMode->showContextMenu() == -1);
     mouseCheckboxes->find("Reset Selection Items")->setChecked(selectionMode->resetSelectionItems());
+    mouseCheckboxes->find("Deferred Right Toggle")->setChecked(selectionMode->deferRightButtonToggle());
 }
 
 void KgPanel::slotMouseCheckBoxChanged()

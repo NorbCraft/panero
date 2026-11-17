@@ -42,3 +42,23 @@ done, outcome, next step.
 - Recorded owner's account boundary rule in `AGENTS.md`.
 - Waiting on owner: bootstrap script, then `gh auth login --web` (Firefox
   session makes approval a single click + one-time code).
+
+## 2026-11-17 — Claude Code (Opus 5.5) — identity merged, commander input
+
+- Owner asked to base on the latest Krusader; re-checked 2.9.0/master need
+  KF6 (+Qt 6.7 for master), unavailable on noble. Owner chose 2.8.1 + backports
+  (D-007). Backport analysis running in a background subagent (result to be
+  written to dev/BACKPORTS.md).
+- feature/identity: identity, coexistence (private KIO plugin dir, verified at
+  runtime with distro Krusader installed), icon, settings import + test,
+  rebranded strings/catalogs, handbook/man, CI. PR #1 merged (CI green).
+- feature/commander-input: Panero Commander mode, CommanderGesture state
+  machine + unit tests, background menu, marked-target header, Menu/Shift+F10,
+  Panero colour scheme (light/dark defaults, stripes, red marks + check badge,
+  blue cursor-row frame with accent bar, grey in inactive panel), no dotted
+  focus rect, default window ~1280x800.
+- Verified headless (Xvfb + xdotool): left click keeps marks, short right click
+  toggles, hold opens native menu w/o toggling, Escape + release no double
+  trigger, arrows keep marks.
+- Found: katepart missing on a clean system triggers a startup warning → the
+  .deb must depend on ktexteditor-katepart.

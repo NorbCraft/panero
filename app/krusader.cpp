@@ -8,6 +8,9 @@
 
 #include "krusader.h"
 
+#include <QGuiApplication>
+#include <QScreen>
+
 // QtCore
 #include <QDir>
 #include <QDateTime>

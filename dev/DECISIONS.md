@@ -75,3 +75,42 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   `v2.9.0..upstream/master` that apply to KF5 (tracked in PLAN Phase 1b and
   `dev/BACKPORTS.md`), each as a separate commit referencing the upstream
   commit hash.
+
+## D-008 — Rebranding scope for strings and catalogs (2026-11-17, accepted)
+
+- User-visible translatable strings say "Panero"; the same substitution is
+  applied to msgid/msgstr in `po/*/panero.po` (renamed from krusader.po) so
+  translations keep working. Kept: credits, "Krusader Krew", upstream behaviour
+  names ("Krusader Mode", "Krusader" sort method), the fork statement.
+- Internal identifiers stay (class names, action names like `root krusader`,
+  config keys, `krarc:` protocol) for compatibility with imported settings and
+  to keep upstream merges feasible.
+- Handbook content stays upstream (describes Krusader 2.8); it is installed as
+  `help:/panero`. Translated man pages are not shipped.
+- Known limitation: transliterated or inflected brand names in some
+  translations may still read "Krusader".
+
+## D-009 — Commander input model (2026-11-17, accepted)
+
+- New selection mode 5 "Panero Commander Mode", default for new profiles;
+  the upstream modes stay selectable (Configure > Panel > Mouse).
+- Cursor (current row) and marks are independent: left click / arrows /
+  focus / panel switches never clear marks. Short right click, Space, Insert
+  toggle; Ctrl+click toggles, Shift+click marks a range (upstream behaviour).
+  Space does not calculate folder size in this mode (avoids blocking on large
+  or remote folders); the custom mode can enable it.
+- Right button state machine (`CommanderGesture`, unit tested): toggle on
+  release of a short click; hold ≥ "Context Menu Hold Delay" (default 600 ms,
+  200–3000) opens the native Krusader context menu without toggling; moving
+  beyond the drag distance becomes a sweep that marks/unmarks the range (as in
+  Total Commander) and never opens the menu; focus loss / window deactivation /
+  hide / drag cancel the gesture.
+- Menu targets: marked set if any marks exist (also when the held row itself is
+  unmarked — the spec's "applicable marked set"; the menu then starts with a
+  disabled "Marked: N items" line so the target is explicit), otherwise the
+  item under the pointer. Empty space or ".." → folder background menu even
+  when marks exist.
+- Keyboard: Menu key and Shift+F10 open the context menu. Upstream bound
+  Shift+F10 to the "All Files" view filter; that filter stays in the View
+  menu without a default shortcut.
+- "Unselect All" (Alt+Minus) is labelled "Clear All Marks".
