@@ -1,0 +1,23 @@
+# Panero is distributed through GitHub Releases, not uploaded to the Debian
+# archive, so there is no ITP bug for the first changelog entry to close.
+panero: initial-upload-closes-no-bugs [usr/share/doc/panero/changelog.Debian.gz:*]
+
+# The architecture-independent part is the handbook (8 languages) and 51
+# translations. A separate arch:all panero-data package is not worth the
+# extra download for a single amd64 .deb published on GitHub Releases.
+panero: arch-dep-package-has-big-usr-share *
+
+# The license texts used by the source tree are installed on purpose next to
+# LICENSING.md, which refers to them (owner requirement: license texts in the
+# installed package). debian/copyright points to common-licenses as usual.
+panero: extra-license-file [usr/share/doc/panero/LICENSES/*]
+
+# Upstream Krusader installs this note next to the Total Commander keymap in
+# the application data directory, where it accompanies the keymap file.
+panero: package-contains-documentation-outside-usr-share-doc [usr/share/panero/total_commander.keymap.info]
+
+# Not user-visible text: configuration keys ("Entrys", "Differents Button",
+# "Show Differents") inherited from Krusader. Renaming them would break
+# reading existing and imported settings.
+panero: spelling-error-in-binary Differents Different [usr/bin/panero]
+panero: spelling-error-in-binary Entrys Entries [usr/bin/panero]

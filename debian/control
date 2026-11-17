@@ -1,0 +1,101 @@
+Source: panero
+Section: utils
+Priority: optional
+Maintainer: Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.16),
+               extra-cmake-modules (>= 5.68),
+               gettext,
+               libacl1-dev,
+               libattr1-dev,
+               libkf5archive-dev,
+               libkf5bookmarks-dev,
+               libkf5codecs-dev,
+               libkf5completion-dev,
+               libkf5config-dev,
+               libkf5coreaddons-dev,
+               libkf5doctools-dev,
+               libkf5guiaddons-dev,
+               libkf5i18n-dev,
+               libkf5iconthemes-dev,
+               libkf5itemviews-dev,
+               libkf5kio-dev,
+               libkf5notifications-dev,
+               libkf5parts-dev,
+               libkf5solid-dev,
+               libkf5textwidgets-dev,
+               libkf5wallet-dev,
+               libkf5widgetsaddons-dev,
+               libkf5windowsystem-dev,
+               libkf5xmlgui-dev,
+               ninja-build,
+               pkg-config,
+               qtbase5-dev,
+               qtbase5-dev-tools,
+               zlib1g-dev,
+Standards-Version: 4.6.2
+Homepage: https://github.com/NorbCraft/panero
+Vcs-Browser: https://github.com/NorbCraft/panero
+Vcs-Git: https://github.com/NorbCraft/panero.git
+Rules-Requires-Root: no
+
+Package: panero
+Architecture: any
+# kio/kinit: KIO workers (kioslave5, file, trash, ...) and klauncher, needed
+#   for every file operation; mirrors the Ubuntu krusader package.
+# ktexteditor-katepart: the internal editor (F4) is the Kate text editor part;
+#   without it Panero warns on first start and cannot edit files.
+# breeze-icon-theme: Panero uses KDE icon names and falls back to Breeze; on
+#   non-KDE desktops (Zorin/GNOME) toolbars and menus lose most icons without it.
+Depends: breeze-icon-theme,
+         kinit,
+         kio,
+         ktexteditor-katepart,
+         ${misc:Depends},
+         ${shlibs:Depends},
+# kio-extras: sftp/smb/fish/man/... protocols and the basic thumbnailers;
+# kdegraphics-thumbnailers, ffmpegthumbs, kimageformat-plugins: PDF/RAW, video
+#   and extra image format previews (same set the Ubuntu dolphin package recommends);
+# kde-cli-tools: provides kdesu for "Start Root Mode Panero" and root user actions;
+# packagekit: lets Panero offer to install KDiff3 through the system's
+#   PackageKit/polkit flow when it is missing.
+Recommends: ffmpegthumbs,
+            kde-cli-tools,
+            kdegraphics-thumbnailers,
+            kimageformat-plugins,
+            kio-extras,
+            packagekit,
+# Optional helpers detected at runtime (mirrors the Ubuntu krusader package's
+# Suggests with noble package names). KDiff3 stays optional by design.
+Suggests: 7zip,
+          arj,
+          ark,
+          bzip2,
+          cpio,
+          hashdeep,
+          kate,
+          kdiff3,
+          kompare | xxdiff,
+          konsole,
+          krename,
+          lhasa,
+          okteta,
+          rpm,
+          unace,
+          unrar | unrar-free | rar,
+          unzip,
+          zip,
+Description: twin-panel (commander-style) file manager based on Krusader
+ Panero is a native twin-panel file manager for Linux with a workflow familiar
+ to Total Commander and Midnight Commander users. It keeps the file-management
+ engine of Krusader: tabbed panels, keyboard-driven operation, advanced
+ search, a directory synchronizer, folder comparison, disk usage analysis,
+ a built-in viewer and editor, user actions, bookmarks, and transparent
+ handling of archives and remote locations through KIO.
+ .
+ Panero is an independent fork of Krusader. It is not affiliated with or
+ endorsed by KDE or the Krusader maintainers.
+ .
+ The package installs next to the krusader package without sharing files or
+ settings; Panero keeps its configuration in ~/.config/panerorc and
+ ~/.local/share/panero.

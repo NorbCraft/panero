@@ -1,0 +1,37 @@
+#!/usr/bin/make -f
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Panero is packaged from its own upstream repository (debian/ lives in the
+# source tree). Source format is 3.0 (quilt) rather than native because the
+# version carries a Debian revision (0.1.0~preview.1-1, dev/DECISIONS.md
+# D-003); see debian/README.source.
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+ifneq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+PANERO_BUILD_TESTING = OFF
+else
+PANERO_BUILD_TESTING = ON
+endif
+
+%:
+	dh $@ --buildsystem=cmake+ninja
+
+# RelWithDebInfo matches CI and the documented upstream build; the compiler
+# and linker flags from dpkg-buildflags (hardening etc.) are still applied
+# through CFLAGS/CXXFLAGS/LDFLAGS.
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+		-DBUILD_TESTING=$(PANERO_BUILD_TESTING)
+
+# KDE's help system (help:/panero, KHelpCenter) reads the handbook docbook
+# files uncompressed, as in the Ubuntu krusader package.
+override_dh_compress:
+	dh_compress -X.docbook
+
+# The autotests are headless QtTest programs; dh_auto_test already provides
+# an isolated HOME and XDG_RUNTIME_DIR.
+override_dh_auto_test:
+	QT_QPA_PLATFORM=offscreen dh_auto_test

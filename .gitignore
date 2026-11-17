@@ -11,3 +11,14 @@
 # Panero local build logs
 /build-*.log
 /build-cmake.err
+
+# Panero package builds (dev/scripts/build-deb.sh, local dpkg-buildpackage)
+/dist/
+/obj-*/
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/panero/
+/debian/panero-dbgsym/
+/debian/*.substvars
+/debian/*.debhelper.log

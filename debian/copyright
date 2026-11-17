@@ -1,0 +1,185 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Panero
+Upstream-Contact: https://github.com/NorbCraft/panero/issues
+Source: https://github.com/NorbCraft/panero
+Comment: Panero is an independent fork of Krusader. It is not affiliated with
+ or endorsed by KDE or the Krusader maintainers.
+ .
+ Panero is based on Krusader 2.8.1 (https://krusader.org/,
+ https://invent.kde.org/utilities/krusader) and, like Krusader, is
+ distributed under the GNU General Public License version 2 or (at your
+ option) any later version. This file was derived from the SPDX headers in
+ the source tree, the REUSE metadata in .reuse/dep5 (checked with
+ "reuse lint") and "licensecheck -r". A readable overview is installed as
+ /usr/share/doc/panero/LICENSING.md(.gz); the license texts used by the
+ source tree are installed in /usr/share/doc/panero/LICENSES/.
+ .
+ All runtime libraries (Qt 5, KDE Frameworks 5, glibc, zlib, libacl, ...) come
+ from separate Ubuntu packages and are not included in this package.
+
+Files: *
+Copyright: 2000-2006 Shie Erlich <erlich@users.sourceforge.net>
+           2000-2020 Shie Erlich <krusader@users.sourceforge.net>
+           2000-2006 Rafi Yanai <yanai@users.sourceforge.net>
+           2000-2020 Rafi Yanai <krusader@users.sourceforge.net>
+           2000-2009 Csaba Karai <krusader@users.sourceforge.net>
+           2005-2009 Csaba Karai <cskarai@freemail.hu>
+           2000 David Faure <faure@kde.org>
+           2003 Leo Savernik <l.savernik@aon.at>
+           2004-2008 Jonas Bähr <jonas.baehr@web.de>
+           2005 Dirk Eschler <deschler@users.sourceforge.net>
+           2006-2008 Václav Juza <vaclavjuza@gmail.com>
+           2007-2010 Peter Penz <peter.penz19@gmail.com>
+           2009 Fathi Boudra <fboudra@gmail.com>
+           2009-2010 Jan Lepper <krusader@users.sourceforge.net>
+           2010 Jan Lepper <dehtris@yahoo.de>
+           2011 Jan Lepper <jan_lepper@gmx.de>
+           2018-2022 Nikita Melnichenko <nikita+kde@melnichenko.name>
+           2022 Harald Sitter <sitter@kde.org>
+           2004-2022 Krusader Krew <https://krusader.org>
+           2026 Panero contributors
+License: GPL-2+
+Comment: Copyright holders as listed in the SPDX-FileCopyrightText headers of
+ the program sources. Several files note that parts are based on other KDE
+ code (kdelibs KTar, KIO, Dolphin, KRemoteEncodingPlugin by Dawit Alemayehu,
+ code by Sebastian Trueg and Bruno Nova); upstream distributes them under
+ GPL-2+, which the original GPL/LGPL terms of that code allow.
+
+Files: app/DiskUsage/filelightParts/*
+       app/DiskUsage/radialMap/*
+Copyright: 2003-2004 Max Howell <max.howell@methylblue.com>
+           2004-2022 Krusader Krew <https://krusader.org>
+License: GPL-2+
+Comment: Derived from Filelight.
+
+Files: plugins/iso/libisofs/*
+Copyright: 2002 Szombathelyi György <gyurco@users.sourceforge.net>
+           2002 Shie Erlich <erlich@users.sourceforge.net>
+           2002 Rafi Yanai <yanai@users.sourceforge.net>
+           1997-1998 Free Software Foundation, Inc.
+           2004-2022 Krusader Krew <https://krusader.org>
+License: GPL-2+
+Comment: libisofs 0.2, used by the iso:/ KIO worker (kio_iso.so). The SPDX
+ headers declare GPL-2.0-or-later. When imported in 2004 (upstream commit
+ dd9d71dd2) iso_fs.h and rock.h only said "From the linux kernel",
+ el_torito.h "borrowed from the bsd386 isofs", and bswap.h "From the mplayer
+ project" (with a few lines from glibc's bits/byteswap.h, LGPL-2.1+). The
+ Linux kernel is distributed under GPL-2.0 only; if those headers are
+ regarded as derived from it, kio_iso.so can only be redistributed under
+ GPL version 2, which the GPL-2+ terms of the rest of Panero permit.
+
+Files: app/icons/icon-missing.svgz
+Copyright: 2018 Nikita Melnichenko <nikita+kde@melnichenko.name>
+           2014 Uri Herrera <uri_herrera@nitrux.in> and other Breeze icon theme authors
+License: LGPL-3+
+Comment: Fallback icon compiled into /usr/bin/panero as a Qt resource. Based
+ on the "unknown" and "edit-select-none" icons of the Breeze icon theme
+ (upstream Krusader commit 86115e3b6), published under the Breeze license.
+ Its editable source is part of the Panero source archive.
+
+Files: app/icons/panero/*
+Copyright: 2026 Panero contributors
+License: GPL-2+
+Comment: Original Panero application icon, drawn as new SVG geometry from an
+ AI-generated concept image. No copyright or trademark exclusivity is
+ claimed; see dev/ICON-PROVENANCE.md in the source.
+
+Files: app/io.github.norbcraft.panero.metainfo.xml
+Copyright: 2026 Panero contributors
+           Krusader Krew <https://krusader.org>
+License: FSFAP
+
+Files: doc/*
+Copyright: 2000-2003 Shie Erlich <erlich@users.sourceforge.net>
+           2000-2003 Rafi Yanai <yanai@users.sourceforge.net>
+           2004-2010 Frank Schoolmeesters <codeknight@users.sourceforge.net>
+           2000-2022 Krusader Krew <https://krusader.org>
+License: GFDL-NIV-1.1+
+Comment: Krusader handbook (installed as help:/panero) and man page.
+
+Files: po/*/docs/*
+Copyright: 2000-2003 Shie Erlich and Rafi Yanai
+           2004-2010 Frank Schoolmeesters
+           Krusader Krew <https://krusader.org>
+           KDE translators (named in the header of each translated file)
+License: GFDL-NIV-1.1+
+
+Files: po/*/panero.po
+Copyright: KDE translators (named in the header of each file)
+License: GPL-2+
+Comment: The headers state "This file is distributed under the same license
+ as the Krusader package".
+
+Files: AGENTS.md
+       CLAUDE.md
+       LICENSING.md
+       README.md
+       autotests/*
+       debian/*
+       dev/*
+       .github/*
+Copyright: 2026 Panero contributors
+License: GPL-2+
+
+Files: dev/handoff/*
+Copyright: 2026 Panero project owner
+License: GPL-2+
+Comment: Requirements and visual references supplied by the project owner;
+ references/icon-a-reference.png is an AI-generated concept image. Not
+ installed by this package.
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: LGPL-3+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 3 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library.  If not, see
+ <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete texts of the GNU Lesser General Public
+ License version 3 and of the GNU General Public License version 3, which
+ it incorporates, can be found in "/usr/share/common-licenses/LGPL-3" and
+ "/usr/share/common-licenses/GPL-3".
+
+License: GFDL-NIV-1.1+
+ Permission is granted to copy, distribute and/or modify this document
+ under the terms of the GNU Free Documentation License, Version 1.1 or
+ any later version published by the Free Software Foundation; with no
+ Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+ Texts.
+ .
+ The complete text of version 1.1 is installed as
+ "/usr/share/doc/panero/LICENSES/GFDL-1.1-or-later.txt.gz". On Debian
+ systems, the complete text of version 1.3 of the license, which may be
+ used instead ("any later version"), can be found in
+ "/usr/share/common-licenses/GFDL-1.3".
+
+License: FSFAP
+ Copying and distribution of this file, with or without modification, are
+ permitted in any medium without royalty provided the copyright notice and
+ this notice are preserved. This file is offered as-is, without any
+ warranty.
