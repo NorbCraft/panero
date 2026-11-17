@@ -1,6 +1,7 @@
 add_subdirectory(PanelView)
 
 set(Panel_SRCS
+    panerotheme.cpp
     dirhistoryqueue.cpp
     krcalcspacedialog.cpp
     krcolorcache.cpp

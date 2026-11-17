@@ -58,7 +58,13 @@
 // Filelist Icon Size //
 #define _FilelistIconSize QString("22")
 // Mouse Selection /////
-#define _MouseSelection 0 // 0 - normal (shift+click, ctrl+click), 1 - left click, 2 - right click
+// 0 - Krusader, 1 - Konqueror, 2 - Total Commander, 3 - custom, 4 - ergonomic,
+// 5 - Panero Commander (default in Panero)
+#define _MouseSelection 5
+// Hold time of the right mouse button that opens the context menu (ms)
+#define _ContextMenuHoldDelay 600
+#define _ContextMenuHoldDelayMin 200
+#define _ContextMenuHoldDelayMax 3000
 // Use fullpath tab names /////
 #define _FullPathTabNames false
 // User defined folder icons
@@ -211,9 +217,13 @@
 
 /////////////////////// [Private]
 // Start Position /////
-#define _StartPosition QPoint(QApplication::desktop()->width()/2 - MAIN_VIEW->sizeHint().width()/2,QApplication::desktop()->height()/2 - 250)
+// Panero: a comfortable default window (about 1280x800, at most 90%/85% of the
+// available screen), centred on the primary screen
+#define _StartSize     QSize(qMin(1280, int(QGuiApplication::primaryScreen()->availableGeometry().width() * 0.9)), \
+                             qMin(800, int(QGuiApplication::primaryScreen()->availableGeometry().height() * 0.85)))
+#define _StartPosition (QGuiApplication::primaryScreen()->availableGeometry().center() - \
+                        QPoint(_StartSize.width() / 2, _StartSize.height() / 2))
 // Start Size /////////
-#define _StartSize     QSize(MAIN_VIEW->sizeHint().width(),500)
 // Panel Size /////////
 #define _PanelSize     0
 // Terminal Size //////
@@ -304,6 +314,8 @@
 #define _InsertMovesDown true
 // Immediate Context Menu
 #define _ImmediateContextMenu true
+// Custom mode: toggle the right-clicked mark on release instead of press
+#define _DeferredRightToggle false
 // Reset selection items
 #define _ResetSelectionItems false
 

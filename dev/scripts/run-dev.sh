@@ -43,6 +43,11 @@ if [[ -n "$SHOT" ]]; then
   sleep 1; export DISPLAY="$DISP"
   dbus-run-session -- "${CMD[@]}" >"$DEVHOME/last-run.log" 2>&1 & APID=$!
   sleep "$DELAY"
+  if [[ -n "${PANERO_SHOT_ACTIONS:-}" ]]; then
+    # e.g. PANERO_SHOT_ACTIONS='xdotool key Down space Down Down Insert'
+    bash -c "$PANERO_SHOT_ACTIONS" || true
+    sleep "${PANERO_SHOT_SETTLE:-1}"
+  fi
   import -window root "$SHOT"
   kill "$APID" 2>/dev/null || true; sleep 1; kill "$XPID" 2>/dev/null || true
   echo "screenshot: $SHOT (log: $DEVHOME/last-run.log)"

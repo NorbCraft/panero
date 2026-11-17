@@ -72,6 +72,8 @@ target_link_libraries(panero
                       KF5::WindowSystem
                       Qt5::PrintSupport
                       Qt5::Concurrent
+                      # Panero: static libs (GUI, PanelView) use Panel helpers
+                      Panel
 )
 
 if(SYNCHRONIZER_ENABLED)

@@ -66,6 +66,16 @@ public:
     inline int resetSelectionItems() {
         return _resetSelectionItems;
     }
+    /**
+     * Panero Commander behaviour for the right button: the mark is toggled on
+     * release of a short click, while holding the button for showContextMenu()
+     * milliseconds opens the context menu *without* toggling the mark.
+     */
+    inline bool deferRightButtonToggle() {
+        return _deferRightButtonToggle;
+    }
+    /// Hold time (ms) for the context menu in modes that open it on a held right button.
+    static int contextMenuHoldDelay();
 
     virtual ~KrSelectionMode() {}
 
@@ -75,6 +85,7 @@ protected:
     bool _leftButtonPreservesSelection, _shiftCtrlRightButtonSelects, _shiftCtrlLeftButtonSelects;
     int _showContextMenu;
     int _resetSelectionItems;
+    bool _deferRightButtonToggle = false;
 };
 
 class KonqSelectionMode : public KrSelectionMode
@@ -150,6 +161,32 @@ public:
         _shiftCtrlLeftButtonSelects = true;
         _showContextMenu = -1;
         _resetSelectionItems = false;
+    }
+};
+
+/**
+ * Panero's default "Commander" profile (mode 5): the current row (cursor) and
+ * the set of marked files are independent. Left click and arrow keys only move
+ * the cursor; short right click, Space and Insert toggle marks; holding the
+ * right button opens the native context menu without changing marks.
+ */
+class CommanderSelectionMode : public KrSelectionMode
+{
+public:
+    void init() override {
+        _useQTSelection = false;
+        _spaceMovesDown = false;
+        _insertMovesDown = true;
+        _spaceCalculatesDiskSpace = false;
+        _rightButtonSelects = true;
+        _leftButtonSelects = false;
+        _rightButtonPreservesSelection = true;
+        _leftButtonPreservesSelection = true;
+        _shiftCtrlRightButtonSelects = false;
+        _shiftCtrlLeftButtonSelects = true;
+        _showContextMenu = contextMenuHoldDelay();
+        _resetSelectionItems = false;
+        _deferRightButtonToggle = true;
     }
 };
 

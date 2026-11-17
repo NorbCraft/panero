@@ -91,6 +91,10 @@ QVariant ListModel::data(const QModelIndex& index, int role) const
         return QVariant();
 
     switch (role) {
+    case MarkedRole:
+        return fileitem != _dummyFileItem && _view->isSelected(index);
+    case ActivePanelRole:
+        return _view->isFocused();
     case Qt::FontRole:
         return _defaultFont;
     case Qt::EditRole: {

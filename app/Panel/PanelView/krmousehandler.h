@@ -14,6 +14,8 @@
 #include <QTime>
 #include <QStringList>
 
+#include "commandergesture.h"
+
 class QMouseEvent;
 class QWheelEvent;
 class KrView;
@@ -45,6 +47,10 @@ public:
     void handleContextMenu(KrViewItem * it, const QPoint & pos);
     void otherEvent(QEvent * e);
     void cancelTwoClickRename();
+    /// Abort a pending (deferred) right-button press without toggling any mark.
+    void cancelRightPress();
+    /// True while a deferred right press is waiting for release or the hold timeout.
+    bool isRightPressPending() const { return _gesture.isPending(); }
 
 public slots:
     void showContextMenu();
@@ -68,6 +74,14 @@ protected:
     QPoint       _dragStartPos;
     bool         _emptyContextMenu;
     QStringList  _selectedItemNames;
+
+    // Panero Commander right-button gesture (see KrSelectionMode::deferRightButtonToggle)
+    CommanderGesture _gesture;
+    void applyGestureAction(CommanderGesture::Action action);
+
+    bool deferredRightPress(QMouseEvent *e, KrViewItem *item);
+    bool deferredRightMove(QMouseEvent *e, KrViewItem *item);
+    bool deferredRightRelease(QMouseEvent *e);
 };
 
 #endif

@@ -74,7 +74,10 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     action(i18n("F3 View Dialog"), nullptr, Qt::SHIFT + Qt::Key_F3, _func, SLOT(viewDlg()), "F3_ViewDlg");
 
     // file operations
-    action(i18n("Right-click Menu"), nullptr, Qt::Key_Menu, _gui, SLOT(rightclickMenu()), "rightclick menu");
+    // Panero: Shift+F10 is the conventional context-menu key and also opens it
+    QAction *actRightClickMenu = action(i18n("Right-click Menu"), nullptr, Qt::Key_Menu, _gui, SLOT(rightclickMenu()), "rightclick menu");
+    _mainWindow->actions()->setDefaultShortcuts(actRightClickMenu,
+        {QKeySequence(Qt::Key_Menu), QKeySequence(Qt::SHIFT + Qt::Key_F10)});
     actProperties = action(i18n("&Properties..."), "document-properties", Qt::ALT + Qt::Key_Return, _func, SLOT(properties()), "properties");
     actCompDirs = action(i18n("&Compare Folders"), "kr_comparedirs", Qt::ALT + Qt::SHIFT + Qt::Key_C, _gui, SLOT(compareDirs()), "compare dirs");
     actCalculate = action(i18n("Calculate &Occupied Space"), "accessories-calculator", 0, _func, SLOT(calcSpace()), "calculate");

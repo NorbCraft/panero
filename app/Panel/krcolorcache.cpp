@@ -7,6 +7,7 @@
 */
 
 #include "krcolorcache.h"
+#include "panerotheme.h"
 #include "../krglobal.h"
 #include "../defaults.h"
 
@@ -373,8 +374,34 @@ class KrColorCacheImpl
     QColor dimColor(QColor color, bool isBackgroundColor) const;
 };
 
+// Panero colour scheme (light/dark, stripes, red marks, blue cursor row)
+static KrColorGroup paneroColors(const KrColorItemType &type)
+{
+    const PaneroTheme::Scheme &s = PaneroTheme::scheme();
+    KrColorGroup result;
+    const bool stripe = PaneroTheme::alternatingRows() && type.m_alternateBackgroundColor;
+    result.setBackground(stripe ? s.alternateBackground : s.background);
+    result.setText(s.text);
+    result.setHighlight(s.markBackground);
+    result.setHighlightedText(s.markForeground);
+    if (type.m_currentItem && type.m_activePanel) {
+        if (type.m_selectedItem) {
+            // keep the mark visible on the cursor row: blend mark and cursor fills
+            const QColor m = s.markBackground, c = s.currentBackground;
+            result.setHighlight(QColor((m.red() * 3 + c.red() * 2) / 5, (m.green() * 3 + c.green() * 2) / 5,
+                                       (m.blue() * 3 + c.blue() * 2) / 5));
+        } else {
+            result.setBackground(s.currentBackground);
+        }
+    }
+    return result;
+}
+
 KrColorGroup KrColorCacheImpl::getColors(const KrColorItemType & type) const
 {
+    if (PaneroTheme::usePaneroColors())
+        return paneroColors(type);
+
     KrColorGroup result;
     if (m_colorSettings.getBoolValue("KDE Default", _KDEDefaultColors)) {
         bool enableAlternateBackground = m_colorSettings.getBoolValue("Enable Alternate Background", _AlternateBackground);
@@ -735,6 +762,7 @@ QColor KrColorCache::dimColor(const QColor & color, int dim, const QColor & targ
 void KrColorCache::refreshColors()
 {
     m_impl->m_cachedColors.clear();
+    PaneroTheme::invalidate();
     m_impl->m_colorSettings = KrColorSettings();
     QPixmapCache::clear(); // dimmed icons are cached
     emit colorsRefreshed();

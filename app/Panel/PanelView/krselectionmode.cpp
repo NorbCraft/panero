@@ -19,6 +19,7 @@ KonqSelectionMode konqSelectionMode;
 OriginalSelectionMode originalSelectionMode;
 TCSelectionMode tcSelectionMode;
 ErgonomicSelectionMode ergonomicSelectionMode;
+CommanderSelectionMode commanderSelectionMode;
 UserSelectionMode userSelectionMode;
 
 KrSelectionMode* KrSelectionMode::getSelectionHandlerForMode(const QString &mode)
@@ -42,6 +43,9 @@ KrSelectionMode* KrSelectionMode::getSelectionHandlerForMode(const QString &mode
     case 4:
         res = &ergonomicSelectionMode;
         break;
+    case 5:
+        res = &commanderSelectionMode;
+        break;
     default:
         break;
     }
@@ -54,7 +58,7 @@ KrSelectionMode* KrSelectionMode::getSelectionHandler()
         return __currentSelectionMode;
     } else { // nothing yet, set the correct one
         KConfigGroup group(krConfig, "Look&Feel");
-        QString mode = group.readEntry("Mouse Selection", QString(""));
+        QString mode = group.readEntry("Mouse Selection", QString::number(_MouseSelection));
         __currentSelectionMode = getSelectionHandlerForMode(mode);
         if (__currentSelectionMode == nullptr) {
             __currentSelectionMode = &userSelectionMode;
@@ -83,7 +87,15 @@ void UserSelectionMode::init()
     _spaceMovesDown = group.readEntry("Space Moves Down", _SpaceMovesDown);
     _spaceCalculatesDiskSpace = group.readEntry("Space Calc Space", _SpaceCalcSpace);
     _insertMovesDown = group.readEntry("Insert Moves Down", _InsertMovesDown);
-    _showContextMenu = (group.readEntry("Immediate Context Menu", _ImmediateContextMenu) ? -1 : 500);
+    _showContextMenu = (group.readEntry("Immediate Context Menu", _ImmediateContextMenu) ? -1 : contextMenuHoldDelay());
+    _deferRightButtonToggle = group.readEntry("Deferred Right Toggle", _DeferredRightToggle);
     _resetSelectionItems = group.readEntry("Reset Selection Items", _ResetSelectionItems);
 }
 
+
+int KrSelectionMode::contextMenuHoldDelay()
+{
+    KConfigGroup group(krConfig, "Look&Feel");
+    const int delay = group.readEntry("Context Menu Hold Delay", _ContextMenuHoldDelay);
+    return qBound(_ContextMenuHoldDelayMin, delay, _ContextMenuHoldDelayMax);
+}

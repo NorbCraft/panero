@@ -109,6 +109,9 @@ bool KrMouseHandler::mousePressEvent(QMouseEvent *e)
     }
     if (e->button() == Qt::RightButton) {
         //dragStartPos = e->pos();
+        if (e->modifiers() == Qt::NoModifier && mode->deferRightButtonToggle()) {
+            return deferredRightPress(e, item);
+        }
         if (e->modifiers() == Qt::NoModifier) {
             if (item) {
                 if (mode->rightButtonSelects()) {
@@ -170,6 +173,9 @@ bool KrMouseHandler::mouseReleaseEvent(QMouseEvent *e)
 {
     if (e->button() == Qt::LeftButton)
         _dragStartPos = QPoint(-1, -1);
+
+    if (e->button() == Qt::RightButton && _gesture.isPending())
+        return deferredRightRelease(e);
 
     KrViewItem *item = _view->getKrViewItemAt(e->pos());
     KrSelectionMode *mode = KrSelectionMode::getSelectionHandler();
@@ -274,6 +280,9 @@ bool KrMouseHandler::mouseMoveEvent(QMouseEvent *e)
     if ((_singleClicked || _renameTimer.isActive()) && item != _singleClickedItem)
         CANCEL_TWO_CLICK_RENAME;
 
+    if (_gesture.isPending() && (e->buttons() & Qt::RightButton))
+        return deferredRightMove(e, item);
+
     if (!item)
         return false;
 
@@ -321,12 +330,102 @@ bool KrMouseHandler::wheelEvent(QWheelEvent *e)
 
 void KrMouseHandler::showContextMenu()
 {
+    if (_gesture.isPending()) {
+        // Panero Commander: a held right button opens the native context menu.
+        // Marks are left exactly as they are; the release must not toggle anything.
+        applyGestureAction(_gesture.holdTimeout());
+        // the menu is modal and has consumed the release: the gesture is over
+        _gesture.cancel();
+        return;
+    }
     if (_rightClickedItem)
         _rightClickedItem->setSelected(true);
     if (_emptyContextMenu)
         _view->op()->emitEmptyContextMenu(_contextMenuPoint);
     else
         _view->op()->emitContextMenu(_contextMenuPoint);
+}
+
+void KrMouseHandler::applyGestureAction(CommanderGesture::Action action)
+{
+    switch (action) {
+    case CommanderGesture::Action::None:
+        break;
+    case CommanderGesture::Action::Toggle: {
+        KrViewItem *pressed = _view->findItemByName(_gesture.item());
+        if (pressed) // the file may have vanished meanwhile
+            pressed->setSelected(!pressed->isSelected());
+        break;
+    }
+    case CommanderGesture::Action::ItemMenu:
+        _view->op()->emitContextMenu(_contextMenuPoint);
+        break;
+    case CommanderGesture::Action::BackgroundMenu:
+        _view->op()->emitEmptyContextMenu(_contextMenuPoint);
+        break;
+    case CommanderGesture::Action::SweepStart: {
+        _contextMenuTimer.stop();
+        KrViewItem *start = _view->findItemByName(_gesture.item());
+        if (start)
+            start->setSelected(_gesture.sweepMarks());
+        break;
+    }
+    case CommanderGesture::Action::SweepTo: {
+        KrViewItem *start = _view->findItemByName(_gesture.item());
+        KrViewItem *target = _view->findItemByName(_gesture.target());
+        if (start && target) {
+            _view->selectRegion(start, target, _gesture.sweepMarks());
+            _view->op()->emitSelectionChanged();
+            _view->setCurrentKrViewItem(target);
+        }
+        break;
+    }
+    }
+}
+
+bool KrMouseHandler::deferredRightPress(QMouseEvent *e, KrViewItem *item)
+{
+    _contextMenuTimer.stop();
+    const bool onItem = item && !item->isDummy();
+    _gesture.press(e->pos(), onItem ? item->name() : QString(), onItem && item->isSelected());
+    _emptyContextMenu = !onItem;
+    _contextMenuPoint = QPoint(e->globalPos().x(), e->globalPos().y() - _contextMenuShift);
+
+    // the cursor follows the pointer, marks are not touched on press
+    if (item)
+        _view->setCurrentKrViewItem(item);
+
+    int delay = KrSelectionMode::getSelectionHandler()->showContextMenu();
+    if (delay <= 0)
+        delay = KrSelectionMode::contextMenuHoldDelay();
+    _contextMenuTimer.setSingleShot(true);
+    _contextMenuTimer.start(delay);
+    e->accept();
+    return true;
+}
+
+bool KrMouseHandler::deferredRightMove(QMouseEvent *e, KrViewItem *item)
+{
+    e->accept();
+    const QString under = (item && !item->isDummy()) ? item->name() : QString();
+    applyGestureAction(_gesture.move(e->pos(), QApplication::startDragDistance(), under));
+    if (!_gesture.wantsTimer())
+        _contextMenuTimer.stop();
+    return true;
+}
+
+bool KrMouseHandler::deferredRightRelease(QMouseEvent *e)
+{
+    _contextMenuTimer.stop();
+    applyGestureAction(_gesture.release());
+    e->accept();
+    return true;
+}
+
+void KrMouseHandler::cancelRightPress()
+{
+    _contextMenuTimer.stop();
+    _gesture.cancel();
 }
 
 void KrMouseHandler::handleContextMenu(KrViewItem * it, const QPoint & pos)
@@ -351,6 +450,19 @@ void KrMouseHandler::handleContextMenu(KrViewItem * it, const QPoint & pos)
 
 void KrMouseHandler::otherEvent(QEvent * e)
 {
+    if (_gesture.isPending()) {
+        switch (e->type()) {
+        case QEvent::FocusOut:
+        case QEvent::WindowDeactivate:
+        case QEvent::Hide:
+        case QEvent::DragEnter:
+            // press interrupted (focus lost, window switched, drag started): no toggle, no menu
+            cancelRightPress();
+            break;
+        default:
+            break;
+        }
+    }
     switch (e->type()) {
     case QEvent::Timer:
     case QEvent::MouseMove:

@@ -32,6 +32,7 @@
 #include "PanelView/krviewitem.h"
 #include "../defaults.h"
 #include "../icon.h"
+#include "PanelView/commandergesture.h"
 #include "../krservices.h"
 #include "../krslots.h"
 #include "../krusader.h"
@@ -44,9 +45,9 @@
 #include "../MountMan/kmountman.h"
 #include "../UserAction/useractionpopupmenu.h"
 
-PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel)
+PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
 {
-    auto menu = new PanelContextMenu(panel);
+    auto menu = new PanelContextMenu(panel, background);
     QAction * res = menu->exec(pos);
     int result = res && res->data().canConvert<int>() ?
                      res->data().toInt() :
@@ -77,11 +78,16 @@ void PanelContextMenu::addCompressAndExtractPluginActions()
     }
 }
 
-PanelContextMenu::PanelContextMenu(KrPanel *krPanel, QWidget *parent)
+PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *parent)
     : QMenu(parent), panel(krPanel)
 {
-    // selected file names
-    const QStringList fileNames = panel->gui->getSelectedNames();
+    // selected file names: the marked files, or the current file if nothing is marked.
+    // The background (empty space) menu never targets files, even if some are marked.
+    QStringList marked;
+    panel->view->getSelectedItems(&marked, false);
+    const QStringList fileNames =
+        CommanderTargets::contextMenuTargets(background, marked, panel->view->getCurrentItem());
+    const bool targetIsMarkedSet = !background && !marked.isEmpty();
 
     // file items
     QList<FileItem*> files;
@@ -104,6 +110,15 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, QWidget *parent)
     }
 
     const bool multipleSelections = files.size() > 1;
+
+    // Panero: state the actual target set when it comes from the marks, so a
+    // menu opened on an unmarked row never silently acts on other (marked) files.
+    if (targetIsMarkedSet) {
+        QAction *header = addAction(Icon("checkbox"),
+                                    i18np("Marked: %1 item", "Marked: %1 items", files.size()));
+        header->setEnabled(false);
+        addSeparator();
+    }
 
     QSet<QString> protocols;
     for (FileItem *file : files) {

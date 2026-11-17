@@ -871,7 +871,7 @@ void ListPanel::popRightClickMenu(const QPoint &loc)
 
 void ListPanel::popEmptyRightClickMenu(const QPoint &loc)
 {
-    auto menu = PanelContextMenu::run(loc, this);
+    auto menu = PanelContextMenu::run(loc, this, true);
     _contextMenu.reset(menu);
 }
 
@@ -1157,6 +1157,8 @@ void ListPanel::rightclickMenu()
 {
     if (view->getCurrentKrViewItem())
         popRightClickMenu(mapToGlobal(view->getCurrentKrViewItem()->itemRect().topLeft()));
+    else // empty folder: keyboard users still get the folder menu
+        popEmptyRightClickMenu(mapToGlobal(view->widget()->geometry().center()));
 }
 
 void ListPanel::toggleSyncBrowse()

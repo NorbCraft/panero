@@ -6,6 +6,9 @@
 */
 
 #include "krstyleproxy.h"
+#include "../Panel/panerotheme.h"
+
+#include <QAbstractItemView>
 
 // QtGui
 #include <QPen>
@@ -20,6 +23,12 @@
 void KrStyleProxy::drawPrimitive(PrimitiveElement element, const QStyleOption *option,
                                  QPainter *painter, const QWidget *widget) const
 {
+    if (element == QStyle::PE_FrameFocusRect && widget && PaneroTheme::usePaneroColors()
+            && (qobject_cast<const QAbstractItemView *>(widget)
+                || qobject_cast<const QAbstractItemView *>(widget->parentWidget()))) {
+        // Panero paints a solid cursor-row frame in the file views instead
+        return;
+    }
     if (element == QStyle::PE_FrameFocusRect) {
         if (const auto *fropt = qstyleoption_cast<const QStyleOptionFocusRect *>(option)) {
             QColor bg = fropt->backgroundColor;

@@ -20,6 +20,8 @@ public:
                const QModelIndex &index) const override;
     void drawDisplay(QPainter *painter, const QStyleOptionViewItem &option, const QRect &rect,
                      const QString &text) const override;
+    void drawDecoration(QPainter *painter, const QStyleOptionViewItem &option, const QRect &rect,
+                        const QPixmap &pixmap) const override;
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &sovi,
                           const QModelIndex &index) const override;
     void setEditorData(QWidget *editor, const QModelIndex &index) const override;
@@ -34,6 +36,8 @@ private:
     mutable int _currentlyEdited;
     mutable bool _dontDraw;
     mutable QWidget *_editor;
+    mutable QModelIndex _paintIndex; ///< index being painted (for drawDecoration/drawDisplay)
+    mutable bool _decorationDrawn = false;
 
     /// Init editor-related members when editor is closed.
     void onEditorClose()

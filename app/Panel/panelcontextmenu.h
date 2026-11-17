@@ -27,10 +27,15 @@ class PanelContextMenu : public QMenu
 {
     Q_OBJECT
 public:
-    static PanelContextMenu* run(const QPoint &pos, KrPanel *panel);
+    /**
+     * Show the menu. If @p background is true the menu is the folder/background
+     * menu (no file targets) even when files are marked; otherwise it targets the
+     * marked files, or the current file if nothing is marked.
+     */
+    static PanelContextMenu* run(const QPoint &pos, KrPanel *panel, bool background = false);
 
 private:
-    explicit PanelContextMenu(KrPanel *thePanel, QWidget *parent = nullptr);
+    explicit PanelContextMenu(KrPanel *thePanel, bool background, QWidget *parent = nullptr);
 
     void performAction(int id);
     void addEmptyMenuEntries(); // adds the choices for a menu without selected items
