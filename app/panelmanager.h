@@ -33,7 +33,7 @@ class TabActions;
 class PanelManager: public QWidget, public AbstractPanelManager
 {
     Q_OBJECT
-    Q_CLASSINFO("D-Bus Interface", "org.krusader.PanelManager")
+    Q_CLASSINFO("D-Bus Interface", PANERO_APP_ID ".PanelManager")
 
 public:
     /**

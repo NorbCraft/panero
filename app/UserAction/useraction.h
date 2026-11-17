@@ -146,8 +146,8 @@ private:
     QSet<QString>  _deletedActions;
 };
 
-#define ACTION_XML    "krusader/useractions.xml"
-#define ACTION_XML_EXAMPLES "krusader/useraction_examples.xml"
+#define ACTION_XML    "panero/useractions.xml"
+#define ACTION_XML_EXAMPLES "panero/useraction_examples.xml"
 
 #define ACTION_DOCTYPE  "KrusaderUserActions"
 // in well formed XML the root-element has to have the same name then the doctype:

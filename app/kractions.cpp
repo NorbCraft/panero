@@ -21,6 +21,7 @@
 
 #include "defaults.h"
 #include "krusader.h"
+#include "paneroimport.h"
 #include "icon.h"
 #include "krusaderview.h"
 #include "krslots.h"
@@ -50,6 +51,7 @@ QAction *KrActions::actLocate = nullptr;
 QAction *KrActions::actSwitchFullScreenTE = nullptr;
 QAction *KrActions::actAddBookmark = nullptr;
 QAction *KrActions::actSavePosition = nullptr;
+QAction *KrActions::actImportKrusader = nullptr;
 QAction *KrActions::actSelectColorMask = nullptr;
 QAction *KrActions::actOpenLeftBm = nullptr;
 QAction *KrActions::actOpenRightBm = nullptr;
@@ -202,7 +204,7 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actCmdlinePopup, i18n("popup cmdline"), nullptr, Qt::CTRL + Qt::Key_Slash, SLOTS, SLOT(cmdlinePopup()), "cmdline popup");
 
 
-    NEW_KACTION(tmp, i18n("Start &Root Mode Krusader"), "krusader_root", Qt::ALT + Qt::SHIFT + Qt::Key_K, SLOTS, SLOT(rootKrusader()), "root krusader");
+    NEW_KACTION(tmp, i18n("Start &Root Mode Panero"), "krusader_root", Qt::ALT + Qt::SHIFT + Qt::Key_K, SLOTS, SLOT(rootKrusader()), "root krusader");
     NEW_KACTION(actProfiles, i18n("Pro&files"), "user-identity", Qt::ALT + Qt::SHIFT + Qt::Key_L, MAIN_VIEW, SLOT(profiles()), "profile");
     NEW_KACTION(actSplit, i18n("Sp&lit File..."), "split", Qt::CTRL + Qt::Key_P, SLOTS, SLOT(slotSplit()), "split");
     NEW_KACTION(actCombine, i18n("Com&bine Files..."), "kr_combine", 0, SLOTS, SLOT(slotCombine()), "combine");
@@ -258,7 +260,12 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actSyncDirs, i18n("Synchronize Fol&ders..."), "folder-sync", Qt::CTRL + Qt::Key_Y, SLOTS, SLOT(slotSynchronizeDirs()), "sync dirs");
 #endif
     NEW_KACTION(actDiskUsage, i18n("D&isk Usage..."), "kr_diskusage", Qt::ALT + Qt::SHIFT + Qt::Key_S, SLOTS, SLOT(slotDiskUsage()), "disk usage");
-    NEW_KACTION(actKonfigurator, i18n("Configure &Krusader..."), "configure", KStandardShortcut::shortcut(KStandardShortcut::Preferences), SLOTS, SLOT(startKonfigurator()), "konfigurator");
+    NEW_KACTION(actKonfigurator, i18n("Configure &Panero..."), "configure", KStandardShortcut::shortcut(KStandardShortcut::Preferences), SLOTS, SLOT(startKonfigurator()), "konfigurator");
+    actImportKrusader = new QAction(Icon("document-import"), i18n("Import &Krusader Settings..."), krusaderApp);
+    krusaderApp->actionCollection()->addAction("panero import krusader settings", actImportKrusader);
+    QObject::connect(actImportKrusader, &QAction::triggered, krusaderApp, [krusaderApp]() {
+        PaneroImport::requestImportFromMenu(krusaderApp);
+    });
     NEW_KACTION(actSavePosition, i18n("Save &Position"), nullptr, 0, krusaderApp, SLOT(savePosition()), "save position");
     NEW_KACTION(actCompare, i18n("Compare b&y Content..."), "kr_comparedirs", 0, SLOTS, SLOT(compareContent()), "compare");
     NEW_KACTION(actMultiRename, i18n("Multi &Rename..."), "edit-rename", Qt::SHIFT + Qt::Key_F2, SLOTS, SLOT(multiRename()), "multirename");
@@ -275,7 +282,7 @@ void KrActions::setupActions(Krusader *krusaderApp)
     actClosedTabsMenu->setEnabled(false);
 
     NEW_KACTION(actF10Quit, i18n("Quit"), nullptr, Qt::Key_F10, krusaderApp, SLOT(quit()) , "F10_Quit");
-    actF10Quit->setToolTip(i18n("Quit Krusader."));
+    actF10Quit->setToolTip(i18n("Quit Panero."));
 
     NEW_KACTION(actPopularUrls, i18n("Popular URLs..."), nullptr, Qt::CTRL + Qt::Key_Z, krusaderApp->popularUrls(), SLOT(showDialog()), "Popular_Urls");
     NEW_KACTION(actSwitchFullScreenTE, i18n("Toggle Fullscreen Embedded Terminal"), nullptr,
@@ -299,7 +306,7 @@ void KrActions::setupActions(Krusader *krusaderApp)
     krusaderApp->actionCollection()->setDefaultShortcut(actJobUndo, Qt::CTRL + Qt::ALT + Qt::Key_Z);
 
     // and at last we can set the tool-tips
-    actKonfigurator->setToolTip(i18n("Setup Krusader the way you like it"));
+    actKonfigurator->setToolTip(i18n("Setup Panero the way you like it"));
     actFind->setToolTip(i18n("Search for files"));
 
     // setup all UserActions

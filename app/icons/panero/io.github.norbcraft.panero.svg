@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Panero contributors
+  SPDX-License-Identifier: GPL-2.0-or-later
+
+  Panero application icon ("icon concept A": split twin-panel folder).
+  Original vector drawing for Panero; the AI-generated concept raster in
+  dev/handoff/references/icon-a-reference.png was used only as visual
+  direction. See dev/ICON-PROVENANCE.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Panero</title>
+  <defs>
+    <linearGradient id="back" x1="32" y1="0" x2="224" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1557e0"/>
+      <stop offset="0.55" stop-color="#1a72e8"/>
+      <stop offset="1" stop-color="#17b3c4"/>
+    </linearGradient>
+    <linearGradient id="left" x1="0" y1="76" x2="0" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b7dff"/>
+      <stop offset="1" stop-color="#0b3fd2"/>
+    </linearGradient>
+    <linearGradient id="right" x1="0" y1="76" x2="0" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1ce4d4"/>
+      <stop offset="1" stop-color="#079fb3"/>
+    </linearGradient>
+    <clipPath id="front">
+      <path d="M44 76H126.5V206H44A12 12 0 0 1 32 194V88A12 12 0 0 1 44 76Z"/>
+      <path d="M129.5 76H212A12 12 0 0 1 224 88V194A12 12 0 0 1 212 206H129.5Z"/>
+    </clipPath>
+    <mask id="split" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <rect width="256" height="256" fill="#fff"/>
+      <rect x="126.5" y="76" width="3" height="130" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- folder back with tab; the split between the panels is cut through -->
+  <path mask="url(#split)" fill="url(#back)" d="M44 44H86.5A10 10 0 0 1 94.6 48.1L102.4 59A12 12 0 0 0 112.2 64H212A12 12 0 0 1 224 76V194A12 12 0 0 1 212 206H44A12 12 0 0 1 32 194V56A12 12 0 0 1 44 44Z"/>
+  <!-- twin front panels -->
+  <path fill="url(#left)" d="M44 76H126.5V206H44A12 12 0 0 1 32 194V88A12 12 0 0 1 44 76Z"/>
+  <path fill="url(#right)" d="M129.5 76H212A12 12 0 0 1 224 88V194A12 12 0 0 1 212 206H129.5Z"/>
+  <!-- restrained sheen -->
+  <g clip-path="url(#front)">
+    <path fill="#ffffff" fill-opacity="0.10" d="M32 76H224V112C176 116 92 132 32 168Z"/>
+    <rect x="32" y="76" width="192" height="2" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+</svg>

@@ -344,7 +344,7 @@ void KIso::readParams()
     KRFUNC;
     KConfig *config;
 
-    config = new KConfig("kio_isorc");
+    config = new KConfig(QStringLiteral("panero_kio_isorc"));
 
     KConfigGroup group(config, QString());
     showhidden = group.readEntry("showhidden", false);

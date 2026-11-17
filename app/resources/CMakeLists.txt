@@ -16,7 +16,7 @@ ecm_install_icons(ICONS
     32-actions-kr_diskusage.png
     32-actions-kr_mountman.png
     32-actions-kr_unselect.png
-    DESTINATION ${KDE_INSTALL_DATADIR}/krusader/icons
+    DESTINATION ${KDE_INSTALL_DATADIR}/panero/icons
     THEME hicolor
 )
 

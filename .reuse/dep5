@@ -6,3 +6,18 @@ Source: https://invent.kde.org/utilities/krusader
 Files: doc/*
 Copyright: Krusader Krew <https://krusader.org>
 License: GFDL-1.1-or-later
+
+Files: app/icons/panero/*
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
+Comment: Original Panero application icon; see dev/ICON-PROVENANCE.md
+
+Files: AGENTS.md CLAUDE.md README.md dev/*.md dev/scripts/*
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
+
+Files: dev/handoff/*
+Copyright: 2026 Panero project owner
+License: GPL-2.0-or-later
+Comment: Requirements and visual references supplied by the project owner for
+ development. references/icon-a-reference.png is an AI-generated concept image.
