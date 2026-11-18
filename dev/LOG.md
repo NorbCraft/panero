@@ -191,3 +191,12 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Verified the published assets independently (checksums, version, source commit,
   install 57/57 and coexistence 13/13 in fresh containers).
 - Waiting on owner: host install with sudo for the desktop launcher/coexistence check.
+
+## 2026-11-18 — Claude Code (Opus 5.5) — owner UI requests, v0.1.0-preview.2
+
+- Owner requests (D-012): tree start Home / whole file system; Trash menu
+  (Open / Empty); sidebar toggle at the far left, icon-only; one Details |
+  Thumbnails toggle; resizable Pinned / Folders; drop folders onto Pinned.
+  PR #7 merged (ctest 4/4, GUI file-ops 17/17, Xvfb checks of each control).
+- Released v0.1.0-preview.2 (release workflow incl. upgrade test from preview 1);
+  downloaded asset checksum verified.

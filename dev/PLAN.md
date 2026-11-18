@@ -167,3 +167,8 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - Open: owner installs the .deb on the Zorin host (sudo) → check launcher/icon,
   coexistence with the installed Krusader, first-run import offer; then update
   release notes/test report. Owner-decision backports listed in dev/BACKPORTS.md.
+
+## Status notes (2026-11-18, preview 2)
+
+- v0.1.0-preview.2 published with the D-012 sidebar/toolbar refinements.
+- Open: owner host install check; owner-decision backports (dev/BACKPORTS.md).
