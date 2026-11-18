@@ -40,6 +40,7 @@ set(krusader_SRCS
     krdebuglogger.cpp
     paneroimport.cpp
     paneronavigation.cpp
+    paneroviewmodeaction.cpp
     paneropackageinstaller.cpp
 )
 

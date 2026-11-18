@@ -15,6 +15,9 @@ class QListWidget;
 class QListWidgetItem;
 class QToolButton;
 class KrFileTreeView;
+class QMenu;
+class QSplitter;
+class KConfigGroup;
 
 /**
  * Panero's single left sidebar: pinned favourite folders and a folder tree.
@@ -36,6 +39,8 @@ public:
 
     /// Pin the active panel's current folder.
     void pinCurrentFolder();
+    /// Pin a folder URL; returns false if it is invalid or already pinned.
+    bool pinUrl(const QUrl &folderUrl);
     void saveSettings() const;
     void restoreSettings();
 
@@ -45,6 +50,7 @@ public slots:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void openPin(QListWidgetItem *item);
@@ -66,11 +72,14 @@ private:
     bool tryMountAndOpen(const Pin &pin);
     Pin pinFromItem(const QListWidgetItem *item) const;
     void updateTitle(bool leftPanel);
+    QMenu *createTreeOptionsMenu(QWidget *parent);
+    KConfigGroup treeConfig() const;
 
     QLabel *m_target;
     QListWidget *m_pins;
     QToolButton *m_pinButton;
     KrFileTreeView *m_tree;
+    QSplitter *m_splitter;
     QUrl m_currentUrl;
 };
 

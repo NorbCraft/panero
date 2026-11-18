@@ -8,6 +8,9 @@
 
 #include "krusader.h"
 #include "paneronavigation.h"
+#include "paneroviewmodeaction.h"
+
+#include <QToolButton>
 #include "icon.h"
 #include "Panel/krpanel.h"
 #include "Panel/listpanel.h"
@@ -194,7 +197,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
     connect(MAIN_VIEW, &KrusaderView::activeLocationChanged, _navigationDock, &PaneroNavigationDock::activeLocationChanged);
     {
         QAction *toggleNavigation = _navigationDock->toggleViewAction();
-        toggleNavigation->setIcon(Icon(QStringLiteral("view-list-tree")));
+        toggleNavigation->setIcon(Icon(QStringLiteral("sidebar-show-symbolic")));
         toggleNavigation->setText(i18n("Folder &Tree and Pins"));
         toggleNavigation->setToolTip(i18n("Show or hide the folder tree and pinned folders"));
         actionCollection()->addAction(QStringLiteral("panero toggle navigation"), toggleNavigation);
@@ -239,6 +242,11 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         toolBar("viewToolBar")->applySettings(cfgViewBar);
         // keep the view strip next to the main toolbar, the job toolbar at the end of the row
         insertToolBar(toolBar("jobToolBar"), toolBar("viewToolBar"));
+        // the sidebar toggle sits at the far left as an icon-only toggle (like GNOME apps)
+        if (QAction *nav = actionCollection()->action(QStringLiteral("panero toggle navigation"))) {
+            if (auto *button = qobject_cast<QToolButton *>(toolBar()->widgetForAction(nav)))
+                button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        }
 
         _navigationDock->restoreSettings();
         _navigationDock->activeLocationChanged(ACTIVE_PANEL->virtualPath(), ACTIVE_PANEL->gui->isLeft());
@@ -667,7 +675,8 @@ void Krusader::setupPaneroToolbarLabels()
         {"pack", i18nc("toolbar", "Pack")},
         {"unpack", i18nc("toolbar", "Unpack")},
         {"find", i18nc("toolbar", "Search")},
-        {"panero open trash", i18nc("toolbar", "Trash")},
+        {"panero open trash", i18nc("toolbar", "Open Trash")},
+        {"panero trash menu", i18nc("toolbar", "Trash")},
         {"panero toggle navigation", i18nc("toolbar", "Folder Tree")},
         {"toggle hidden files", i18nc("toolbar", "Hidden Files")},
         {"view0", i18nc("toolbar", "Details")},
@@ -678,6 +687,10 @@ void Krusader::setupPaneroToolbarLabels()
         if (QAction *a = actionCollection()->action(QLatin1String(label.first)))
             a->setIconText(label.second);
     }
+    // one segmented Details | Thumbnails control instead of two buttons
+    auto *viewMode = new PaneroViewModeAction(actionCollection()->action(QStringLiteral("view0")),
+                                              actionCollection()->action(QStringLiteral("view2")), this);
+    actionCollection()->addAction(QStringLiteral("panero view mode"), viewMode);
     if (QAction *hidden = actionCollection()->action(QStringLiteral("toggle hidden files"))) {
         if (hidden->icon().isNull())
             hidden->setIcon(Icon(QStringLiteral("view-hidden")));

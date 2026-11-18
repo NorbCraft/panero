@@ -2,7 +2,7 @@
 <!-- NOTE: Always update the version in the gui tag below if you make changes to the menu bar and its actions!
            This will trigger an update of the ~/.local/share/kxmlgui5/krusader/krusaderui.rc file next time
            user opens the application: the menu bar will be replaced with the new version, toolbars updated.  -->
-<gui version="30" name="panero" >
+<gui version="31" name="panero" >
  <MenuBar>
   <Menu name="file" >
    <text>&amp;File</text>
@@ -174,6 +174,8 @@
       (F5 copy, F6 move, F7 new folder) and in the menus -->
  <ToolBar iconText="textbesideicon" iconSize="16" noMerge="1" name="mainToolBar" fullWidth="false" >
   <text>Main Toolbar</text>
+  <Action name="panero toggle navigation" />
+  <Separator name="separator_nav" />
   <Action name="go_up" />
   <Action name="go_home" />
   <Action name="std_redisplay" />
@@ -183,15 +185,13 @@
   <Action name="unpack" />
   <Action name="find" />
   <Separator name="separator_1" />
-  <Action name="panero open trash" />
+  <Action name="panero trash menu" />
  </ToolBar>
  <ToolBar iconText="textbesideicon" iconSize="16" noMerge="1" name="viewToolBar" fullWidth="false" >
   <text>View Toolbar</text>
-  <Action name="panero toggle navigation" />
   <Action name="toggle hidden files" />
   <Separator name="separator_2" />
-  <Action name="view0" />
-  <Action name="view2" />
+  <Action name="panero view mode" />
   <Separator name="separator_3" />
   <Action name="panero view colors" />
  </ToolBar>

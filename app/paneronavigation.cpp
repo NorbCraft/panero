@@ -21,6 +21,12 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QActionGroup>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QSplitter>
+
+#include <KCoreAddons/KUrlMimeData>
 #include <QLabel>
 #include <QListWidget>
 #include <QMenu>
@@ -83,54 +89,72 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     m_target->setPalette(p);
     layout->addWidget(m_target);
 
-    // pinned folders
+    // pinned folders and folder tree share a vertical splitter (drag the handle to resize)
+    m_splitter = new QSplitter(Qt::Vertical, content);
+    m_splitter->setChildrenCollapsible(false);
+    m_splitter->setHandleWidth(6);
+    auto *pinSection = new QWidget(m_splitter);
+    auto *pinLayout = new QVBoxLayout(pinSection);
+    pinLayout->setContentsMargins(0, 0, 0, 0);
+    pinLayout->setSpacing(2);
     auto *pinHeader = new QHBoxLayout;
     pinHeader->setSpacing(2);
-    pinHeader->addWidget(sectionLabel(i18n("Pinned"), content));
+    pinHeader->addWidget(sectionLabel(i18n("Pinned"), pinSection));
     pinHeader->addStretch();
-    m_pinButton = new QToolButton(content);
+    m_pinButton = new QToolButton(pinSection);
     m_pinButton->setIcon(Icon(QStringLiteral("list-add")));
     m_pinButton->setAutoRaise(true);
-    m_pinButton->setToolTip(i18n("Pin the active panel's folder"));
+    m_pinButton->setToolTip(i18n("Pin the active panel's folder (or drop folders on the list)"));
     m_pinButton->setAccessibleName(i18n("Pin current folder"));
     connect(m_pinButton, &QToolButton::clicked, this, &PaneroNavigationDock::pinCurrentFolder);
     pinHeader->addWidget(m_pinButton);
-    layout->addLayout(pinHeader);
+    pinLayout->addLayout(pinHeader);
 
-    m_pins = new QListWidget(content);
+    m_pins = new QListWidget(pinSection);
     m_pins->setAccessibleName(i18n("Pinned folders"));
     m_pins->setContextMenuPolicy(Qt::CustomContextMenu);
     m_pins->setUniformItemSizes(true);
-    m_pins->setMaximumHeight(170);
+    m_pins->setMinimumHeight(40);
     m_pins->setFrameShape(QFrame::NoFrame);
+    // folders dragged from the panels (or another file manager) are pinned
+    m_pins->setAcceptDrops(true);
+    m_pins->viewport()->setAcceptDrops(true);
+    m_pins->setDropIndicatorShown(true);
+    m_pins->viewport()->installEventFilter(this);
     connect(m_pins, &QListWidget::itemActivated, this, &PaneroNavigationDock::openPin);
     connect(m_pins, &QListWidget::itemClicked, this, &PaneroNavigationDock::openPin);
     connect(m_pins, &QListWidget::customContextMenuRequested, this, &PaneroNavigationDock::pinContextMenu);
-    layout->addWidget(m_pins);
+    pinLayout->addWidget(m_pins, 1);
 
     // folder tree
+    auto *treeSection = new QWidget(m_splitter);
+    auto *treeLayout = new QVBoxLayout(treeSection);
+    treeLayout->setContentsMargins(0, 0, 0, 0);
+    treeLayout->setSpacing(2);
     auto *treeHeader = new QHBoxLayout;
     treeHeader->setSpacing(2);
-    treeHeader->addWidget(sectionLabel(i18n("Folders"), content));
+    treeHeader->addWidget(sectionLabel(i18n("Folders"), treeSection));
     treeHeader->addStretch();
-    auto *treeOptions = new QToolButton(content);
+    auto *treeOptions = new QToolButton(treeSection);
     treeOptions->setIcon(Icon(QStringLiteral("configure")));
     treeOptions->setAutoRaise(true);
-    treeOptions->setToolTip(i18n("Folder tree options (start from place, current folder or root; hidden folders)"));
+    treeOptions->setPopupMode(QToolButton::InstantPopup);
+    treeOptions->setToolTip(i18n("Folder tree options"));
     treeOptions->setAccessibleName(i18n("Folder tree options"));
+    treeOptions->setMenu(createTreeOptionsMenu(treeOptions));
     treeHeader->addWidget(treeOptions);
-    layout->addLayout(treeHeader);
-    m_tree = new KrFileTreeView(content);
-    // the tree's own options menu (normally on its header, which is hidden here)
-    connect(treeOptions, &QToolButton::clicked, m_tree, [this]() {
-        QMetaObject::invokeMethod(m_tree, "showHeaderContextMenu");
-        // "Show Details" adds columns: show the header only when there is more than one
-        QHeaderView *header = m_tree->header();
-        header->setVisible(header->count() - header->hiddenSectionCount() > 1);
-    });
+    treeLayout->addLayout(treeHeader);
+    m_tree = new KrFileTreeView(treeSection);
     m_tree->setAccessibleName(i18n("Folder tree"));
     connect(m_tree, &KrFileTreeView::urlActivated, this, &PaneroNavigationDock::treeUrlActivated);
-    layout->addWidget(m_tree, 1);
+    treeLayout->addWidget(m_tree, 1);
+
+    m_splitter->addWidget(pinSection);
+    m_splitter->addWidget(treeSection);
+    m_splitter->setStretchFactor(0, 0);
+    m_splitter->setStretchFactor(1, 1);
+    m_splitter->setSizes({150, 400});
+    layout->addWidget(m_splitter, 1);
 
     setWidget(content);
     setMinimumWidth(170);
@@ -180,11 +204,18 @@ void PaneroNavigationDock::pinCurrentFolder()
 {
     if (!ACTIVE_PANEL)
         return;
+    pinUrl(ACTIVE_PANEL->virtualPath());
+}
+
+bool PaneroNavigationDock::pinUrl(const QUrl &folderUrl)
+{
     Pin pin;
-    pin.url = ACTIVE_PANEL->virtualPath().adjusted(QUrl::StripTrailingSlash);
+    pin.url = folderUrl.adjusted(QUrl::StripTrailingSlash);
+    if (!pin.url.isValid())
+        return false;
     for (int i = 0; i < m_pins->count(); ++i) {
         if (m_pins->item(i)->data(UrlRole).toUrl() == pin.url)
-            return; // already pinned
+            return false; // already pinned
     }
     pin.label = pin.url.isLocalFile() ? QFileInfo(pin.url.toLocalFile()).fileName() : pin.url.fileName();
     if (pin.label.isEmpty())
@@ -199,6 +230,88 @@ void PaneroNavigationDock::pinCurrentFolder()
     }
     addPin(pin);
     savePins();
+    return true;
+}
+
+QMenu *PaneroNavigationDock::createTreeOptionsMenu(QWidget *parent)
+{
+    // Panero offers two clear starting points instead of upstream's three modes:
+    //  Home: the tree starts at Home, or at the drive / "/" when outside Home
+    //        (upstream "start from place"), and Whole file system: always "/".
+    auto *menu = new QMenu(parent);
+    auto *group = new QActionGroup(menu);
+    QAction *home = menu->addAction(Icon(QStringLiteral("user-home")), i18n("Start at Home"));
+    home->setToolTip(i18n("Outside Home the tree starts at that drive or at /"));
+    QAction *root = menu->addAction(Icon(QStringLiteral("drive-harddisk-root")), i18n("Start at the Whole File System (/)"));
+    for (QAction *a : {home, root}) {
+        a->setCheckable(true);
+        group->addAction(a);
+    }
+    menu->addSeparator();
+    QAction *hidden = menu->addAction(i18n("Show Hidden Folders"));
+    hidden->setCheckable(true);
+    menu->setToolTipsVisible(true);
+
+    connect(menu, &QMenu::aboutToShow, this, [this, home, root, hidden]() {
+        const KConfigGroup g = treeConfig();
+        const bool fromRoot = !g.readEntry("StartFromPlace", true) && !g.readEntry("StartFromCurrent", false);
+        root->setChecked(fromRoot);
+        home->setChecked(!fromRoot);
+        hidden->setChecked(g.readEntry("ShowHiddenFolders", false));
+    });
+    auto apply = [this, root, hidden]() {
+        KConfigGroup g = treeConfig();
+        g.writeEntry("StartFromPlace", !root->isChecked());
+        g.writeEntry("StartFromCurrent", false);
+        g.writeEntry("ShowHiddenFolders", hidden->isChecked());
+        g.writeEntry("BriefMode", true);
+        m_tree->restoreSettings(KConfigGroup(krConfig, "Panero Navigation Tree"));
+        if (m_currentUrl.isValid())
+            m_tree->setCurrentUrl(m_currentUrl);
+    };
+    connect(group, &QActionGroup::triggered, this, apply);
+    connect(hidden, &QAction::triggered, this, apply);
+    return menu;
+}
+
+KConfigGroup PaneroNavigationDock::treeConfig() const
+{
+    KConfigGroup navTree(krConfig, "Panero Navigation Tree");
+    return KConfigGroup(&navTree, "TreeView");
+}
+
+bool PaneroNavigationDock::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched != m_pins->viewport())
+        return QDockWidget::eventFilter(watched, event);
+    switch (event->type()) {
+    case QEvent::DragEnter:
+    case QEvent::DragMove: {
+        auto *e = static_cast<QDropEvent *>(event);
+        if (e->mimeData()->hasUrls()) {
+            e->setDropAction(Qt::LinkAction);
+            e->accept();
+            return true;
+        }
+        return false;
+    }
+    case QEvent::Drop: {
+        auto *e = static_cast<QDropEvent *>(event);
+        int pinned = 0;
+        for (const QUrl &url : KUrlMimeData::urlsFromMimeData(e->mimeData())) {
+            // local: only folders; remote locations are pinned as given
+            if (url.isLocalFile() && !QFileInfo(url.toLocalFile()).isDir())
+                continue;
+            if (pinUrl(url))
+                ++pinned;
+        }
+        e->setDropAction(Qt::LinkAction);
+        e->accept();
+        return true;
+    }
+    default:
+        return false;
+    }
 }
 
 void PaneroNavigationDock::addPin(const Pin &pin)
@@ -368,6 +481,7 @@ void PaneroNavigationDock::saveSettings() const
     g.writeEntry("Visible", isVisible());
     g.writeEntry("Width", width());
     m_tree->saveSettings(KConfigGroup(krConfig, "Panero Navigation Tree"));
+    g.writeEntry("Splitter", m_splitter->saveState());
 }
 
 void PaneroNavigationDock::restoreSettings()
@@ -376,9 +490,15 @@ void PaneroNavigationDock::restoreSettings()
     // Panero default: root the tree at the nearest place (e.g. Home) instead of "/"
     KConfigGroup navTree(krConfig, "Panero Navigation Tree");
     KConfigGroup treeGroup(&navTree, "TreeView");
-    if (!treeGroup.hasKey("StartFromPlace"))
+    if (!treeGroup.hasKey("StartFromPlace") || treeGroup.readEntry("StartFromCurrent", false)) {
+        // Panero offers Home (start from place) or the whole file system only
         treeGroup.writeEntry("StartFromPlace", true);
+        treeGroup.writeEntry("StartFromCurrent", false);
+    }
     m_tree->restoreSettings(KConfigGroup(krConfig, "Panero Navigation Tree"));
+    const QByteArray splitter = g.readEntry("Splitter", QByteArray());
+    if (!splitter.isEmpty())
+        m_splitter->restoreState(splitter);
     // single name column (default): no header needed
     m_tree->header()->setVisible(m_tree->header()->count() - m_tree->header()->hiddenSectionCount() > 1);
     setVisible(g.readEntry("Visible", true));
