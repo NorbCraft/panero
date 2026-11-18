@@ -143,3 +143,16 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   menu just for a rarely used, discouraged feature. It is now in Suggests; the
   root mode action already tells the user to install kde-cli-tools if kdesu is
   missing.
+
+## D-012 — Toolbar and sidebar refinements (2026-11-18, owner request)
+
+- Folder tree start: only "Start at Home" (upstream "start from place": Home, or
+  the drive / "/" when outside Home) and "Start at the Whole File System (/)";
+  upstream "start from current folder" is not offered (old setting migrates to Home).
+- Toolbar Trash is a menu: Open Trash / Empty Trash (upstream confirmation kept).
+- Sidebar toggle is the first toolbar item, icon-only (`sidebar-show-symbolic`,
+  present in Zorin and Breeze themes), checked while the sidebar is shown.
+- Details/Thumbnails: one segmented control (both halves visible, active one
+  highlighted); any click switches the active panel to the other view.
+- Pinned and Folders share a vertical splitter (state saved); folders can be
+  dropped on the pinned list.

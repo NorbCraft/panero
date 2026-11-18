@@ -38,13 +38,19 @@ Konqueror and Total Commander behaviours are selectable there too.
 
 ## Folder tree and pins
 
-- **Folder Tree** in the toolbar shows or hides the left sidebar. It always
-  works on the **active panel** ("Opens in: left/right panel").
-- **Pinned**: press **+** to pin the active panel's folder. Click a pin to open
-  it. Right-click a pin to move or unpin it. If a pinned folder's drive is not
+- The **sidebar button** at the far left of the toolbar shows or hides the
+  left sidebar. The sidebar always works on the **active panel** ("Opens in:
+  left/right panel").
+- **Pinned**: press **+** to pin the active panel's folder, or **drag folders**
+  from a panel (or another file manager) onto the list. Click a pin to open it.
+  Right-click a pin to move or unpin it. If a pinned folder's drive is not
   connected or not mounted, Panero tells you and offers to mount it (your system
   may ask for authorisation), retry, or unpin.
 - **Folders**: a tree that follows the active panel; click a folder to open it.
+  The options button next to "Folders" chooses where the tree starts: **Home**
+  (on another drive or outside Home it starts at that drive or at /) or the
+  **whole file system (/)**, and whether hidden folders are shown.
+- Drag the handle between Pinned and Folders to give either part more room.
 - Each panel has a **drive button** ("System (/)", USB sticks, network
   locations) with a menu of the available devices.
 
@@ -53,10 +59,14 @@ Konqueror and Total Commander behaviours are selectable there too.
 - **Details**: sortable columns; the **Ext** column shows extensions
   separately (folders, hidden files and names without an extension are not
   split; `.tar.gz` stays together). Renaming always uses the real file name.
+- The **Details | Thumbnails** button in the toolbar shows which view the active
+  panel uses; click it to switch to the other one.
 - **Thumbnails**: a grid of tiles with real previews for images, PDFs, videos
   and other files that have a previewer installed (from KDE's preview plugins);
   other files show their icon.
 - **Hidden Files** in the toolbar (Alt+.) shows or hides dot files.
+- **Trash** in the toolbar opens a menu: **Open Trash** (shows it in the active
+  panel, where files can be restored) or **Empty Trash** (asks first).
 
 ## View & Colors
 

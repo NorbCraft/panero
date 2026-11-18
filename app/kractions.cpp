@@ -21,6 +21,8 @@
 
 #include "defaults.h"
 #include "krusader.h"
+#include <KWidgetsAddons/KActionMenu>
+#include <QToolButton>
 #include "paneroimport.h"
 #include "Panel/krpanel.h"
 #include "Panel/panelfunc.h"
@@ -208,7 +210,15 @@ void KrActions::setupActions(Krusader *krusaderApp)
         ACTIVE_FUNC->openUrl(QUrl(QStringLiteral("trash:/")));
     });
 
+    // Toolbar Trash button: a menu with Open Trash and Empty Trash (empty asks first)
+    auto *trashMenu = new KActionMenu(Icon(KrTrashHandler::trashIconName()), i18n("Trash"), krusaderApp);
+    trashMenu->setPopupMode(QToolButton::InstantPopup);
+    trashMenu->setToolTip(i18n("Open or empty the Trash"));
+    krusaderApp->actionCollection()->addAction("panero trash menu", trashMenu);
+
     NEW_KACTION(actTrashBin, i18n("Trash Popup Menu"), KrTrashHandler::trashIconName(), 0, SLOTS, SLOT(trashPopupMenu()), "trashbin");
+    trashMenu->addAction(actOpenTrash);
+    trashMenu->addAction(actEmptyTrash);
 
     NEW_KACTION(actSwapSides, i18n("Sw&ap Sides"), nullptr, Qt::CTRL + Qt::SHIFT + Qt::Key_U, SLOTS, SLOT(toggleSwapSides()), "toggle swap sides");
     actToggleHidden->setChecked(KConfigGroup(krConfig, "Look&Feel").readEntry("Show Hidden", _ShowHidden));
