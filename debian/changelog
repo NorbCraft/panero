@@ -1,3 +1,13 @@
+panero (0.1.0~preview.2-1) noble; urgency=medium
+
+  * Second preview (git tag v0.1.0-preview.2).
+  * Sidebar toggle at the far left of the toolbar; Trash button menu with
+    Open Trash / Empty Trash; one Details | Thumbnails toggle.
+  * Resizable Pinned / Folders split; drag folders onto Pinned.
+  * Folder tree starts at Home (or the drive / "/") or at "/".
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Wed, 18 Nov 2026 20:09:36 +0100
+
 panero (0.1.0~preview.1-1) noble; urgency=medium
 
   * First Panero preview release (git tag v0.1.0-preview.1), based on
