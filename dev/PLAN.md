@@ -121,7 +121,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
       launcher and GUI (container tests are not a desktop test).
 - [ ] Backport upstream kio_iso fixes 4c85272cd + c6945e68e (ISO images do
       not open on noble; found by the package test, distro krusader same).
-- [ ] Publish `v0.1.0-preview.1` prerelease; verify downloads + checksums.
+- [x] Publish `v0.1.0-preview.1` prerelease; verify downloads + checksums.
 
 ## Phase 9 — Verification & final report (§11)
 
@@ -159,3 +159,11 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 - In progress: tag v0.1.0-preview.1 and publish via .github/workflows/release.yml.
 - After release: owner host install check (sudo needed), then update release notes
   if anything is found.
+
+## Status notes (2026-11-18)
+
+- v0.1.0-preview.1 published (prerelease): https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.1
+  Assets verified (checksums, commit, clean-container install + coexistence).
+- Open: owner installs the .deb on the Zorin host (sudo) → check launcher/icon,
+  coexistence with the installed Krusader, first-run import offer; then update
+  release notes/test report. Owner-decision backports listed in dev/BACKPORTS.md.

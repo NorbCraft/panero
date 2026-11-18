@@ -183,3 +183,11 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   passes after correcting the test's ISO path.
 - Next: tag v0.1.0-preview.1 → release workflow; verify assets/checksums; owner
   installs the .deb on the host (sudo) for the desktop launcher/coexistence check.
+
+## 2026-11-18 — Claude Code (Opus 5.5) — v0.1.0-preview.1 published
+
+- Tagged v0.1.0-preview.1 (13106ed09); release workflow succeeded and published
+  the prerelease with .deb, source and licenses archives, SHA256SUMS.
+- Verified the published assets independently (checksums, version, source commit,
+  install 57/57 and coexistence 13/13 in fresh containers).
+- Waiting on owner: host install with sudo for the desktop launcher/coexistence check.

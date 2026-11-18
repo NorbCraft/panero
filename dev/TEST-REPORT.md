@@ -51,6 +51,16 @@ are in `dev/TEST-REPORT-packaging.md`.
 | Packaging | see `dev/TEST-REPORT-packaging.md`: lintian clean (justified overrides only); install, coexistence with krusader both orders, upgrade, remove/purge: 83 pass / 0 fail / 1 known (ISO, fixed by the backport) | container | pass |
 | Wayland | starts via XWayland (Qt 5 default on GNOME) and natively (`QT_QPA_PLATFORM=wayland`) | host desktop | pass |
 
+## Release v0.1.0-preview.1 (published 2026-11-17)
+
+- Release workflow run 44174692541: build + ctest + lintian + package tests, publish,
+  re-download and checksum verification — success.
+- Independent check of the published assets: `sha256sum -c SHA256SUMS` OK for the .deb,
+  source and licenses archives; package `Version: 0.1.0~preview.1-1`; source archive
+  `SOURCE-INFO.txt` commit `13106ed09946a6382309c15c081267ec420704d5` = tag commit.
+- Downloaded .deb in fresh ubuntu:24.04 containers: install scenario 57/57 pass,
+  coexistence with the distro krusader package 13/13 pass.
+
 ## Not yet verified (open)
 
 - .deb installed through the desktop on the owner's Zorin host (launcher, icon, coexistence with the installed Krusader): needs the owner's sudo; planned right after the release.
