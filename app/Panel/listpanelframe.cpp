@@ -7,6 +7,9 @@
 
 #include "listpanelframe.h"
 
+#include <QApplication>
+#include <QStyle>
+
 #include "krcolorcache.h"
 #include "../krglobal.h"
 
@@ -82,6 +85,18 @@ void ListPanelFrame::refreshColors(bool active)
     if(color.isEmpty())
         return;
     setPalette(active ? palActive : palInactive);
+    // Panero: style sheets can tell the active panel's frame apart
+    if (property("active").toBool() != active || !property("active").isValid()) {
+        setProperty("active", active);
+        if (!qApp->styleSheet().isEmpty()) {
+            QList<QWidget *> widgets = findChildren<QWidget *>();
+            widgets.prepend(this);
+            for (QWidget *w : qAsConst(widgets)) {
+                w->style()->unpolish(w);
+                w->style()->polish(w);
+            }
+        }
+    }
 }
 
 QColor ListPanelFrame::getColor(KConfigGroup &cg, const QString& name, const QColor &def, const QColor &kdedef)

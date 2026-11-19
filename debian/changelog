@@ -1,3 +1,16 @@
+panero (0.1.0~preview.3-1) noble; urgency=medium
+
+  * Third preview (git tag v0.1.0-preview.3).
+  * Modern look: rounded panel cards, drive chip next to the path, menu
+    button instead of the menu bar (Settings > Show Menubar brings it back).
+  * One icon-only toolbar (22 px) with View & Colors at the right edge; a
+    stale toolbar layout from an older version is replaced on upgrade.
+  * Folder tree: reliable "Start at Home", click unfolds, second click folds.
+  * Ctrl+wheel switches Details/Thumbnails; Space shows a folder's size.
+  * View & Colors: active panel colour, Panero or Krusader selection.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Thu, 19 Nov 2026 20:30:00 +0100
+
 panero (0.1.0~preview.2-1) noble; urgency=medium
 
   * Second preview (git tag v0.1.0-preview.2).

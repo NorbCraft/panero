@@ -47,6 +47,7 @@ private:
     PaneroAppearance();
     void readSystemScheme();
     void applyIconTheme(bool dark);
+    void applyStyleSheet(bool paneroStyle);
 
     int m_systemScheme = 0;
     QString m_originalStyle;

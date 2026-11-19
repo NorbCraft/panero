@@ -437,6 +437,16 @@ void ListPanel::createView()
     connect(view->op(), &KrViewOperator::executed, func, &ListPanelFunc::execute);
     connect(view->op(), &KrViewOperator::goInside, func, &ListPanelFunc::goInside);
     connect(view->op(), &KrViewOperator::needFocus, this, [=]() { slotFocusOnMe(); });
+    connect(view->op(), &KrViewOperator::viewTypeRequested, this, [=](int type, int iconSize) {
+        // deferred: the request comes from an event handler of the view being replaced
+        QTimer::singleShot(0, this, [=]() {
+            changeType(type);
+            if (iconSize > 0)
+                view->setFileIconSize(iconSize); // also refreshes the view actions
+            else
+                view->op()->emitRefreshActions();
+        });
+    });
     connect(view->op(), &KrViewOperator::selectionChanged, this, &ListPanel::slotUpdateTotals);
     connect(view->op(), &KrViewOperator::itemDescription, krApp, &Krusader::statusBarUpdate);
     connect(view->op(), &KrViewOperator::contextMenu, this, &ListPanel::popRightClickMenu);

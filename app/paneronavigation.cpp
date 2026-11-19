@@ -6,6 +6,8 @@
 
 #include "paneronavigation.h"
 
+#include <QSignalBlocker>
+
 #include "icon.h"
 #include "krglobal.h"
 #include "krusaderview.h"
@@ -82,13 +84,6 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     layout->setContentsMargins(4, 2, 2, 2);
     layout->setSpacing(3);
 
-    m_target = new QLabel(content);
-    m_target->setToolTip(i18n("Pins and folders open in the active panel"));
-    QPalette p = m_target->palette();
-    p.setColor(QPalette::WindowText, p.color(QPalette::Highlight));
-    m_target->setPalette(p);
-    layout->addWidget(m_target);
-
     // pinned folders and folder tree share a vertical splitter (drag the handle to resize)
     m_splitter = new QSplitter(Qt::Vertical, content);
     m_splitter->setChildrenCollapsible(false);
@@ -114,6 +109,7 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     m_pins->setAccessibleName(i18n("Pinned folders"));
     m_pins->setContextMenuPolicy(Qt::CustomContextMenu);
     m_pins->setUniformItemSizes(true);
+    m_pins->setIconSize(QSize(KrFileTreeView::IconSize, KrFileTreeView::IconSize));
     m_pins->setMinimumHeight(40);
     m_pins->setFrameShape(QFrame::NoFrame);
     // folders dragged from the panels (or another file manager) are pinned
@@ -158,25 +154,37 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
 
     setWidget(content);
     setMinimumWidth(170);
-    // compact: no separate title bar; the "Opens in" line is the header and the
-    // toolbar's Folder Tree button shows/hides the sidebar
+    // compact: no separate title bar; the toolbar's sidebar button shows/hides it
     setTitleBarWidget(new QWidget(this));
-    updateTitle(true);
     loadPins();
-}
-
-void PaneroNavigationDock::updateTitle(bool leftPanel)
-{
-    m_target->setText(leftPanel ? i18n("Opens in: left panel") : i18n("Opens in: right panel"));
 }
 
 void PaneroNavigationDock::activeLocationChanged(const QUrl &url, bool leftPanel)
 {
-    updateTitle(leftPanel);
+    Q_UNUSED(leftPanel)
     const bool changed = url != m_currentUrl;
     m_currentUrl = url;
+    updatePinHighlight();
     if (changed && isVisible())
         m_tree->setCurrentUrl(url);
+}
+
+void PaneroNavigationDock::updatePinHighlight()
+{
+    // a pin is highlighted only while exactly its folder is shown (not a subfolder)
+    const QUrl current = m_currentUrl.adjusted(QUrl::StripTrailingSlash);
+    QListWidgetItem *match = nullptr;
+    for (int i = 0; i < m_pins->count() && !match; ++i) {
+        if (m_pins->item(i)->data(UrlRole).toUrl().adjusted(QUrl::StripTrailingSlash) == current)
+            match = m_pins->item(i);
+    }
+    const QSignalBlocker blocker(m_pins);
+    if (match) {
+        m_pins->setCurrentItem(match);
+    } else {
+        m_pins->clearSelection();
+        m_pins->setCurrentRow(-1);
+    }
 }
 
 void PaneroNavigationDock::showEvent(QShowEvent *event)
@@ -230,6 +238,7 @@ bool PaneroNavigationDock::pinUrl(const QUrl &folderUrl)
     }
     addPin(pin);
     savePins();
+    updatePinHighlight();
     return true;
 }
 
@@ -318,6 +327,7 @@ void PaneroNavigationDock::addPin(const Pin &pin)
 {
     auto *item = new QListWidgetItem(Icon(iconForUrl(pin.url)), pin.label, m_pins);
     item->setData(UrlRole, pin.url);
+    item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
     item->setData(UdiRole, pin.driveUdi);
     item->setData(DriveLabelRole, pin.driveLabel);
     QString tip = pin.url.toDisplayString(QUrl::PreferLocalFile);

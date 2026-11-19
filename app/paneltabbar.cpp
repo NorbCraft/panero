@@ -40,7 +40,7 @@ PanelTabBar::PanelTabBar(QWidget *parent, TabActions *actions): QTabBar(parent),
     _draggingTab(false), _dragTabIndex(-1)
 {
     const KConfigGroup cfg(krConfig, "Look&Feel");
-    const bool expandingTabs = cfg.readEntry("Expanding Tabs", true);
+    const bool expandingTabs = cfg.readEntry("Expanding Tabs", false); // Panero: compact tabs
     const bool showCloseButtons = cfg.readEntry("Show Close Tab Buttons", true);
     _doubleClickClose = cfg.readEntry("Close Tab By Double Click", false);
 

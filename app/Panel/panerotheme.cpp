@@ -54,6 +54,7 @@ const QVector<ColorKey> &colorKeys()
         {"Current Background", &Scheme::currentBackground},
         {"Current Frame", &Scheme::currentFrame},
         {"Inactive Current Frame", &Scheme::inactiveCurrentFrame},
+        {"Accent", &Scheme::accent},
     };
     return keys;
 }
@@ -96,6 +97,7 @@ Scheme defaultScheme(bool dark)
         s.currentBackground = QColor(0xdd, 0xe9, 0xfc);
         s.currentFrame = QColor(0x25, 0x63, 0xeb);
         s.inactiveCurrentFrame = QColor(0x9c, 0xa3, 0xaf);
+        s.accent = QColor(DefaultAccent);
     } else {
         s.background = QColor(0x1d, 0x20, 0x25);
         s.alternateBackground = QColor(0x24, 0x28, 0x2e);
@@ -105,6 +107,7 @@ Scheme defaultScheme(bool dark)
         s.currentBackground = QColor(0x1e, 0x36, 0x5c);
         s.currentFrame = QColor(0x5b, 0x9c, 0xff);
         s.inactiveCurrentFrame = QColor(0x6b, 0x72, 0x80);
+        s.accent = QColor(DefaultAccent);
     }
     return s;
 }
@@ -150,6 +153,12 @@ const Scheme &scheme()
     c.dark = dark;
     c.valid = true;
     return c.scheme;
+}
+
+QColor accentColor(bool dark)
+{
+    const QColor configured = readColor(group().readEntry(keyPrefix(dark) + QStringLiteral("Accent"), QString()));
+    return configured.isValid() ? configured : defaultScheme(dark).accent;
 }
 
 bool alternatingRows()

@@ -17,3 +17,8 @@ ecm_add_test(panerothemetest.cpp ../app/Panel/panerotheme.cpp
     TEST_NAME panerothemetest
     LINK_LIBRARIES Qt5::Test Qt5::Widgets KF5::ConfigCore)
 target_include_directories(panerothemetest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel ${CMAKE_SOURCE_DIR}/app)
+
+ecm_add_test(paneropathstest.cpp ../app/Panel/paneropaths.cpp
+    TEST_NAME paneropathstest
+    LINK_LIBRARIES Qt5::Test Qt5::Core)
+target_include_directories(paneropathstest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel)

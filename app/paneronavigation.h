@@ -58,6 +58,7 @@ private slots:
     void treeUrlActivated(const QUrl &url);
 
 private:
+    void updatePinHighlight();
     struct Pin {
         QUrl url;
         QString label;
@@ -71,11 +72,9 @@ private:
     void openUrlInActivePanel(const QUrl &url);
     bool tryMountAndOpen(const Pin &pin);
     Pin pinFromItem(const QListWidgetItem *item) const;
-    void updateTitle(bool leftPanel);
     QMenu *createTreeOptionsMenu(QWidget *parent);
     KConfigGroup treeConfig() const;
 
-    QLabel *m_target;
     QListWidget *m_pins;
     QToolButton *m_pinButton;
     KrFileTreeView *m_tree;

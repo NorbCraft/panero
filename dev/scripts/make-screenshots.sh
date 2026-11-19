@@ -90,7 +90,7 @@ shot thumbnails; quit
 # 5: View & Colors dialog
 run 1
 xdotool mousemove $((X+500)) $((Y+255)) click 1; sleep 0.3
-xdotool key alt+v; sleep 0.5; xdotool key Down Down Down Down Down Down Down Down Down Return; sleep 1.5
+xdotool mousemove $((X+W-62)) $((Y+26)) click 1; sleep 1.5   # toolbar: View & Colors
 import -window root /tmp/vc.png; convert /tmp/vc.png -trim /out/view-colors.png
 quit
 ls -la /out

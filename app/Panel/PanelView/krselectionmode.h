@@ -168,7 +168,8 @@ public:
  * Panero's default "Commander" profile (mode 5): the current row (cursor) and
  * the set of marked files are independent. Left click and arrow keys only move
  * the cursor; short right click, Space and Insert toggle marks; holding the
- * right button opens the native context menu without changing marks.
+ * right button opens the native context menu without changing marks. Space on a
+ * folder also calculates and shows its size.
  */
 class CommanderSelectionMode : public KrSelectionMode
 {
@@ -177,7 +178,7 @@ public:
         _useQTSelection = false;
         _spaceMovesDown = false;
         _insertMovesDown = true;
-        _spaceCalculatesDiskSpace = false;
+        _spaceCalculatesDiskSpace = true;   // Space marks and shows a folder's size (Krusader/TC)
         _rightButtonSelects = true;
         _leftButtonSelects = false;
         _rightButtonPreservesSelection = true;

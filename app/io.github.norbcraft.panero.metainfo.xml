@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.3" date="2026-11-19" type="development">
+      <description>
+        <p>Modern look with a menu button, one icon-only toolbar, reliable folder tree, zoom between Details and Thumbnails, folder size on Space, active panel colour and selection style options.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.2" date="2026-11-18" type="development">
       <description>
         <p>Sidebar and toolbar refinements: Trash menu, Details/Thumbnails toggle, resizable pins and folder tree, drag folders to pin.</p>

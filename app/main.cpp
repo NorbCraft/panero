@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 // QtCore
+#include <QFile>
 #include <QAbstractEventDispatcher>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -45,6 +46,7 @@
 #include "krusaderview.h"
 #include "panelmanager.h"
 #include "paneroimport.h"
+#include "panerotoolbar.h"
 #include "Panel/paneroappearance.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
@@ -296,6 +298,9 @@ int main(int argc, char *argv[])
     // Panero: offer a one-time, explicit import of an existing Krusader configuration
     // (or perform an import requested from the Settings menu) before the configuration is used.
     PaneroImport::offerImportOnFirstRun(nullptr);
+
+    // Panero: a new default toolbar layout replaces a stale saved one
+    PaneroToolBar::migrateLayout();
 
     // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
     PaneroAppearance::instance()->apply();

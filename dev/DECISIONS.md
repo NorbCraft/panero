@@ -156,3 +156,24 @@ Format: `D-NNN — title (date, status)`. Supersede rather than edit.
   highlighted); any click switches the active panel to the other view.
 - Pinned and Folders share a vertical splitter (state saved); folders can be
   dropped on the pinned list.
+
+## D-013 — Preview 3 look and toolbar (2026-11-19, owner decision from mockups)
+
+Supersedes the toolbar parts of D-012. Mockups: real-app screenshots (dev/mockups,
+dev/scripts/make-mockups.sh).
+
+- One toolbar, icons only, 22 px; appearance button at the right edge; the
+  Details/Thumbnails control is icon-only and follows the toolbar icon size.
+- Sidebar button: option S1, the plain icon button with the preview 1 icon
+  (`view-list-tree`), twice the width of a normal toolbar button. The "header"
+  variant (S2) is not shipped.
+- General look: option B "Modern" is the Panero look ("Use Panero's look"):
+  panels as rounded cards (active one outlined), layout `panero:modern` (drive
+  chip + path in one row, totals + free space in the bottom row), compact tabs,
+  muted headers, flat function-key bar; the menu bar is hidden by default and a
+  ☰ menu button (KHamburgerMenu) at the end of the toolbar offers all menus
+  (Settings > Show Menubar brings it back). Without "Use Panero's look" Panero
+  looks like Krusader (system style, no style sheet).
+- The sidebar's "Opens in: … panel" label is removed (the active panel is visible).
+- A stale local `paneroui.rc` from an older layout is backed up and its toolbars
+  dropped on upgrade (shortcuts kept).

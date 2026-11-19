@@ -96,8 +96,8 @@ fi
 # 9. restore the symlink from the Trash: toolbar Trash button, select, context menu > Restore
 #    (navigated from the bottom of the menu: Properties, Paste, Copy, Cut, Empty Trash, Restore)
 xdotool mousemove $((X+500)) $((Y+174)) click 1; sleep 0.4
-xdotool mousemove $((X+650)) $((Y+41)) click 1; sleep 0.8   # toolbar Trash menu
-xdotool mousemove $((X+675)) $((Y+67)) click 1; sleep 2.5   # > Open Trash
+xdotool mousemove $((X+376)) $((Y+27)) click 1; sleep 0.8   # toolbar Trash menu
+xdotool mousemove $((X+420)) $((Y+57)) click 1; sleep 2.5   # > Open Trash
 xdotool mousemove $((X+500)) $((Y+174)) click 1; sleep 0.4
 k End; k shift+F10; sleep 0.6; k Up Up Up Up Up Up; k Return; sleep 2.5
 check "restore from Trash brought the symlink back" test -L "$OPS/L/zz link"
@@ -111,5 +111,8 @@ check "search dialog ran (screenshot saved)" test -s "$SHOTS/search.png"
 k Escape
 
 kill $APID 2>/dev/null; sleep 1; kill $XPID 2>/dev/null
-pkill -x gnome-text-edit 2>/dev/null || true   # safety: close an editor a stray Return may have opened
+# safety: close an editor a stray Return may have opened - only one on the test display
+for p in $(pgrep -x gnome-text-edit); do
+  tr '\0' '\n' < /proc/$p/environ 2>/dev/null | grep -qx "DISPLAY=$DISP" && kill "$p"
+done
 echo "RESULT: $PASS passed, $FAIL failed (log $LOG, screenshots $SHOTS)" | tee -a "$LOG"

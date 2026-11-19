@@ -9,8 +9,14 @@
 #include "krusader.h"
 #include "paneronavigation.h"
 #include "paneroviewmodeaction.h"
+#include "panerotoolbar.h"
+#include "Panel/paneroappearance.h"
 
+#include <QFile>
 #include <QToolButton>
+#include <KConfigWidgets/KHamburgerMenu>
+#include <KConfigWidgets/KStandardAction>
+#include <KWidgetsAddons/KToggleAction>
 #include "icon.h"
 #include "Panel/krpanel.h"
 #include "Panel/listpanel.h"
@@ -197,12 +203,39 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
     connect(MAIN_VIEW, &KrusaderView::activeLocationChanged, _navigationDock, &PaneroNavigationDock::activeLocationChanged);
     {
         QAction *toggleNavigation = _navigationDock->toggleViewAction();
-        toggleNavigation->setIcon(Icon(QStringLiteral("sidebar-show-symbolic")));
+        toggleNavigation->setIcon(Icon(QStringLiteral("view-list-tree")));
         toggleNavigation->setText(i18n("Folder &Tree and Pins"));
         toggleNavigation->setToolTip(i18n("Show or hide the folder tree and pinned folders"));
         actionCollection()->addAction(QStringLiteral("panero toggle navigation"), toggleNavigation);
+        actionCollection()->addAction(QStringLiteral("panero sidebar button"),
+                                      new PaneroSidebarButtonAction(toggleNavigation, this));
     }
     setupPaneroToolbarLabels();
+    {
+        // Settings > Show Menubar; with the menu bar hidden, the menu button at the end
+        // of the toolbar (KHamburgerMenu) offers the same menus
+        KToggleAction *showMenubar = KStandardAction::showMenubar(nullptr, nullptr, actionCollection());
+        // Ctrl+M stays the (upstream) media menu shortcut
+        actionCollection()->setDefaultShortcuts(showMenubar, {});
+        connect(showMenubar, &QAction::toggled, this, [this](bool on) { menuBar()->setVisible(on); });
+        KHamburgerMenu *menuButton = KStandardAction::hamburgerMenu(nullptr, nullptr, actionCollection());
+        menuButton->setMenuBar(menuBar());
+        menuButton->setShowMenuBarAction(showMenubar);
+        // the "three lines" icon: desktop themes like Zorin draw application-menu as a
+        // gear; use Breeze's in the variant matching Panero's light/dark look
+        auto menuIcon = [menuButton]() {
+            const QString fallback = QIcon::fallbackThemeName();
+            for (const QString &dir : QIcon::themeSearchPaths()) {
+                const QString file = dir + QLatin1Char('/') + fallback + QStringLiteral("/actions/22/application-menu.svg");
+                if (!fallback.isEmpty() && QFile::exists(file)) {
+                    menuButton->setIcon(QIcon(file));
+                    return;
+                }
+            }
+        };
+        menuIcon();
+        connect(PaneroAppearance::instance(), &PaneroAppearance::appearanceChanged, menuButton, menuIcon);
+    }
 
     // manage our keyboard short-cuts
     //KAcceleratorManager::manage(this,true);
@@ -238,15 +271,10 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         const KConfigGroup cfgActionsBar(krConfig, "Actions Toolbar");
         toolBar("actionsToolBar")->applySettings(cfgActionsBar);
 
-        const KConfigGroup cfgViewBar(krConfig, "View Toolbar");
-        toolBar("viewToolBar")->applySettings(cfgViewBar);
-        // keep the view strip next to the main toolbar, the job toolbar at the end of the row
-        insertToolBar(toolBar("jobToolBar"), toolBar("viewToolBar"));
-        // the sidebar toggle sits at the far left as an icon-only toggle (like GNOME apps)
-        if (QAction *nav = actionCollection()->action(QStringLiteral("panero toggle navigation"))) {
-            if (auto *button = qobject_cast<QToolButton *>(toolBar()->widgetForAction(nav)))
-                button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        }
+        // the main toolbar owns its whole row (its spacer pushes the appearance button to
+        // the right edge); the optional actions/job toolbars go below it when shown
+        insertToolBarBreak(toolBar("actionsToolBar"));
+        insertToolBarBreak(toolBar("jobToolBar"));
 
         _navigationDock->restoreSettings();
         _navigationDock->activeLocationChanged(ACTIVE_PANEL->virtualPath(), ACTIVE_PANEL->gui->isLeft());
@@ -255,6 +283,10 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         restoreState(startupGroup.readEntry("State", QByteArray()));
 
         statusBar()->setVisible(startupGroup.readEntry("Show status bar", _ShowStatusBar));
+        if (QAction *showMenubar = actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
+            showMenubar->setChecked(startupGroup.readEntry("Show menubar", false));
+        // Panero: the menu button at the end of the toolbar replaces the menu bar (D-013)
+        menuBar()->setVisible(startupGroup.readEntry("Show menubar", false));
 
         MAIN_VIEW->updateGUI(startupGroup);
 
@@ -430,8 +462,6 @@ void Krusader::saveSettings() {
     cfg = krConfig->group("Actions Toolbar");
     toolBar("actionsToolBar")->saveSettings(cfg);
 
-    cfg = krConfig->group("View Toolbar");
-    toolBar("viewToolBar")->saveSettings(cfg);
 
     if (_navigationDock)
         _navigationDock->saveSettings();
@@ -440,6 +470,7 @@ void Krusader::saveSettings() {
     // save toolbar visibility and position
     cfg.writeEntry("State", saveState());
     cfg.writeEntry("Show status bar", statusBar()->isVisible());
+    cfg.writeEntry("Show menubar", !menuBar()->isHidden());
 
     // save panel and window settings
     if (cfg.readEntry("Remember Position", _RememberPos))
@@ -691,6 +722,7 @@ void Krusader::setupPaneroToolbarLabels()
     auto *viewMode = new PaneroViewModeAction(actionCollection()->action(QStringLiteral("view0")),
                                               actionCollection()->action(QStringLiteral("view2")), this);
     actionCollection()->addAction(QStringLiteral("panero view mode"), viewMode);
+    actionCollection()->addAction(QStringLiteral("panero toolbar spacer"), new PaneroToolBarSpacer(this));
     if (QAction *hidden = actionCollection()->action(QStringLiteral("toggle hidden files"))) {
         if (hidden->icon().isNull())
             hidden->setIcon(Icon(QStringLiteral("view-hidden")));

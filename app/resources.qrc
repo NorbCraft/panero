@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>layout.xml</file>
+        <file>panero-modern.qss</file>
         <file>icons/icon-missing.svgz</file>
     </qresource>
 </RCC>

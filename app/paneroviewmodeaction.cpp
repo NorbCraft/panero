@@ -9,6 +9,7 @@
 #include <QAction>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QToolBar>
 #include <QToolButton>
 
 #include <KI18n/KLocalizedString>
@@ -44,7 +45,6 @@ QWidget *PaneroViewModeAction::createWidget(QWidget *parent)
         button->setAutoRaise(true);
         button->setCheckable(true);
         button->setFocusPolicy(Qt::NoFocus);
-        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         if (source) {
             button->setIcon(source->icon());
             button->setText(source->iconText());
@@ -55,6 +55,22 @@ QWidget *PaneroViewModeAction::createWidget(QWidget *parent)
     };
     QToolButton *details = makeButton(m_details);
     QToolButton *thumbnails = makeButton(m_thumbnails);
+
+    // follow the toolbar: icon size and text position (icons only by default)
+    if (auto *bar = qobject_cast<QToolBar *>(parent)) {
+        auto follow = [details, thumbnails, bar]() {
+            for (QToolButton *button : {details, thumbnails}) {
+                button->setIconSize(bar->iconSize());
+                button->setToolButtonStyle(bar->toolButtonStyle());
+            }
+        };
+        connect(bar, &QToolBar::iconSizeChanged, frame, follow);
+        connect(bar, &QToolBar::toolButtonStyleChanged, frame, follow);
+        follow();
+    } else {
+        for (QToolButton *button : {details, thumbnails})
+            button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    }
 
     auto sync = [this, details, thumbnails]() {
         const bool thumbs = m_thumbnails && m_thumbnails->isChecked();

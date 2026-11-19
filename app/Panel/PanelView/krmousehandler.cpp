@@ -6,6 +6,7 @@
 */
 
 #include "krmousehandler.h"
+#include "krviewfactory.h"
 #include "krselectionmode.h"
 #include "krview.h"
 #include "krviewitem.h"
@@ -310,13 +311,31 @@ bool KrMouseHandler::mouseMoveEvent(QMouseEvent *e)
     return false;
 }
 
+namespace
+{
+// view type ids (KrViewFactory) and the smallest thumbnail size
+const int DetailedViewType = 0;
+const int ThumbnailViewType = 2;
+const int MinThumbnailSize = 48;
+}
+
 bool KrMouseHandler::wheelEvent(QWheelEvent *e)
 {
     if (!_view->isFocused())
         _view->op()->emitNeedFocus();
 
     if (e->modifiers() == Qt::ControlModifier) {
-        if (e->angleDelta().y() > 0) {
+        const bool in = e->angleDelta().y() > 0;
+        // Panero zoom: Details keeps its rows; zooming in switches to Thumbnails, which
+        // zoom further; zooming out of the smallest thumbnails returns to Details.
+        // (The panel switches views after this event: the view is replaced.)
+        const QString view = _view->instance()->name();
+        if (view == QLatin1String("KrInterDetailedView")) {
+            if (in)
+                _view->op()->emitViewTypeRequested(ThumbnailViewType, MinThumbnailSize);
+        } else if (view == QLatin1String("KrInterThumbnailView") && !in && _view->fileIconSize() <= MinThumbnailSize) {
+            _view->op()->emitViewTypeRequested(DetailedViewType, 0);
+        } else if (in) {
             _view->zoomIn();
         } else {
             _view->zoomOut();

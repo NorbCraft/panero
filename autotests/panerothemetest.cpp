@@ -93,6 +93,16 @@ private Q_SLOTS:
         QCOMPARE(PaneroTheme::scheme().alternateBackground, purple);
     }
 
+    void accentDefaultsToKrusaderColourAndIsConfigurable()
+    {
+        // default: the Krusader (Qt Fusion) highlight, in light and dark
+        QCOMPARE(PaneroTheme::accentColor(false), QColor(0x30, 0x8c, 0xc6));
+        QCOMPARE(PaneroTheme::accentColor(true), QColor(0x30, 0x8c, 0xc6));
+        group().writeEntry("Dark Accent", QStringLiteral("#e66100"));
+        QCOMPARE(PaneroTheme::accentColor(true), QColor(0xe6, 0x61, 0x00));
+        QCOMPARE(PaneroTheme::accentColor(false), QColor(0x30, 0x8c, 0xc6));
+    }
+
     void defaultSchemesHaveContrast()
     {
         // marks must stay distinguishable from both stripes and the cursor fill

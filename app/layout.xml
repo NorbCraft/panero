@@ -93,4 +93,33 @@
         </layout>
     </layout>
 
+    <!-- Panero: one location row (drive + path), a quiet bottom row (selection,
+         free space); the active panel is shown by its coloured bottom row -->
+    <layout name="panero:modern" type="vertical">
+        <hide_widget name="status"/>
+        <layout type="horizontal">
+            <widget name="mediaButton"/>
+            <widget name="urlNavigator"/>
+            <widget name="toolbar"/>
+            <widget name="backButton"/>
+            <widget name="forwardButton"/>
+            <widget name="historyButton"/>
+            <widget name="bookmarksButton"/>
+        </layout>
+        <widget name="fileSystemError"/>
+        <widget name="clientArea"/>
+        <layout type="horizontal">
+            <frame type="horizontal" color="Statusbar" shape="NoFrame" shadow="Plain">
+                <widget name="totals"/>
+                <widget name="freeSpace"/>
+                <widget name="quickSizeCalcProgress"/>
+                <widget name="cancelQuickSizeCalcButton"/>
+                <widget name="previewProgress"/>
+                <widget name="cancelProgressButton"/>
+                <widget name="sidebarPositionButton"/>
+                <widget name="sidebarButton"/>
+            </frame>
+        </layout>
+    </layout>
+
 </KrusaderLayout>

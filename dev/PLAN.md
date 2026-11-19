@@ -172,3 +172,67 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
 - v0.1.0-preview.2 published with the D-012 sidebar/toolbar refinements.
 - Open: owner host install check; owner-decision backports (dev/BACKPORTS.md).
+
+## Phase 10 — Preview 3 (owner requests 2026-11-19)
+
+Step 1 is mockups for the owner to choose from; implementation starts after the
+owner decides. Mockups must be screenshots of the real app (prototype styles),
+not drawings: the owner wants only what can really be built.
+
+Owner-found issue on upgrade: KXMLGUI kept the preview 1 toolbars from
+`~/.local/share/kxmlgui5/panero/paneroui.rc` (saved after a toolbar setting
+change). Fix: on a gui version bump, back up the local file and drop its old
+`<ToolBar>` layout, keeping shortcuts (ActionProperties).
+
+Toolbar
+- [x] One toolbar for all buttons (one resize, no hidden separations); default
+      icons only, medium size (22 px); appearance button pinned to the right.
+- [x] Details/Thumbnails control: icon only, follows the toolbar icon size.
+- [x] Sidebar button: revert to the preview 1 icon, or the owner-chosen embedded
+      variant (mockup).
+- [x] KXMLGUI stale-layout migration (see above).
+
+Folder tree
+- [x] "Start at Home" must be reliable (it sometimes follows the current folder).
+- [x] Click on a folder opens it and expands it if it has subfolders; a second
+      click on the same folder collapses it.
+- [x] Defaults: icon size 22, row height 24 px.
+
+Zoom
+- [x] Ctrl+wheel in Details does not change rows/icons; zooming in switches to
+      Thumbnails and keeps zooming; zooming fully out returns to Details. The
+      view toggle button follows.
+
+Colours
+- [x] Look options: configurable active panel colour (also the tree's selected
+      folder colour); default is the Krusader colour seen with "Use Panero's
+      look" off.
+
+Pins
+- [x] A pin stays highlighted only while that exact folder is shown; moving
+      anywhere else (also a subfolder) clears it.
+
+Keyboard / selection
+- [x] Space calculates and shows the folder size (Krusader/Total Commander
+      behaviour) as well as marking.
+- [x] Option to choose the selection model: Panero click-select (default) or the
+      original Krusader style.
+
+Modern look
+- [x] Mockups of a more modern general look (several options, real screenshots).
+- [x] Implement the owner-chosen option.
+
+Owner decisions (D-013): sidebar button S1 at double width; look B "Modern"
+with the ☰ menu button; remove the sidebar's "Opens in: … panel" label.
+
+- [x] Sidebar button S1, double width; drop the header variant.
+- [x] Look B built in (style sheet generated from the Panero palette/accent,
+      only with "Use Panero's look"); default layout panero:modern; compact tabs;
+      menu bar hidden by default + ☰ button.
+- [x] Remove the "Opens in" label.
+
+Release
+- [x] Plan update with owner decisions.
+- [ ] Implement, tests (ctest, GUI file-ops, test-deb), screenshots/user guide,
+      release notes, v0.1.0-preview.3. (implemented and tested locally; package
+      build/test, screenshots, PR and tag in progress)
