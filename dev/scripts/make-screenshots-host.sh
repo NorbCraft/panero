@@ -77,7 +77,7 @@ start() { # $1: theme 1 light / 2 dark
   sleep 8; eval $(geom)
   xdotool mousemove $((X+500)) $((Y+255)) click 1; sleep 0.3
 }
-stop() { pkill -x panero 2>/dev/null || true; wait $APID 2>/dev/null || true; sleep 1; }
+stop() { pkill -P "$APID" -x panero 2>/dev/null || true; wait $APID 2>/dev/null || true; sleep 1; }
 marks() { xdotool key Down Down space Down space Down Down; sleep 0.8; }
 
 start 1; marks; shot details-light; stop

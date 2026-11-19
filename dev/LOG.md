@@ -200,3 +200,31 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   PR #7 merged (ctest 4/4, GUI file-ops 17/17, Xvfb checks of each control).
 - Released v0.1.0-preview.2 (release workflow incl. upgrade test from preview 1);
   downloaded asset checksum verified.
+
+## 2026-11-19 — preview 3 requests, toolbar fix, look mockups
+
+- Owner host install of preview 2 showed the preview 1 toolbar: KXMLGUI kept the
+  toolbars from the local `~/.local/share/kxmlgui5/panero/paneroui.rc` (written
+  after a toolbar setting change). Owner fix: move that file away. Product fix:
+  `PaneroToolBar::migrateLayout()` (app/panerotoolbar.cpp) backs it up as `.bak`,
+  drops its `<ToolBar>` elements (shortcuts stay), forgets the saved toolbar style
+  and window state when the layout version (gui version 32) changes.
+- Owner preview 3 request list recorded in dev/PLAN.md (Phase 10).
+- Toolbar (decided): main and view toolbars merged into one, icons only, 22 px,
+  spacer action pushes "View & Colors" to the right; Details/Thumbnails control
+  follows the toolbar icon size/style; sidebar icon back to view-list-tree.
+- Prototypes for the owner's look decision (all real code, screenshots with
+  dev/scripts/make-mockups.sh, styles in dev/mockups/):
+  - `PANERO_DEV_STYLESHEET` (dev only) loads a style sheet at startup.
+  - Panel layout "panero:modern" (app/layout.xml): drive chip + path in one row,
+    totals + free space in the bottom row.
+  - Settings > Show Menubar (no shortcut: Ctrl+M stays Media) + KHamburgerMenu
+    button at the end of the toolbar (Breeze ☰ icon in the matching variant).
+  - Sidebar button action with style "icon" or "header" (Panero Appearance /
+    Sidebar Button): the header spans the sidebar width ("Places «" / "»").
+  - ListPanelFrame exposes an `active` property for style sheets.
+- Safety: dev scripts no longer use broad `pkill -x panero` / gnome-text-edit
+  (would hit the owner's real instance now that Panero is installed).
+- Mockup page for the owner (private artifact):
+  https://claude.ai/artifact/CbNEyX8fJkTx7V4bwPV1bF — decisions S1/S2 and A/B/C.
+- Next: owner decision → plan update → implement the rest of Phase 10.

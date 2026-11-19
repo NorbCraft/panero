@@ -111,5 +111,8 @@ check "search dialog ran (screenshot saved)" test -s "$SHOTS/search.png"
 k Escape
 
 kill $APID 2>/dev/null; sleep 1; kill $XPID 2>/dev/null
-pkill -x gnome-text-edit 2>/dev/null || true   # safety: close an editor a stray Return may have opened
+# safety: close an editor a stray Return may have opened - only one on the test display
+for p in $(pgrep -x gnome-text-edit); do
+  tr '\0' '\n' < /proc/$p/environ 2>/dev/null | grep -qx "DISPLAY=$DISP" && kill "$p"
+done
 echo "RESULT: $PASS passed, $FAIL failed (log $LOG, screenshots $SHOTS)" | tee -a "$LOG"

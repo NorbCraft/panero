@@ -41,6 +41,7 @@ set(krusader_SRCS
     paneroimport.cpp
     paneronavigation.cpp
     paneroviewmodeaction.cpp
+    panerotoolbar.cpp
     paneropackageinstaller.cpp
 )
 

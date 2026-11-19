@@ -48,6 +48,8 @@ QString KrLayoutFactory::layoutDescription(const QString& layoutName)
         return i18n("Compact");
     else if(layoutName == "krusader:classic")
         return i18n("Classic");
+    else if(layoutName == "panero:modern")
+        return i18n("Modern");
     else
         return i18n("Custom layout: \"%1\"", layoutName);
 }

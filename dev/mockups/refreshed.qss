@@ -1,0 +1,37 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+   Look mockup A "Refreshed": same layout, flatter and quieter chrome. */
+QToolBar { border: none; padding: 3px 6px; spacing: 2px; }
+QToolBar QToolButton { border-radius: 6px; padding: 3px; }
+QMainWindow::separator { width: 1px; height: 1px; background: palette(midlight); }
+
+QHeaderView::section {
+    background: palette(base); color: palette(text);
+    border: none; border-bottom: 1px solid palette(midlight); border-right: 1px solid palette(midlight);
+    padding: 4px 6px;
+}
+KrInterDetailedView, KrInterThumbnailView { border: 1px solid palette(midlight); }
+
+ListPanelFrame { border: none; border-radius: 4px; padding: 1px 4px; }
+MediaButton { border: none; padding: 2px 4px; }
+
+PanelTabBar::tab { border: none; padding: 4px 14px; margin: 0 1px; border-radius: 0; background: transparent; }
+PanelTabBar::tab:selected { border-top: 2px solid palette(highlight); background: palette(base); }
+
+KFnKeys QPushButton { border: none; border-radius: 6px; padding: 5px 2px; background: transparent; }
+KFnKeys QPushButton:hover { background: palette(midlight); }
+
+#panero_navigation_dock QListWidget, #panero_navigation_dock KrFileTreeView {
+    border: none; background: palette(window);
+}
+#panero_navigation_dock QListWidget::item, #panero_navigation_dock KrFileTreeView::item { padding: 3px 2px; border-radius: 5px; }
+#panero_navigation_dock QListWidget::item:selected, #panero_navigation_dock KrFileTreeView::item:selected {
+    background: palette(highlight); color: palette(highlighted-text);
+}
+#panero_navigation_dock QListWidget::item:hover:!selected, #panero_navigation_dock KrFileTreeView::item:hover:!selected { background: palette(midlight); }
+QStatusBar { border-top: 1px solid palette(midlight); }
+QStatusBar QLabel { padding: 2px 6px; }
+
+ListPanelFrame[active="true"] { background: palette(highlight); }
+ListPanelFrame[active="true"] QLabel, ListPanelFrame[active="true"] QToolButton { color: palette(highlighted-text); }
+ListPanelFrame[active="false"] { background: palette(window); }
+ListPanelFrame[active="false"] QLabel { color: palette(window-text); }
