@@ -61,8 +61,25 @@ are in `dev/TEST-REPORT-packaging.md`.
 - Downloaded .deb in fresh ubuntu:24.04 containers: install scenario 57/57 pass,
   coexistence with the distro krusader package 13/13 pass.
 
+## Preview 3 (2026-11-19, before release)
+
+- ctest 5/5 (new: paneropathstest; accent colour case in panerothemetest).
+- GUI file-ops test 17/17 under Xvfb with the new toolbar (Trash menu moved).
+- Interactive checks in the staged build under Xvfb: Space on a folder shows its
+  size and marks it; tree click unfolds, second click folds; tree stays rooted at
+  Home in ~/Documents/Invoices; pins highlight only for the exact folder; Ctrl+wheel
+  Details -> Thumbnails 48 -> 64 -> 48 -> Details with the toggle following; menu
+  button lists all menus; View & Colors shows the accent and selection options;
+  "Use Panero's look" off removes the style sheet; preview 1 local toolbar file
+  with a custom shortcut is migrated (backup, new toolbar, shortcut kept).
+- Container build (dpkg-buildpackage, ctest 4/4 in the build, lintian: only the
+  documented overrides) and package tests: install, coexist, upgrade from
+  preview 2, remove/purge — 85 pass, 0 fail.
+- Host: the owner's preview 2 install showed the stale-toolbar problem that the
+  migration fixes; preview 3 host install not yet confirmed.
+
 ## Not yet verified (open)
 
-- .deb installed through the desktop on the owner's Zorin host (launcher, icon, coexistence with the installed Krusader): needs the owner's sudo; planned right after the release.
+- Preview 3 installed on the owner's Zorin host (owner installed preview 2; launcher and About worked, toolbar issue fixed in preview 3).
 - Unmounted/removable drive behaviour of pins and the drive selector (no removable media attached on the build host).
 - Native X11 (Xorg) session: only XWayland and Xvfb are covered (owner decision Q7).
