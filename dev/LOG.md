@@ -228,3 +228,25 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Mockup page for the owner (private artifact):
   https://claude.ai/artifact/CbNEyX8fJkTx7V4bwPV1bF — decisions S1/S2 and A/B/C.
 - Next: owner decision → plan update → implement the rest of Phase 10.
+
+## 2026-11-19 (evening) — preview 3 implementation
+
+- Owner decisions (D-013): sidebar button S1 at double width, look B with the ☰
+  menu button, no "Opens in" label.
+- Implemented all Phase 10 items (see dev/PLAN.md); notable findings:
+  - "Start at Home" was unreliable because upstream's start-from-place uses the
+    closest KDE place (Documents, Downloads, ... are places). Now
+    PaneroPaths::homeOrDriveRoot (unit-tested).
+  - KXMLGUI keeps an older local file's toolbars even when they were stripped;
+    the migration now rebuilds the local paneroui.rc from the installed one and
+    keeps only ActionProperties (shortcuts). Tested with a preview 1 file plus a
+    custom shortcut.
+  - Global style sheet: toolbar toggles needed an explicit :checked style.
+  - Ctrl+M is upstream's Media shortcut: Show Menubar has no shortcut.
+  - System Qt highlight on the owner's Zorin session (no Qt platform theme) is
+    Fusion's #308cc6 — the default accent ("Krusader colour").
+- Interactive checks under Xvfb (short /tmp runtime dir: long XDG_RUNTIME_DIR
+  paths break KIO worker sockets): Space size, tree unfold/fold, Home root in
+  ~/Documents/Invoices, pin highlight, zoom + toggle, menu button, dialog
+  options, Panero look off, layout migration.
+- ctest 5/5, GUI file-ops 17/17 (Trash menu coordinates updated).
