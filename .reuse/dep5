@@ -80,3 +80,7 @@ Files: docs/screenshots/*
 Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 Comment: Screenshots of Panero with demo files (dev/scripts/make-screenshots-host.sh)
+
+Files: dev/mockups/*
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
