@@ -78,6 +78,12 @@ are in `dev/TEST-REPORT-packaging.md`.
 - Host: the owner's preview 2 install showed the stale-toolbar problem that the
   migration fixes; preview 3 host install not yet confirmed.
 
+## Release v0.1.0-preview.3 (published 2026-11-19)
+
+- Release workflow run 44598245833 (build, ctest, lintian, package tests, publish) — success.
+- Downloaded assets: `sha256sum -c SHA256SUMS` OK; package `Version: 0.1.0~preview.3-1`;
+  source archive commit `ba26852269b4ec98a3e981bc39bf099adcbe24fe` = tag commit.
+
 ## Not yet verified (open)
 
 - Preview 3 installed on the owner's Zorin host (owner installed preview 2; launcher and About worked, toolbar issue fixed in preview 3).

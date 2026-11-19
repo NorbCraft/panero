@@ -250,3 +250,6 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   ~/Documents/Invoices, pin highlight, zoom + toggle, menu button, dialog
   options, Panero look off, layout migration.
 - ctest 5/5, GUI file-ops 17/17 (Trash menu coordinates updated).
+- Released v0.1.0-preview.3 (PR #8 merged, tag on ba2685226, release run
+  44598245833); assets verified (checksums, version, source commit). The .deb
+  was copied to the owner's ~/Downloads for installation.

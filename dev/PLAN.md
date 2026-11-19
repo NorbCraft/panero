@@ -233,6 +233,11 @@ with the ☰ menu button; remove the sidebar's "Opens in: … panel" label.
 
 Release
 - [x] Plan update with owner decisions.
-- [ ] Implement, tests (ctest, GUI file-ops, test-deb), screenshots/user guide,
-      release notes, v0.1.0-preview.3. (implemented and tested locally; package
-      build/test, screenshots, PR and tag in progress)
+- [x] Implement, tests (ctest, GUI file-ops, test-deb), screenshots/user guide,
+      release notes, v0.1.0-preview.3 (PR #8, release run 44598245833).
+
+## Status notes (2026-11-19, preview 3)
+
+- v0.1.0-preview.3 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.3
+- Open: owner host install of preview 3 (sudo) and feedback on the Modern look;
+  owner-decision backports (dev/BACKPORTS.md).
