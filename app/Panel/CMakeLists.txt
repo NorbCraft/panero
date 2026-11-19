@@ -8,6 +8,7 @@ set(Panel_SRCS
     krcolorcache.cpp
     krerrordisplay.cpp
     krfiletreeview.cpp
+    paneropaths.cpp
     krlayoutfactory.cpp
     krpanel.cpp
     krpreviewjob.cpp

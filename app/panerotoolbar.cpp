@@ -10,6 +10,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QWidget>
@@ -72,24 +73,42 @@ void PaneroToolBar::migrateLayout()
     if (panero.readEntry("Toolbar Layout", 0) >= LayoutVersion)
         return;
 
-    const QString local = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
-        + QStringLiteral("/kxmlgui5/panero/paneroui.rc");
+    const QString relative = QStringLiteral("kxmlgui5/panero/paneroui.rc");
+    const QString local = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1Char('/') + relative;
     QFile file(local);
     if (file.open(QIODevice::ReadOnly)) {
-        QString xml = QString::fromUtf8(file.readAll());
+        const QString localXml = QString::fromUtf8(file.readAll());
         file.close();
         const QRegularExpression version(QStringLiteral("<gui[^>]*\\bversion=\"(\\d+)\""));
-        const QRegularExpressionMatch m = version.match(xml);
-        const int localVersion = m.hasMatch() ? m.captured(1).toInt() : 0;
-        if (localVersion < LayoutVersion) {
+        const QRegularExpressionMatch m = version.match(localXml);
+        if ((m.hasMatch() ? m.captured(1).toInt() : 0) < LayoutVersion) {
             QFile::remove(local + QStringLiteral(".bak"));
             QFile::copy(local, local + QStringLiteral(".bak"));
-            xml.remove(QRegularExpression(QStringLiteral("\\s*<ToolBar\\b.*?</ToolBar>"),
-                                          QRegularExpression::DotMatchesEverythingOption));
-            xml.remove(QRegularExpression(QStringLiteral("\\s*<ToolBar\\b[^>]*/>")));
-            if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-                file.write(xml.toUtf8());
+            // KXMLGUI would keep the old file's toolbars: rebuild the local file from the
+            // installed one and carry over only the user's shortcuts (ActionProperties)
+            QString shipped;
+            for (const QString &path : QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, relative)) {
+                if (QFileInfo(path).canonicalFilePath() != QFileInfo(local).canonicalFilePath()) {
+                    QFile f(path);
+                    if (f.open(QIODevice::ReadOnly))
+                        shipped = QString::fromUtf8(f.readAll());
+                    break;
+                }
+            }
+            const QRegularExpression properties(QStringLiteral("<ActionProperties\\b.*?</ActionProperties>"),
+                                                QRegularExpression::DotMatchesEverythingOption);
+            const QRegularExpressionMatch userProperties = properties.match(localXml);
+            if (!shipped.isEmpty() && userProperties.hasMatch()) {
+                if (properties.match(shipped).hasMatch())
+                    shipped.replace(properties, userProperties.captured(0));
+                else
+                    shipped.replace(QStringLiteral("</gui>"), userProperties.captured(0) + QStringLiteral("\n</gui>"));
+            }
+            if (!shipped.isEmpty() && userProperties.hasMatch() && file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                file.write(shipped.toUtf8());
                 file.close();
+            } else {
+                QFile::remove(local); // nothing to keep: use the installed file
             }
         }
     }

@@ -48,9 +48,10 @@ constexpr int LayoutVersion = 32;
 /**
  * KXMLGUI keeps the toolbars of a user's local copy of paneroui.rc (written as soon
  * as any toolbar setting is changed) even when a newer Panero ships a different
- * default layout. When the layout version changed, back the local copy up, drop its
- * <ToolBar> elements (custom shortcuts stay) and forget the saved toolbar style, so
- * the new default layout is used. Must run before the main window is created.
+ * default layout. When the layout version changed, back the local copy up (.bak),
+ * rebuild it from the installed file with the user's shortcuts (ActionProperties)
+ * carried over, and forget the saved toolbar style and window state, so the new
+ * default layout is used. Must run before the main window is created.
  */
 void migrateLayout();
 }

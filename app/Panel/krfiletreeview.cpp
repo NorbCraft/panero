@@ -5,6 +5,7 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 #include "krfiletreeview.h"
+#include "paneropaths.h"
 
 #include "panelfunc.h"
 
@@ -18,7 +19,6 @@
 #include <QApplication>
 #include <QCursor>
 #include <QDir>
-#include <QStorageInfo>
 #include <QDropEvent>
 #include <QHeaderView>
 #include <QMenu>
@@ -136,7 +136,7 @@ void KrFileTreeView::setCurrentUrl(const QUrl &url)
             // Panero "Start at Home": Home while inside Home, otherwise the drive the
             // folder is on (its mount point) or "/". Upstream used the closest entry of
             // the places list, which jumped to Documents, Downloads, Pictures, ...
-            setTreeRoot(homeOrDriveRoot(url));
+            setTreeRoot(PaneroPaths::homeOrDriveRoot(url));
         }
         if (isVisible(url)) {
             // avoid unwanted scrolling by KDirModel::expandToUrl()
@@ -152,21 +152,6 @@ QUrl KrFileTreeView::urlForProxyIndex(const QModelIndex &index) const
     const KFileItem item = mSourceModel->itemForIndex(mProxyModel->mapToSource(index));
 
     return !item.isNull() ? item.url() : QUrl();
-}
-
-QUrl KrFileTreeView::homeOrDriveRoot(const QUrl &url)
-{
-    if (!url.isLocalFile()) {
-        QUrl root = url;
-        root.setPath(QStringLiteral("/"));
-        return root;
-    }
-    const QString path = QDir::cleanPath(url.toLocalFile());
-    const QString home = QDir::cleanPath(QDir::homePath());
-    if (path == home || path.startsWith(home + QLatin1Char('/')))
-        return QUrl::fromLocalFile(home);
-    const QString mountPoint = QStorageInfo(path).rootPath();
-    return QUrl::fromLocalFile(mountPoint.isEmpty() ? QDir::rootPath() : mountPoint);
 }
 
 void KrFileTreeView::slotActivated(const QModelIndex &index)

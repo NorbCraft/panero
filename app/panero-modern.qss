@@ -6,7 +6,10 @@
    Highlight), so this sheet serves both appearances. */
 
 QToolBar { border: none; padding: 4px 8px; spacing: 3px; }
-QToolBar QToolButton { border-radius: 7px; padding: 4px; }
+QToolBar QToolButton { border: 1px solid transparent; border-radius: 7px; padding: 4px; }
+QToolBar QToolButton:hover { background: palette(midlight); }
+/* pressed toggles (sidebar shown, active view): accent outline */
+QToolBar QToolButton:checked { background: palette(midlight); border: 1px solid palette(highlight); }
 QMainWindow::separator { width: 6px; height: 6px; background: transparent; }
 
 /* panels as rounded cards; the active panel's card is outlined */
