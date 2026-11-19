@@ -222,5 +222,16 @@ Modern look
 - [ ] Mockups of a more modern general look (several options, real screenshots).
 - [ ] Implement the owner-chosen option.
 
+Owner decisions (D-013): sidebar button S1 at double width; look B "Modern"
+with the ☰ menu button; remove the sidebar's "Opens in: … panel" label.
+
+- [ ] Sidebar button S1, double width; drop the header variant.
+- [ ] Look B built in (style sheet generated from the Panero palette/accent,
+      only with "Use Panero's look"); default layout panero:modern; compact tabs;
+      menu bar hidden by default + ☰ button.
+- [ ] Remove the "Opens in" label.
+
 Release
-- [ ] Plan update with owner decisions, implement, tests, v0.1.0-preview.3.
+- [x] Plan update with owner decisions.
+- [ ] Implement, tests (ctest, GUI file-ops, test-deb), screenshots/user guide,
+      release notes, v0.1.0-preview.3.
