@@ -33,6 +33,8 @@
 #define MAIN_FILE_RC_PATH ":/" MAIN_FILE
 #define EXTRA_FILE_MASK "layouts/*.xml"
 #define DEFAULT_LAYOUT "krusader:default"
+// Panero: the layout used when none is configured (D-013)
+#define PANERO_DEFAULT_LAYOUT "panero:modern"
 
 
 bool KrLayoutFactory::_parsed = false;
@@ -43,13 +45,13 @@ QList<QDomDocument> KrLayoutFactory::_extraDocs;
 QString KrLayoutFactory::layoutDescription(const QString& layoutName)
 {
     if(layoutName == DEFAULT_LAYOUT)
-        return i18nc("Default layout", "Default");
+        return i18nc("Default layout", "Krusader default");
     else if(layoutName == "krusader:compact")
         return i18n("Compact");
     else if(layoutName == "krusader:classic")
         return i18n("Classic");
     else if(layoutName == "panero:modern")
-        return i18n("Modern");
+        return i18n("Modern (Panero default)");
     else
         return i18n("Custom layout: \"%1\"", layoutName);
 }
@@ -171,7 +173,7 @@ QLayout *KrLayoutFactory::createLayout(QString layoutName)
 {
     if(layoutName.isEmpty()) {
         KConfigGroup cg(krConfig, "PanelLayout");
-        layoutName = cg.readEntry("Layout", DEFAULT_LAYOUT);
+        layoutName = cg.readEntry("Layout", PANERO_DEFAULT_LAYOUT);
     }
     QLayout *layout = nullptr;
 

@@ -37,6 +37,11 @@ public:
 
     void setCurrentUrl(const QUrl &url);
 
+    /// Panero defaults: folder icon size and row height
+    enum { IconSize = 22, RowHeight = 24 };
+    /// Root for "Start at Home": Home inside Home, else the folder's drive or "/"
+    static QUrl homeOrDriveRoot(const QUrl &url);
+
     void saveSettings(KConfigGroup cfg) const;
     void restoreSettings(const KConfigGroup &cfg);
 

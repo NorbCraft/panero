@@ -118,7 +118,7 @@ void KgPanel::setupGeneralTab()
     //   cfg_class    cfg_name                      default             text                                     restart tooltip
         {"Look&Feel", "Fullpath Tab Names",         _FullPathTabNames,  i18n("Use full path tab names"),         true,   i18n("Display the full path in the folder tabs. By default only the last part of the path is displayed.") },
         {"Look&Feel", "Show Close Tab Buttons",     true,               i18n("Show close tab buttons"),          true,   i18n("Show close tab buttons.") },
-        {"Look&Feel", "Expanding Tabs",             true,               i18n("Expanding tabs"),                  true,   i18n("Expanding tabs.") },
+        {"Look&Feel", "Expanding Tabs",             false,               i18n("Expanding tabs"),                  true,   i18n("Expanding tabs.") },
         {"Look&Feel", "Show New Tab Button",        true,               i18n("Show new tab button"),             true,   i18n("Show new tab button.") },
         {"Look&Feel", "Insert Tabs After Current",  false,              i18n("Insert tabs after current"),       false,  i18n("Insert new tabs to the right of the current one.") },
         {"Look&Feel", "Show Tab Bar On Single Tab", true,               i18n("Show Tab Bar on single tab"),      true,   i18n("Show the tab bar with only one tab.") },
@@ -277,7 +277,7 @@ void KgPanel::setupLayoutTab()
         layouts[ i ].text = KrLayoutFactory::layoutDescription(layoutNames[i]);
         layouts[ i ].value = layoutNames[i];
     }
-    KonfiguratorComboBox *cmb = createComboBox("PanelLayout", "Layout", "default",
+    KonfiguratorComboBox *cmb = createComboBox("PanelLayout", "Layout", "panero:modern",
                          layouts, numLayouts, l, tab, true, false,
                          QString(), PAGE_LAYOUT);
     grid->addWidget(cmb, 0, 1);

@@ -304,13 +304,6 @@ int main(int argc, char *argv[])
 
     // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
     PaneroAppearance::instance()->apply();
-    {
-        // development only: try a style sheet on the real UI (look mockups)
-        const QString devStyle = qEnvironmentVariable("PANERO_DEV_STYLESHEET");
-        QFile qss(devStyle);
-        if (!devStyle.isEmpty() && qss.open(QIODevice::ReadOnly))
-            app.setStyleSheet(QString::fromUtf8(qss.readAll()));
-    }
 
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;

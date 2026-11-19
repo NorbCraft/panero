@@ -15,7 +15,9 @@
 #include <QDBusMessage>
 #include <QDBusVariant>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QIcon>
 #include <QProcess>
 #include <QStandardPaths>
@@ -111,7 +113,7 @@ QPalette PaneroAppearance::paneroPalette(bool dark)
         set3(QPalette::Button, QColor(0xee, 0xf0, 0xf3), QColor());
         set3(QPalette::ButtonText, QColor(0x1f, 0x23, 0x28), QColor(0x9a, 0xa0, 0xa6));
         set3(QPalette::BrightText, QColor(0xff, 0xff, 0xff), QColor());
-        set3(QPalette::Highlight, QColor(0x25, 0x63, 0xeb), QColor(0xc4, 0xc9, 0xd0));
+        set3(QPalette::Highlight, PaneroTheme::accentColor(false), QColor(0xc4, 0xc9, 0xd0));
         set3(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff), QColor());
         set3(QPalette::ToolTipBase, QColor(0xff, 0xff, 0xff), QColor());
         set3(QPalette::ToolTipText, QColor(0x1f, 0x23, 0x28), QColor());
@@ -132,7 +134,7 @@ QPalette PaneroAppearance::paneroPalette(bool dark)
         set3(QPalette::Button, QColor(0x2c, 0x30, 0x36), QColor());
         set3(QPalette::ButtonText, QColor(0xe4, 0xe7, 0xeb), QColor(0x6b, 0x72, 0x80));
         set3(QPalette::BrightText, QColor(0xff, 0xff, 0xff), QColor());
-        set3(QPalette::Highlight, QColor(0x3b, 0x82, 0xf6), QColor(0x3a, 0x3f, 0x47));
+        set3(QPalette::Highlight, PaneroTheme::accentColor(true), QColor(0x3a, 0x3f, 0x47));
         set3(QPalette::HighlightedText, QColor(0xff, 0xff, 0xff), QColor());
         set3(QPalette::ToolTipBase, QColor(0x2c, 0x30, 0x36), QColor());
         set3(QPalette::ToolTipText, QColor(0xe4, 0xe7, 0xeb), QColor());
@@ -194,6 +196,26 @@ void PaneroAppearance::applyIconTheme(bool dark)
              << "style =" << (QApplication::style() ? QApplication::style()->objectName() : QString());
 }
 
+void PaneroAppearance::applyStyleSheet(bool paneroStyle)
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    if (!app)
+        return;
+    QString sheet;
+    // development: try a style sheet on the real UI (dev/scripts/make-mockups.sh)
+    const QString devStyle = qEnvironmentVariable("PANERO_DEV_STYLESHEET");
+    QFile file(!devStyle.isEmpty() ? devStyle : QStringLiteral(":/panero-modern.qss"));
+    if ((paneroStyle || !devStyle.isEmpty()) && file.open(QIODevice::ReadOnly)) {
+        sheet = QString::fromUtf8(file.readAll());
+        if (!PaneroTheme::usePaneroColors()) // classic Krusader colours for the status rows
+            sheet.remove(QRegularExpression(QStringLiteral("/\\* @panero-colors.*?@end \\*/"),
+                                            QRegularExpression::DotMatchesEverythingOption));
+    }
+    // set again even if unchanged: palette() references follow the new palette
+    app->setStyleSheet(QString());
+    app->setStyleSheet(sheet);
+}
+
 void PaneroAppearance::apply()
 {
     const KConfigGroup group(krConfig ? KConfigGroup(krConfig, PaneroTheme::GROUP)
@@ -229,6 +251,7 @@ void PaneroAppearance::apply()
         QApplication::setPalette(QApplication::style()->standardPalette());
         m_applied = false;
     }
+    applyStyleSheet(paneroStyle);
     applyIconTheme(paneroStyle ? dark : QApplication::palette().color(QPalette::Window).lightness() < 128);
     PaneroTheme::invalidate();
     emit appearanceChanged();

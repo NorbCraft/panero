@@ -6,13 +6,7 @@
 
 #include "panerotoolbar.h"
 
-#include <QDockWidget>
-#include <QHBoxLayout>
-#include <QLabel>
 #include <QDir>
-#include <QEvent>
-#include <QMainWindow>
-#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QFile>
@@ -22,7 +16,6 @@
 
 #include <KConfigCore/KConfigGroup>
 #include <KConfigCore/KSharedConfig>
-#include <KI18n/KLocalizedString>
 
 PaneroToolBarSpacer::PaneroToolBarSpacer(QObject *parent)
     : QWidgetAction(parent)
@@ -38,20 +31,13 @@ QWidget *PaneroToolBarSpacer::createWidget(QWidget *parent)
     return gap;
 }
 
-PaneroSidebarButtonAction::PaneroSidebarButtonAction(QAction *toggle, QDockWidget *dock, QObject *parent)
-    : QWidgetAction(parent), m_toggle(toggle), m_dock(dock)
+PaneroSidebarButtonAction::PaneroSidebarButtonAction(QAction *toggle, QObject *parent)
+    : QWidgetAction(parent), m_toggle(toggle)
 {
     setText(toggle->text());
     setIcon(toggle->icon());
     setToolTip(toggle->toolTip());
     connect(this, &QAction::triggered, toggle, &QAction::trigger);
-    dock->installEventFilter(this);
-}
-
-static bool headerStyle()
-{
-    return KConfigGroup(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance"))
-               .readEntry("Sidebar Button", QStringLiteral("icon")) == QLatin1String("header");
 }
 
 QWidget *PaneroSidebarButtonAction::createWidget(QWidget *parent)
@@ -60,88 +46,24 @@ QWidget *PaneroSidebarButtonAction::createWidget(QWidget *parent)
     button->setAutoRaise(true);
     button->setCheckable(true);
     button->setFocusPolicy(Qt::NoFocus);
+    button->setToolButtonStyle(Qt::ToolButtonIconOnly);
     button->setIcon(m_toggle->icon());
     button->setToolTip(m_toggle->toolTip());
-    button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    // header style content: [icon] Places ........ «
-    auto *row = new QHBoxLayout(button);
-    row->setContentsMargins(6, 0, 8, 0);
-    row->setSpacing(6);
-    auto *icon = new QLabel(button);
-    auto *title = new QLabel(i18nc("sidebar header button", "Places"), button);
-    QFont bold = title->font();
-    bold.setBold(true);
-    title->setFont(bold);
-    auto *chevron = new QLabel(button);
-    for (QLabel *label : {icon, title, chevron})
-        label->setAttribute(Qt::WA_TransparentForMouseEvents);
-    icon->setObjectName(QStringLiteral("icon"));
-    title->setObjectName(QStringLiteral("title"));
-    chevron->setObjectName(QStringLiteral("chevron"));
-    row->addWidget(icon);
-    row->addWidget(title);
-    row->addStretch(1);
-    row->addWidget(chevron);
-
+    button->setChecked(m_toggle->isChecked());
     connect(button, &QToolButton::clicked, m_toggle, &QAction::trigger);
-    connect(m_toggle, &QAction::changed, button, [this, button]() { sync(button); });
+    connect(m_toggle, &QAction::toggled, button, &QToolButton::setChecked);
+    // twice as wide as a normal toolbar button: the sidebar toggle stands out
+    auto resize = [button](const QSize &iconSize) {
+        button->setIconSize(iconSize);
+        button->setFixedWidth(2 * button->sizeHint().height());
+    };
     if (auto *bar = qobject_cast<QToolBar *>(parent)) {
-        button->setIconSize(bar->iconSize());
-        connect(bar, &QToolBar::iconSizeChanged, button, [this, button](const QSize &size) {
-            button->setIconSize(size);
-            sync(button);
-        });
-    }
-    m_buttons.append(button);
-    connect(button, &QObject::destroyed, this, [this, button]() { m_buttons.removeAll(button); });
-    QTimer::singleShot(0, button, [this, button]() { sync(button); });
-    return button;
-}
-
-void PaneroSidebarButtonAction::sync(QToolButton *button) const
-{
-    const bool shown = m_toggle->isChecked();
-    auto *icon = button->findChild<QLabel *>(QStringLiteral("icon"));
-    auto *title = button->findChild<QLabel *>(QStringLiteral("title"));
-    auto *chevron = button->findChild<QLabel *>(QStringLiteral("chevron"));
-    const bool header = headerStyle();
-    for (QLabel *label : {icon, title, chevron})
-        label->setVisible(header);
-    if (!header) {
-        button->setIcon(m_toggle->icon());
-        button->setChecked(shown);
-        button->setMinimumWidth(0);
-        button->setMaximumWidth(QWIDGETSIZE_MAX);
-        return;
-    }
-    // the header is not a pressed button; the sidebar under it shows the state
-    button->setIcon(QIcon());
-    button->setChecked(false);
-    icon->setPixmap(m_toggle->icon().pixmap(button->iconSize()));
-    title->setVisible(shown);
-    chevron->setText(shown ? QStringLiteral("\u00AB") : QStringLiteral("\u00BB"));
-    QFont big = chevron->font();
-    big.setPointSizeF(QFont().pointSizeF() * 1.3);
-    chevron->setFont(big);
-    button->setMinimumHeight(button->iconSize().height() + 8);
-    if (shown) {
-        // as wide as the sidebar below it (from the button to the dock's right edge)
-        const QWidget *window = button->window();
-        const int left = button->mapTo(window, QPoint(0, 0)).x();
-        const int right = m_dock->mapTo(window, QPoint(m_dock->width(), 0)).x();
-        button->setFixedWidth(qMax(120, right - left - 2));
+        connect(bar, &QToolBar::iconSizeChanged, button, resize);
+        resize(bar->iconSize());
     } else {
-        button->setFixedWidth(button->iconSize().width() + 40);
+        resize(button->iconSize());
     }
-}
-
-bool PaneroSidebarButtonAction::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == m_dock && (event->type() == QEvent::Resize || event->type() == QEvent::Show || event->type() == QEvent::Hide)) {
-        for (QToolButton *button : qAsConst(m_buttons))
-            sync(button);
-    }
-    return QWidgetAction::eventFilter(watched, event);
+    return button;
 }
 
 void PaneroToolBar::migrateLayout()

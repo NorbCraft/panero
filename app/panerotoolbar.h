@@ -23,30 +23,21 @@ protected:
     QWidget *createWidget(QWidget *parent) override;
 };
 
-class QDockWidget;
-class QToolButton;
-
 /**
- * The sidebar toggle at the far left of the toolbar. Style "icon" is a plain toolbar
- * toggle; style "header" is as wide as the sidebar and reads as its title
- * ("Places «"), shrinking to "»" while the sidebar is hidden.
- * Panero Appearance / Sidebar Button = icon | header.
+ * The sidebar toggle at the far left of the toolbar: an icon-only toggle twice as
+ * wide as the other buttons, pressed while the sidebar is shown.
  */
 class PaneroSidebarButtonAction : public QWidgetAction
 {
     Q_OBJECT
 public:
-    PaneroSidebarButtonAction(QAction *toggle, QDockWidget *dock, QObject *parent);
+    PaneroSidebarButtonAction(QAction *toggle, QObject *parent);
 
 protected:
     QWidget *createWidget(QWidget *parent) override;
-    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
-    void sync(QToolButton *button) const;
     QAction *m_toggle;
-    QDockWidget *m_dock;
-    QList<QToolButton *> m_buttons;
 };
 
 namespace PaneroToolBar

@@ -47,6 +47,7 @@ private:
     QComboBox *m_iconSize;
     QCheckBox *m_alternating;
     QCheckBox *m_markIndicator;
+    QComboBox *m_selection = nullptr;
     QCheckBox *m_showHidden;
     QCheckBox *m_classicColors;
     QMap<QString, KColorButton *> m_colorButtons; ///< key: "Light <name>" / "Dark <name>"

@@ -1,0 +1,54 @@
+/* SPDX-FileCopyrightText: 2026 Panero contributors
+   SPDX-License-Identifier: GPL-2.0-or-later
+
+   Panero "Modern" look (D-013), applied with "Use Panero's look" on top of the Fusion
+   style and the Panero palette. Colours come from the palette (light/dark, accent =
+   Highlight), so this sheet serves both appearances. */
+
+QToolBar { border: none; padding: 4px 8px; spacing: 3px; }
+QToolBar QToolButton { border-radius: 7px; padding: 4px; }
+QMainWindow::separator { width: 6px; height: 6px; background: transparent; }
+
+/* panels as rounded cards; the active panel's card is outlined */
+KrInterDetailedView, KrInterThumbnailView, KrInterBriefView {
+    border: 1px solid palette(midlight); border-radius: 10px; padding: 3px; background: palette(base);
+}
+KrInterDetailedView:focus, KrInterThumbnailView:focus, KrInterBriefView:focus { border: 1px solid palette(highlight); }
+QHeaderView { background: transparent; }
+QHeaderView::section {
+    background: palette(base); color: #8a9199;
+    border: none; border-bottom: 1px solid palette(midlight); padding: 5px 8px;
+}
+QHeaderView::section:hover { color: palette(text); }
+
+/* drive chip next to the path */
+MediaButton {
+    border: 1px solid palette(midlight); border-radius: 7px; padding: 3px 8px; margin: 2px 4px 2px 0;
+    background: palette(base);
+}
+KUrlNavigator { margin: 2px 0; }
+
+/* compact tabs and a flat function-key bar */
+PanelTabBar::tab { border: none; padding: 4px 14px; margin: 3px 2px 0 0; border-radius: 7px; background: transparent; color: #8a9199; }
+PanelTabBar::tab:selected { background: palette(base); color: palette(text); border: 1px solid palette(midlight); }
+KFnKeys QPushButton { border: none; border-radius: 7px; padding: 5px 2px; background: transparent; color: palette(window-text); }
+KFnKeys QPushButton:hover { background: palette(base); }
+
+/* sidebar: lists on the window background, rounded selection */
+#panero_navigation_dock QListWidget, #panero_navigation_dock KrFileTreeView { border: none; background: palette(window); }
+#panero_navigation_dock QListWidget::item, #panero_navigation_dock KrFileTreeView::item { border-radius: 7px; }
+#panero_navigation_dock QListWidget::item:selected, #panero_navigation_dock KrFileTreeView::item:selected {
+    background: palette(highlight); color: palette(highlighted-text);
+}
+#panero_navigation_dock QListWidget::item:hover:!selected, #panero_navigation_dock KrFileTreeView::item:hover:!selected { background: palette(midlight); }
+
+QStatusBar { border: none; }
+QStatusBar QLabel { padding: 2px 8px; color: #8a9199; }
+
+/* @panero-colors: the active panel's bottom row in the accent colour */
+ListPanelFrame { border: none; border-radius: 7px; padding: 2px 8px; margin-top: 3px; }
+ListPanelFrame[active="true"] { background: palette(highlight); }
+ListPanelFrame[active="true"] QLabel, ListPanelFrame[active="true"] QToolButton { color: palette(highlighted-text); }
+ListPanelFrame[active="false"] { background: transparent; }
+ListPanelFrame[active="false"] QLabel { color: palette(window-text); }
+/* @end */

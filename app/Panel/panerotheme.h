@@ -36,7 +36,15 @@ struct Scheme {
     QColor currentBackground;    ///< fill of the cursor row in the active panel
     QColor currentFrame;         ///< frame + accent bar of the cursor row (active panel)
     QColor inactiveCurrentFrame; ///< frame of the cursor row in the inactive panel
+    QColor accent;               ///< active panel colour (status rows, card outline) and
+                                 ///< selection colour, e.g. the folder tree's current folder
 };
+
+/// Default accent: the Krusader (Qt Fusion) highlight colour.
+constexpr QRgb DefaultAccent = 0x308cc6;
+
+/// Configured accent for the light or dark look (Panero palette Highlight).
+QColor accentColor(bool dark);
 
 /// One user-configurable colour; key is stored as "<Light|Dark> <key>".
 struct ColorKey {

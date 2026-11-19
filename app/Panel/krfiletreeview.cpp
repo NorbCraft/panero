@@ -18,6 +18,7 @@
 #include <QApplication>
 #include <QCursor>
 #include <QDir>
+#include <QStorageInfo>
 #include <QDropEvent>
 #include <QHeaderView>
 #include <QMenu>
@@ -69,6 +70,19 @@ public:
     }
 };
 
+/// Panero: fixed comfortable rows (24 px) for the 22 px folder icons
+class TreeItemDelegate : public KFileItemDelegate
+{
+public:
+    using KFileItemDelegate::KFileItemDelegate;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        QSize size = KFileItemDelegate::sizeHint(option, index);
+        size.setHeight(qMax(int(KrFileTreeView::RowHeight), option.fontMetrics.height() + 4));
+        return size;
+    }
+};
+
 KrFileTreeView::KrFileTreeView(QWidget *parent)
     : QTreeView(parent), mStartTreeFromCurrent(false), mStartTreeFromPlace(true)
 {
@@ -81,7 +95,8 @@ KrFileTreeView::KrFileTreeView(QWidget *parent)
 
     mFilePlacesModel = new KFilePlacesModel(this);
 
-    setItemDelegate(new KFileItemDelegate(this));
+    setItemDelegate(new TreeItemDelegate(this));
+    setIconSize(QSize(IconSize, IconSize));
     setUniformRowHeights(true);
 
     // drag&drop
@@ -118,10 +133,10 @@ void KrFileTreeView::setCurrentUrl(const QUrl &url)
         setTreeRoot(url);
     } else {
         if (mStartTreeFromPlace) {
-            const QModelIndex index = mFilePlacesModel->closestItem(url); // magic here
-            const QUrl rootBase = index.isValid() ? mFilePlacesModel->url(index) :
-                                                    QUrl::fromLocalFile(QDir::root().path());
-            setTreeRoot(rootBase);
+            // Panero "Start at Home": Home while inside Home, otherwise the drive the
+            // folder is on (its mount point) or "/". Upstream used the closest entry of
+            // the places list, which jumped to Documents, Downloads, Pictures, ...
+            setTreeRoot(homeOrDriveRoot(url));
         }
         if (isVisible(url)) {
             // avoid unwanted scrolling by KDirModel::expandToUrl()
@@ -139,12 +154,34 @@ QUrl KrFileTreeView::urlForProxyIndex(const QModelIndex &index) const
     return !item.isNull() ? item.url() : QUrl();
 }
 
+QUrl KrFileTreeView::homeOrDriveRoot(const QUrl &url)
+{
+    if (!url.isLocalFile()) {
+        QUrl root = url;
+        root.setPath(QStringLiteral("/"));
+        return root;
+    }
+    const QString path = QDir::cleanPath(url.toLocalFile());
+    const QString home = QDir::cleanPath(QDir::homePath());
+    if (path == home || path.startsWith(home + QLatin1Char('/')))
+        return QUrl::fromLocalFile(home);
+    const QString mountPoint = QStorageInfo(path).rootPath();
+    return QUrl::fromLocalFile(mountPoint.isEmpty() ? QDir::rootPath() : mountPoint);
+}
+
 void KrFileTreeView::slotActivated(const QModelIndex &index)
 {
     const QUrl url = urlForProxyIndex(index);
-    if (url.isValid()) {
-        emit urlActivated(url);
+    if (!url.isValid())
+        return;
+    // Panero: a click opens the folder and unfolds it; a click on the open, unfolded
+    // folder folds it again
+    if (isExpanded(index) && url.adjusted(QUrl::StripTrailingSlash) == mCurrentUrl.adjusted(QUrl::StripTrailingSlash)) {
+        collapse(index);
+        return;
     }
+    emit urlActivated(url);
+    expand(index);
 }
 
 void KrFileTreeView::dropEvent(QDropEvent *event)

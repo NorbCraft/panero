@@ -208,7 +208,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         toggleNavigation->setToolTip(i18n("Show or hide the folder tree and pinned folders"));
         actionCollection()->addAction(QStringLiteral("panero toggle navigation"), toggleNavigation);
         actionCollection()->addAction(QStringLiteral("panero sidebar button"),
-                                      new PaneroSidebarButtonAction(toggleNavigation, _navigationDock, this));
+                                      new PaneroSidebarButtonAction(toggleNavigation, this));
     }
     setupPaneroToolbarLabels();
     {
@@ -284,8 +284,9 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
 
         statusBar()->setVisible(startupGroup.readEntry("Show status bar", _ShowStatusBar));
         if (QAction *showMenubar = actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
-            showMenubar->setChecked(startupGroup.readEntry("Show menubar", true));
-        menuBar()->setVisible(startupGroup.readEntry("Show menubar", true));
+            showMenubar->setChecked(startupGroup.readEntry("Show menubar", false));
+        // Panero: the menu button at the end of the toolbar replaces the menu bar (D-013)
+        menuBar()->setVisible(startupGroup.readEntry("Show menubar", false));
 
         MAIN_VIEW->updateGUI(startupGroup);
 

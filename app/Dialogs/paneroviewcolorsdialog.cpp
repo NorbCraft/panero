@@ -12,6 +12,8 @@
 #include "../Panel/panerotheme.h"
 #include "../Panel/PanelView/krview.h"
 #include "../Panel/PanelView/krviewfactory.h"
+#include "../Panel/PanelView/krselectionmode.h"
+#include "../defaults.h"
 #include "../kractions.h"
 #include "../krglobal.h"
 #include "../krslots.h"
@@ -61,6 +63,8 @@ QString colorLabel(const QString &key)
         return i18n("Cursor frame (active panel)");
     if (key == QLatin1String("Inactive Current Frame"))
         return i18n("Cursor frame (inactive panel)");
+    if (key == QLatin1String("Accent"))
+        return i18n("Active panel and selection");
     return key;
 }
 } // namespace
@@ -113,6 +117,17 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_showHidden = new QCheckBox(i18n("Show hidden files"), listBox);
     listForm->addRow(QString(), m_showHidden);
     layout->addWidget(listBox);
+
+    // ---- mouse selection: Panero (default) or the original Krusader way
+    auto *mouseBox = new QGroupBox(i18n("Mouse"), this);
+    auto *mouseForm = new QFormLayout(mouseBox);
+    m_selection = new QComboBox(mouseBox);
+    m_selection->addItem(i18n("Panero: click moves the cursor, right click marks"), QStringLiteral("5"));
+    m_selection->addItem(i18n("Krusader: click selects, Ctrl+click adds"), QStringLiteral("0"));
+    m_selection->setToolTip(i18n("How the mouse selects files. More modes (Total Commander, Konqueror, "
+                                 "custom) are in All Settings > Panel > Selection Mode."));
+    mouseForm->addRow(i18n("Selection:"), m_selection);
+    layout->addWidget(mouseBox);
 
     // ---- colours (light and dark sets)
     auto *colorBox = new QGroupBox(i18n("Colors"), this);
@@ -177,6 +192,10 @@ void PaneroViewColorsDialog::load()
     m_markIndicator->setChecked(g.readEntry("Mark Indicator", true));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
     m_showHidden->setChecked(KrActions::actToggleHidden && KrActions::actToggleHidden->isChecked());
+    const QString mode = KConfigGroup(krConfig, "Look&Feel").readEntry("Mouse Selection", QString::number(_MouseSelection));
+    if (m_selection->findData(mode) < 0) // another mode chosen in All Settings
+        m_selection->addItem(i18n("Other (set in All Settings)"), mode);
+    m_selection->setCurrentIndex(m_selection->findData(mode));
 
     const int iconSize = KConfigGroup(krConfig, DETAILED_VIEW_GROUP).readEntry("IconSize", QString("22")).toInt();
     const int iconIndex = m_iconSize->findData(iconSize);
@@ -242,6 +261,7 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_alternating->setChecked(true);
     m_markIndicator->setChecked(true);
     m_classicColors->setChecked(false);
+    m_selection->setCurrentIndex(m_selection->findData(QString::number(_MouseSelection)));
     m_density->setCurrentIndex(1); // comfortable: sets row height and icon size
     for (KColorButton *button : qAsConst(m_colorButtons))
         button->setColor(button->defaultColor());
@@ -263,6 +283,10 @@ void PaneroViewColorsDialog::apply()
         else
             g.writeEntry(it.key(), it.value()->color().name());
     }
+    KConfigGroup lookAndFeel(krConfig, "Look&Feel");
+    const QString selectionMode = m_selection->currentData().toString();
+    const bool selectionChanged = lookAndFeel.readEntry("Mouse Selection", QString::number(_MouseSelection)) != selectionMode;
+    lookAndFeel.writeEntry("Mouse Selection", selectionMode);
     const int iconSize = m_iconSize->currentData().toInt();
     KConfigGroup(krConfig, DETAILED_VIEW_GROUP).writeEntry("IconSize", QString::number(iconSize));
     krConfig->sync();
@@ -270,6 +294,15 @@ void PaneroViewColorsDialog::apply()
     PaneroAppearance::instance()->apply();
     KrColorCache::getColorCache().refreshColors();
     applyToPanels(iconSize);
+
+    if (selectionChanged) {
+        // as Configure Panero does: the views pick the selection mode up when created
+        KrSelectionMode::resetSelectionHandler();
+        const bool leftActive = ACTIVE_PANEL->gui->isLeft();
+        MAIN_VIEW->leftManager()->slotRecreatePanels();
+        MAIN_VIEW->rightManager()->slotRecreatePanels();
+        (leftActive ? LEFT_PANEL : RIGHT_PANEL)->slotFocusOnMe();
+    }
 
     if (KrActions::actToggleHidden && KrActions::actToggleHidden->isChecked() != m_showHidden->isChecked())
         KrActions::actToggleHidden->trigger();

@@ -58,6 +58,8 @@ public:
     void emitExecuted(const QString &name) { emit executed(name); }
     void emitGoInside(const QString &name) { emit goInside(name); }
     void emitNeedFocus() { emit needFocus(); }
+    /// Panero zoom: ask the panel to switch to another view type (icon size 0 = keep)
+    void emitViewTypeRequested(int type, int iconSize) { emit viewTypeRequested(type, iconSize); }
     void emitMiddleButtonClicked(KrViewItem *item) { emit middleButtonClicked(item); }
     void emitCurrentChanged(KrViewItem *item) { emit currentChanged(item); }
     void emitPreviewJobStarted(KJob *job) { emit previewJobStarted(job); }
@@ -109,6 +111,7 @@ signals:
     void executed(const QString &name);
     void goInside(const QString &name);
     void needFocus();
+    void viewTypeRequested(int type, int iconSize);
     void middleButtonClicked(KrViewItem *item);
     void currentChanged(KrViewItem *item);
     void previewJobStarted(KJob *job);
