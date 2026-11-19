@@ -84,7 +84,7 @@ start 1; marks; shot details-light; stop
 start 2; marks; shot details-dark; stop
 start 1; marks; xdotool mousemove $((X+520)) $((Y+400)) mousedown 3; sleep 1.2; shot context-menu; xdotool key Escape; xdotool mouseup 3; stop
 start 1; xdotool key alt+shift+t; sleep 4; xdotool key Right Right space Right space; sleep 1.5; shot thumbnails; stop
-start 1; xdotool key alt+v; sleep 0.6; "$ROOT/dev/scripts/xfocus-top.sh"; xdotool key Down Down Down Down Down Down Down Down Down Return; sleep 1.5
+start 1; xdotool mousemove $((X+W-62)) $((Y+26)) click 1; sleep 1.5   # toolbar: View & Colors
 shot view-colors; stop
 kill $XPID 2>/dev/null
 ls -la "$OUT"

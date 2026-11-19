@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(panero)
 
 # Panero version (Debian mapping: 0.1.0-preview.1 -> 0.1.0~preview.1-1).
-set(VERSION "0.1.0-preview.2")
+set(VERSION "0.1.0-preview.3")
 # Upstream Krusader release this fork is based on (see dev/DECISIONS.md D-001).
 set(KRUSADER_BASE_VERSION "2.8.1")
 # Reverse-DNS application identifier derived from the project owner
