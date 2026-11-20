@@ -241,3 +241,31 @@ Release
 - v0.1.0-preview.3 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.3
 - Open: owner host install of preview 3 (sudo) and feedback on the Modern look;
   owner-decision backports (dev/BACKPORTS.md).
+
+## Phase 11 — Preview 4 (owner requests 2026-11-20)
+
+Step 1: proposals with visuals (owner decides), then implementation.
+
+Fixes / changes requested directly
+- [ ] Details | Thumbnails frame rounded; both icons equal size also with text under icons.
+- [ ] Window title shows "Panero".
+- [ ] Sidebar button same height as the other buttons when text is shown under icons.
+- [ ] Context menu: Copy Path.
+- [ ] Theme switch must work without restart (easy fix) or ask to restart (Restart / Cancel).
+- [ ] Menu button text "Menu"; option in Panero's settings: menu bar or menu button (Alt navigation).
+- [ ] F7 new folder: cursor lands on the new folder, keyboard focus in the panel (not the F-key bar).
+- [ ] Toolbar move handles clearly visible (light look).
+- [ ] Inline rename editor integrated with the row look.
+- [ ] F9 Term error.
+- [ ] Remove the empty toolbar.
+- [ ] No check badge on marked files (default off).
+- [ ] New tab: "malformed URL /." error.
+- [ ] Cursor row fill: "transparent" option (frame only).
+
+Proposals for the owner (decisions pending)
+- [ ] Long right-press indicator: pie vs bar, position.
+- [ ] View & Colors: gear icon and a new name.
+- [ ] Icons: OS icons or a custom icon set (candidates with screenshots).
+- [ ] Cloud drives (Google Drive, OneDrive, others): research + proposal.
+- [ ] Look/usability review: further modernisation, users new to commanders.
+- [ ] Krusader parity: what (if anything) a Krusader user would miss.
