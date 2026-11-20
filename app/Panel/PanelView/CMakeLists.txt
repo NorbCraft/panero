@@ -5,6 +5,7 @@ set(PanelView_SRCS
     krinterview.cpp
     commandergesture.cpp
     krmousehandler.cpp
+    paneroholdindicator.cpp
     krselectionmode.cpp
     krsort.cpp
     krview.cpp

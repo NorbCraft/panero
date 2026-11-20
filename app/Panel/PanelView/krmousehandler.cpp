@@ -7,6 +7,9 @@
 
 #include "krmousehandler.h"
 #include "krviewfactory.h"
+#include "paneroholdindicator.h"
+
+#include <QAbstractScrollArea>
 #include "krselectionmode.h"
 #include "krview.h"
 #include "krviewitem.h"
@@ -347,8 +350,19 @@ bool KrMouseHandler::wheelEvent(QWheelEvent *e)
     return false;
 }
 
+PaneroHoldIndicator *KrMouseHandler::holdIndicator()
+{
+    if (!_holdIndicator) {
+        auto *itemView = qobject_cast<QAbstractScrollArea *>(_view->widget());
+        _holdIndicator = new PaneroHoldIndicator(itemView ? itemView->viewport() : _view->widget());
+    }
+    return _holdIndicator;
+}
+
 void KrMouseHandler::showContextMenu()
 {
+    if (_holdIndicator && !qEnvironmentVariableIsSet("PANERO_DEV_HOLD_FREEZE"))
+        _holdIndicator->stop();
     if (_gesture.isPending()) {
         // Panero Commander: a held right button opens the native context menu.
         // Marks are left exactly as they are; the release must not toggle anything.
@@ -419,6 +433,7 @@ bool KrMouseHandler::deferredRightPress(QMouseEvent *e, KrViewItem *item)
         delay = KrSelectionMode::contextMenuHoldDelay();
     _contextMenuTimer.setSingleShot(true);
     _contextMenuTimer.start(delay);
+    holdIndicator()->start(e->pos(), delay);
     e->accept();
     return true;
 }
@@ -428,14 +443,17 @@ bool KrMouseHandler::deferredRightMove(QMouseEvent *e, KrViewItem *item)
     e->accept();
     const QString under = (item && !item->isDummy()) ? item->name() : QString();
     applyGestureAction(_gesture.move(e->pos(), QApplication::startDragDistance(), under));
-    if (!_gesture.wantsTimer())
+    if (!_gesture.wantsTimer()) {
         _contextMenuTimer.stop();
+        holdIndicator()->stop();
+    }
     return true;
 }
 
 bool KrMouseHandler::deferredRightRelease(QMouseEvent *e)
 {
     _contextMenuTimer.stop();
+    holdIndicator()->stop();
     applyGestureAction(_gesture.release());
     e->accept();
     return true;
@@ -444,6 +462,7 @@ bool KrMouseHandler::deferredRightRelease(QMouseEvent *e)
 void KrMouseHandler::cancelRightPress()
 {
     _contextMenuTimer.stop();
+    holdIndicator()->stop();
     _gesture.cancel();
 }
 

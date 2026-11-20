@@ -28,6 +28,8 @@ class QDropEvent;
 /**
  * @brief Mouse handler for view
  */
+class PaneroHoldIndicator;
+
 class KrMouseHandler : public QObject
 {
     Q_OBJECT
@@ -66,6 +68,8 @@ protected:
     bool         _singleClick;
     QPoint       _contextMenuPoint;
     QTimer       _contextMenuTimer;
+    PaneroHoldIndicator *_holdIndicator = nullptr;
+    PaneroHoldIndicator *holdIndicator();
     int          _contextMenuShift;
     bool         _singleClicked;
     KrViewItem * _singleClickedItem;

@@ -253,3 +253,19 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Released v0.1.0-preview.3 (PR #8 merged, tag on ba2685226, release run
   44598245833); assets verified (checksums, version, source commit). The .deb
   was copied to the owner's ~/Downloads for installation.
+
+## 2026-11-20 — preview 4 proposals
+
+- Owner request list recorded in dev/PLAN.md (Phase 11).
+- Prototypes (real code, kept): hold indicator (app/Panel/PanelView/
+  paneroholdindicator.*, Look&Feel / Hold Indicator = pie|ring|bar|none,
+  PANERO_DEV_HOLD_FREEZE for screenshots), Panero Appearance / Icon Theme
+  (system or a chosen theme, -Dark variant in dark mode), symbolic icon
+  recolouring (PaneroAppearance::symbolicIcon) for the gear (emblem-system-
+  symbolic) and the menu button (open-menu-symbolic).
+- Finding: live light/dark switch leaves missing toolbar icons and white list
+  bases -> restart prompt planned.
+- Cloud research: dev/CLOUD-RESEARCH.md.
+- Proposal page (private artifact): https://claude.ai/artifact/4ZhX9vcCC9vc657gKXKhcL
+  Decisions H (hold), N (settings name), I (icons), C (cloud), R1–R12.
+- Next: owner decisions -> plan -> implement all Phase 11 items -> preview 4.

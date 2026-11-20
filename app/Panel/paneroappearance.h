@@ -8,6 +8,7 @@
 #define PANEROAPPEARANCE_H
 
 #include <QObject>
+#include <QIcon>
 #include <QPalette>
 
 class QDBusVariant;
@@ -36,6 +37,14 @@ public:
     int systemColorScheme() const { return m_systemScheme; }
 
     static QPalette paneroPalette(bool dark);
+
+    /// A GNOME "symbolic" icon of the icon theme (single colour SVG) recoloured to
+
+    /// \a color - Qt does not recolour them, so they would stay dark in dark mode.
+
+    /// Returns a null icon when the theme has no such SVG.
+
+    static QIcon symbolicIcon(const QString &name, const QColor &color);
 
 signals:
     void appearanceChanged();

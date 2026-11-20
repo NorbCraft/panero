@@ -221,18 +221,23 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         KHamburgerMenu *menuButton = KStandardAction::hamburgerMenu(nullptr, nullptr, actionCollection());
         menuButton->setMenuBar(menuBar());
         menuButton->setShowMenuBarAction(showMenubar);
-        // the "three lines" icon: desktop themes like Zorin draw application-menu as a
-        // gear; use Breeze's in the variant matching Panero's light/dark look
+        // the "three lines" icon: the desktop's symbolic open-menu icon in the toolbar's
+        // text colour (Zorin draws application-menu as a gear), else Breeze's
         auto menuIcon = [menuButton]() {
-            const QString fallback = QIcon::fallbackThemeName();
-            for (const QString &dir : QIcon::themeSearchPaths()) {
-                const QString file = dir + QLatin1Char('/') + fallback + QStringLiteral("/actions/22/application-menu.svg");
-                if (!fallback.isEmpty() && QFile::exists(file)) {
-                    menuButton->setIcon(QIcon(file));
-                    return;
-                }
-            }
+            const QIcon symbolic = PaneroAppearance::symbolicIcon(QStringLiteral("open-menu-symbolic"),
+                                                                  QApplication::palette().color(QPalette::ButtonText));
+            menuButton->setIcon(!symbolic.isNull() ? symbolic : Icon(QStringLiteral("application-menu")));
         };
+        // the View & Colors button: the classic cogwheel, in the same way
+        auto gearIcon = [this]() {
+            QAction *settings = actionCollection()->action(QStringLiteral("panero view colors"));
+            const QIcon symbolic = PaneroAppearance::symbolicIcon(QStringLiteral("emblem-system-symbolic"),
+                                                                  QApplication::palette().color(QPalette::ButtonText));
+            if (settings)
+                settings->setIcon(!symbolic.isNull() ? symbolic : Icon(QStringLiteral("configure")));
+        };
+        gearIcon();
+        connect(PaneroAppearance::instance(), &PaneroAppearance::appearanceChanged, this, gearIcon);
         menuIcon();
         connect(PaneroAppearance::instance(), &PaneroAppearance::appearanceChanged, menuButton, menuIcon);
     }
