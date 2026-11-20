@@ -39,9 +39,13 @@ find "$stage" -iname 'kio_krarc.dll' -o -iname 'krarc.dll' | while read -r f; do
 done
 find "$out/plugins" -name '*.dll.a' -delete
 
-# Data: Panero UI files, layouts, colour schemes, icons, translations
-for d in kxmlgui5 panero icons locale; do
-    [ -d "$stage/share/$d" ] && cp -r "$stage/share/$d" "$out/data/"
+# Data: Panero UI files, layouts, colour schemes, icons, translations.
+# ECM installs data to bin/data on Windows (Qt looks in <exe dir>/data).
+for d in "$stage/bin/data" "$stage/share"; do
+    [ -d "$d" ] && cp -r "$d/." "$out/data/"
+done
+for f in kxmlgui5/panero/paneroui.rc panero/layout.xml; do
+    [ -f "$out/data/$f" ] || { echo "missing data file: $f" >&2; exit 1; }
 done
 # Breeze icon theme as one resource file (KIconThemes loads data/icontheme.rcc)
 cp "$P/bin/data/icontheme.rcc" "$out/data/"
