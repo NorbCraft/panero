@@ -301,6 +301,7 @@ int main(int argc, char *argv[])
 
     // Panero: a new default toolbar layout replaces a stale saved one
     PaneroToolBar::migrateLayout();
+    PaneroToolBar::migrateSettings();
 
     // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
     PaneroAppearance::instance()->apply();

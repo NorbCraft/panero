@@ -796,6 +796,12 @@ void ListPanelFunc::mkdir()
 
     // create new directory (along with underlying directories if necessary)
     files()->mkDir(dirName);
+
+    // Panero: keyboard back in the panel (also when F7 was clicked on the function key
+    // bar), so Enter opens the new folder the cursor is on
+    panel->gui->slotFocusOnMe();
+    if (panel->view->widget())
+        panel->view->widget()->setFocus(Qt::OtherFocusReason);
 }
 
 void ListPanelFunc::defaultOrAlternativeDeleteFiles(bool invert)

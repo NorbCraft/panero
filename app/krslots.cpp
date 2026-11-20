@@ -7,6 +7,8 @@
 */
 
 #include "krslots.h"
+
+#include <QStandardPaths>
 #include "paneropackageinstaller.h"
 
 #include <QFileInfo>
@@ -477,6 +479,19 @@ void KrSlots::runTerminal(const QString & dir)
     KConfigGroup group(krConfig, "General");
     QString term = group.readEntry("Terminal", _Terminal);
     QStringList sepdArgs = KShell::splitArgs(term, KShell::TildeExpand);
+    // Panero: the default (konsole) is not installed on GNOME/Zorin desktops; when the
+    // configured terminal is missing, use the desktop's default terminal
+    if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
+        for (const QString &candidate : {QStringLiteral("x-terminal-emulator"), QStringLiteral("gnome-terminal"),
+                                         QStringLiteral("kgx"), QStringLiteral("ptyxis"), QStringLiteral("konsole"),
+                                         QStringLiteral("xfce4-terminal"), QStringLiteral("tilix"), QStringLiteral("xterm")}) {
+            if (!QStandardPaths::findExecutable(candidate).isEmpty()) {
+                term = candidate;
+                sepdArgs = QStringList{candidate};
+                break;
+            }
+        }
+    }
     if (sepdArgs.isEmpty()) {
         KMessageBox::error(krMainWindow,
                            i18nc("Arg is a string containing the bad quoting.",

@@ -55,6 +55,8 @@ KFnKeys::ButtonEntry KFnKeys::setup(QAction *action, const QString &text)
 {
     auto *button = new QPushButton(this);
     button->setMinimumWidth(45);
+    // Panero: clicking a function key never takes the keyboard away from the panels
+    button->setFocusPolicy(Qt::NoFocus);
     button->setToolTip(action->toolTip());
     connect(button, &QPushButton::clicked, action, &QAction::trigger);
     return QPair<QPushButton *, QPair<QAction *, QString>>(button,

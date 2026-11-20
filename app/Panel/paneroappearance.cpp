@@ -6,6 +6,7 @@
 
 #include "paneroappearance.h"
 #include "panerotheme.h"
+#include "paneroiconthemes.h"
 
 #include "../krglobal.h"
 
@@ -245,6 +246,10 @@ void PaneroAppearance::applyIconTheme(bool dark)
         else if (iconThemeExists(dark ? QStringLiteral("breeze-dark") : QStringLiteral("breeze")))
             theme = dark ? QStringLiteral("breeze-dark") : QStringLiteral("breeze");
     }
+    // Panero layers: "Panero Line" icons and recoloured folders (D-014)
+    const bool line = look.readEntry("Icon Set", QString()) == QLatin1String("line");
+    const QColor folderColor = PaneroTheme::readColor(look.readEntry("Folder Color", QString()));
+    theme = PaneroIconThemes::compose(theme, line, dark, folderColor);
     if (!theme.isEmpty() && theme != QIcon::themeName())
         QIcon::setThemeName(theme);
     // KIconThemes makes light Breeze Qt's global fallback theme; icons missing from the

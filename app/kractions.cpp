@@ -289,8 +289,8 @@ void KrActions::setupActions(Krusader *krusaderApp)
     QObject::connect(actImportKrusader, &QAction::triggered, krusaderApp, [krusaderApp]() {
         PaneroImport::requestImportFromMenu(krusaderApp);
     });
-    actViewColors = new QAction(Icon("configure"), i18n("View && &Colors..."), krusaderApp);
-    actViewColors->setToolTip(i18n("Appearance, density, row colors and hidden files"));
+    actViewColors = new QAction(Icon("configure"), i18n("&Quick Settings..."), krusaderApp);
+    actViewColors->setToolTip(i18n("Quick Settings: look, icons, file list, mouse and colors"));
     krusaderApp->actionCollection()->addAction("panero view colors", actViewColors);
     QObject::connect(actViewColors, &QAction::triggered, krusaderApp, [krusaderApp]() {
         PaneroViewColorsDialog::showDialog(krusaderApp);

@@ -7,6 +7,8 @@
 */
 
 #include "panelcontextmenu.h"
+#include <QClipboard>
+#include <QApplication>
 
 // QtGui
 #include <QPixmap>
@@ -332,6 +334,11 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     addAction(panel->gui->actions()->actCut);
     addAction(panel->gui->actions()->actCopy);
     addAction(panel->gui->actions()->actPaste);
+    // Panero: full path(s) as text, and a terminal right here
+    addAction(Icon("edit-copy-path"), multipleSelections ? i18n("Copy Paths") : i18n("Copy Path"))
+        ->setData(QVariant(COPY_PATH_ID));
+    if (panel->func->files()->isLocal())
+        addAction(Icon("utilities-terminal"), i18n("Open Terminal Here"))->setData(QVariant(TERMINAL_HERE_ID));
     addSeparator();
 
     // --------- properties
@@ -341,6 +348,10 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 void PanelContextMenu::addEmptyMenuEntries()
 {
     addAction(panel->gui->actions()->actPaste);
+    // Panero: the folder's own path, and a terminal in it
+    addAction(Icon("edit-copy-path"), i18n("Copy Path"))->setData(QVariant(COPY_PATH_ID));
+    if (panel->func->files()->isLocal())
+        addAction(Icon("utilities-terminal"), i18n("Open Terminal Here"))->setData(QVariant(TERMINAL_HERE_ID));
 }
 
 void PanelContextMenu::addCreateNewMenu()
@@ -434,6 +445,22 @@ void PanelContextMenu::performAction(int id)
     case OPEN_TERM_ID :
         SLOTS->runTerminal(singleURL.path());
         break;
+    case COPY_PATH_ID : {
+        QStringList paths;
+        const QList<QUrl> urls = _items.isEmpty() ? QList<QUrl>{panel->virtualPath()} : _items.urlList();
+        for (const QUrl &url : urls)
+            paths << url.toDisplayString(QUrl::PreferLocalFile | QUrl::StripTrailingSlash);
+        QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
+        break;
+    }
+    case TERMINAL_HERE_ID : {
+        // a folder opens there, a file in the folder it is in
+        QString dir = panel->virtualPath().toLocalFile();
+        if (_items.count() == 1 && _items.first().isDir() && _items.first().url().isLocalFile())
+            dir = _items.first().url().toLocalFile();
+        SLOTS->runTerminal(dir);
+        break;
+    }
     }
 
     // check if something from the open-with-offered-services was selected

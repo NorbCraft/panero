@@ -9,6 +9,8 @@ set(Panel_SRCS
     krerrordisplay.cpp
     krfiletreeview.cpp
     paneropaths.cpp
+    paneroiconthemes.cpp
+    panerojobrow.cpp
     krlayoutfactory.cpp
     krpanel.cpp
     krpreviewjob.cpp

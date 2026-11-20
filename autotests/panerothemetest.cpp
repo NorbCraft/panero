@@ -46,7 +46,7 @@ private Q_SLOTS:
     {
         QVERIFY(PaneroTheme::usePaneroColors());
         QVERIFY(PaneroTheme::alternatingRows());
-        QVERIFY(PaneroTheme::markIndicator());
+        QVERIFY(!PaneroTheme::markIndicator()); // preview 4: no badge by default
         QCOMPARE(PaneroTheme::configuredRowHeight(), 0);
         QCOMPARE(PaneroTheme::mode(), PaneroTheme::Mode::FollowSystem);
     }

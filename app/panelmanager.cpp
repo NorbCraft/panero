@@ -87,12 +87,17 @@ PanelManager::PanelManager(QWidget *parent, KrMainWindow* mainWindow, bool left)
 void PanelManager::tabsCountChanged()
 {
     const KConfigGroup cfg(krConfig, "Look&Feel");
-    const bool showTabbar = _tabbar->count() > 1 || cfg.readEntry("Show Tab Bar On Single Tab", true);
+    // Panero: the tab bar appears with the second tab (D-014)
+    const bool showTabbar = _tabbar->count() > 1 || cfg.readEntry("Show Tab Bar On Single Tab", false);
     const bool showNewButton = showTabbar && cfg.readEntry("Show New Tab Button", true);
     const bool showCloseButtons = showTabbar && cfg.readEntry("Show Close Tab Buttons", true);
 
     _tabbar->setVisible(showTabbar);
     _newTab->setVisible(showNewButton);
+    for (int i = 0; i < _tabbar->count(); ++i) {
+        if (ListPanel *panel = tabAt(i))
+            panel->setNewTabButtonVisible(!showTabbar && cfg.readEntry("Show New Tab Button", true));
+    }
 
     // disable close button if only 1 tab is left
     _tabbar->setTabsClosable(showCloseButtons && _tabbar->count() > 1);

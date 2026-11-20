@@ -128,6 +128,8 @@ KrFileTreeView::KrFileTreeView(QWidget *parent)
 
 void KrFileTreeView::setCurrentUrl(const QUrl &url)
 {
+    if (!url.isValid() || url.isEmpty()) // Panero: a new tab without a folder yet
+        return;
     mCurrentUrl = url;
     if (mStartTreeFromCurrent) {
         setTreeRoot(url);

@@ -116,3 +116,8 @@ ecm_install_icons(ICONS
     DESTINATION ${KDE_INSTALL_ICONDIR}
     THEME hicolor
 )
+
+# "Panero Line" icons (Lucide, ISC): a private set Panero layers over the desktop theme
+install(DIRECTORY icons/panero-line/light icons/panero-line/dark
+        DESTINATION ${KDE_INSTALL_DATADIR}/panero/icons/panero-line
+        FILES_MATCHING PATTERN "*.svg")

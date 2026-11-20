@@ -40,6 +40,14 @@ private slots:
         QVERIFY(PaneroPaths::homeOrDriveRoot(sibling) != QUrl::fromLocalFile(QDir::cleanPath(m_home.path())));
     }
 
+    void emptyOrRelativeIsHome()
+    {
+        // a new tab reports an empty location first ("Malformed URL /." before)
+        const QUrl home = QUrl::fromLocalFile(QDir::cleanPath(m_home.path()));
+        QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl()), home);
+        QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("."))), home);
+    }
+
     void remoteIsLocationRoot()
     {
         QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("sftp://user@host/srv/data/x"))),

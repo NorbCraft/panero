@@ -48,6 +48,8 @@ public:
 
 signals:
     void appearanceChanged();
+    /// Quick Settings were applied (sidebar sections, menus, ...)
+    void settingsChanged();
 
 private slots:
     void portalSettingChanged(const QString &ns, const QString &key, const QDBusVariant &value);

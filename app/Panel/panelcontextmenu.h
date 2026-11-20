@@ -64,6 +64,8 @@ private:
         SYNC_SELECTED_ID,
         SEND_BY_EMAIL_ID,
         EJECT_ID,
+        COPY_PATH_ID,        // Panero: copy the full path(s) to the clipboard
+        TERMINAL_HERE_ID,    // Panero: terminal in this folder / the panel's folder
         SERVICE_LIST_ID // ALWAYS KEEP THIS ONE LAST!!!
     };
 

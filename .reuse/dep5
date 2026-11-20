@@ -84,3 +84,11 @@ Comment: Screenshots of Panero with demo files (dev/scripts/make-screenshots-hos
 Files: dev/mockups/*
 Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
+
+Files: app/icons/panero-line/*
+Copyright: 2013-2022 Cole Bemis (portions, as part of Feather)
+ 2022-2024 Lucide Contributors
+ 2026 Panero contributors (selection, colours, mapping)
+License: ISC
+Comment: Lucide icons (lucide-static 0.460.0, https://lucide.dev), recoloured
+ for light/dark and renamed to freedesktop icon names (see map.txt).

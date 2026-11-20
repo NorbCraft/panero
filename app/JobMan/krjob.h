@@ -54,6 +54,11 @@ public:
      * The KIO::Job emits a more detailed description after start.
      */
     QString description() const { return m_description; }
+    // Panero: for the progress row in the panels
+    Type type() const { return m_type; }
+    QUrl destination() const { return m_dest; }
+    QList<QUrl> sources() const { return m_urls; }
+    KIO::Job *kioJob() const { return m_job; }
 
 signals:
     /** Emitted if job was started. Parameter is the KIO::Job that was created. */
