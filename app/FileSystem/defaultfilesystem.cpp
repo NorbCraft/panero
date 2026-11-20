@@ -346,7 +346,7 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
         for (const QString &name : qdir.entryList(filters, QDir::NoSort)) {
             if (!showHidden && (name.startsWith(QLatin1Char('.')) || hiddenFiles.contains(name)))
                 continue;
-            addFileItem(createLocalFileItem(name, path));
+            addFileItem(FileSystem::createLocalFileItem(name, path));
         }
     }
 #else

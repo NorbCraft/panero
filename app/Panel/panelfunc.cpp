@@ -80,6 +80,9 @@
 #include "../KViewer/krviewer.h"
 #include "../MountMan/kmountman.h"
 #include "../compat.h"
+#ifdef Q_OS_WIN
+#include "panerowinshell.h"
+#endif
 
 QPointer<ListPanelFunc> ListPanelFunc::copyToClipboardOrigin;
 
@@ -391,6 +394,18 @@ void ListPanelFunc::redirectLink()
     // if the user canceled - quit
     if (!ok || newLink == currentLink)
         return;
+#ifdef Q_OS_WIN
+    file = fileitem->getUrl().toLocalFile();
+    if (!QFile::remove(file)) {
+        KMessageBox::error(krMainWindow, i18n("Cannot remove old link: %1", file));
+        return;
+    }
+    if (!PaneroWinShell::createSymlink(newLink, file)) {
+        KMessageBox::error(krMainWindow, i18n("Failed to create a new link: %1", file));
+        return;
+    }
+    return;
+#endif
     // delete the current link
     if (unlink(file.toLocal8Bit()) == -1) {
         KMessageBox::error(krMainWindow, i18n("Cannot remove old link: %1", file));
@@ -428,6 +443,15 @@ void ListPanelFunc::krlink(bool sym)
         return;
     }
 
+#ifdef Q_OS_WIN
+    if (QDir::isRelativePath(linkName))
+        linkName = files()->currentDirectory().toLocalFile() + '/' + linkName;
+    name = files()->getUrl(name).toLocalFile();
+    if (!(sym ? PaneroWinShell::createSymlink(name, linkName) : PaneroWinShell::createHardLink(name, linkName)))
+        KMessageBox::error(krMainWindow, sym ? i18n("Failed to create a new symlink '%1' to: '%2'", linkName, name)
+                                             : i18n("Failed to create a new link '%1' to '%2'", linkName, name));
+    return;
+#endif
     // make link name and target absolute path
     if (linkName.left(1) != "/")
         linkName = files()->currentDirectory().path() + '/' + linkName;

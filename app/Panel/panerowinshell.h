@@ -41,6 +41,11 @@ QString iconKey(const QString &localPath, bool isDir);
 QIcon fileIcon(const QString &localPath, bool isDir);
 /// Forget cached settings and icons (after Quick Settings changes).
 void reset();
+
+/// Create a symbolic link (needs Developer Mode or administrator rights).
+bool createSymlink(const QString &target, const QString &linkPath);
+/// Create a hard link (files on the same NTFS volume).
+bool createHardLink(const QString &target, const QString &linkPath);
 }
 
 #endif

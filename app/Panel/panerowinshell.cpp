@@ -10,6 +10,7 @@
 #include "../krglobal.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QHash>
@@ -160,5 +161,32 @@ void reset()
 {
     shellSetting() = -1;
     iconCache().clear();
+}
+
+bool createSymlink(const QString &target, const QString &linkPath)
+{
+#ifdef Q_OS_WIN
+    DWORD flags = 0x2; // SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE (Developer Mode)
+    if (QFileInfo(target).isDir())
+        flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+    const std::wstring link = QDir::toNativeSeparators(linkPath).toStdWString();
+    const std::wstring dest = QDir::toNativeSeparators(target).toStdWString();
+    return CreateSymbolicLinkW(link.c_str(), dest.c_str(), flags) != 0;
+#else
+    return QFile::link(target, linkPath);
+#endif
+}
+
+bool createHardLink(const QString &target, const QString &linkPath)
+{
+#ifdef Q_OS_WIN
+    const std::wstring link = QDir::toNativeSeparators(linkPath).toStdWString();
+    const std::wstring dest = QDir::toNativeSeparators(target).toStdWString();
+    return CreateHardLinkW(link.c_str(), dest.c_str(), nullptr) != 0;
+#else
+    Q_UNUSED(target)
+    Q_UNUSED(linkPath)
+    return false;
+#endif
 }
 } // namespace PaneroWinShell

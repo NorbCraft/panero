@@ -59,7 +59,7 @@ def wait_for(cond, timeout=10.0):
 
 
 def keys(seq, pause=0.6):
-    keyboard.send_keys(seq, pause=0.05)
+    keyboard.send_keys(seq, pause=0.05, with_spaces=True)
     time.sleep(pause)
 
 
@@ -151,6 +151,7 @@ shot('after-f5')
 
 # --- move with F6 (single file under the cursor) ------------------------------------
 keys('{ESC}', 0.3)
+keys('%-', 0.4)                    # Alt+- clears the marks (Panero; TC uses Num -)
 go_to('delta.txt')
 keys('{F6}', 1.5)
 shot('f6-dialog')

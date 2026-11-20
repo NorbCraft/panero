@@ -234,7 +234,9 @@ int main(int argc, char *argv[])
     // This will call QCoreApplication::setApplicationName, etc for us by using info in the KAboutData instance.
     // The only thing not called for us is setWindowIcon(), which is why we do it ourselves here.
     KAboutData::setApplicationData(aboutData);
+#ifndef Q_OS_WIN // Windows: Qt uses the icon resource of panero.exe (IDI_ICON1)
     app.setWindowIcon(Icon(Krusader::appIconName()));
+#endif
 
     // Command line arguments ...
     QCommandLineParser parser;
