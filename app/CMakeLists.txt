@@ -3,6 +3,7 @@ configure_file(krusaderversion.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/krusaderversi
 add_subdirectory(ActionMan)
 add_subdirectory(Archive)
 add_subdirectory(BookMan)
+add_subdirectory(Cloud)
 add_subdirectory(Dialogs)
 add_subdirectory(DiskUsage)
 add_subdirectory(FileSystem)
@@ -71,6 +72,7 @@ target_link_libraries(panero
                       GUI
                       Archive
                       JobMan
+                      Cloud
                       KF5::Notifications
                       KF5::Parts
                       KF5::WindowSystem
