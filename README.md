@@ -68,7 +68,7 @@ named "PANERO" exists.
 ## Using Panero
 
 See [USER-GUIDE.md](USER-GUIDE.md) for marks and the cursor, the right mouse
-button, pins and the folder tree, View & Colors and KDiff3.
+button, pins and the folder tree, Quick Settings, cloud drives and KDiff3.
 
 ## For contributors and agents
 

@@ -1,3 +1,20 @@
+panero (0.1.0~preview.4-1) noble; urgency=medium
+
+  * Fourth preview (git tag v0.1.0-preview.4).
+  * Cloud section in the sidebar: Add Cloud (rclone: Google Drive, OneDrive,
+    Dropbox, pCloud, Box, MEGA, Nextcloud) and Connect to Server (WebDAV,
+    SFTP, SMB, FTP); switchable.
+  * Quick Settings (cogwheel): Panero Line icons, folder colour, menu bar or
+    Menu button, hold feedback, transparent cursor fill; restart prompt for
+    appearance changes.
+  * Copy/move progress in the panel; pie feedback while holding the right
+    button; tab bar only with two or more tabs; window title with the folder.
+  * Context menu: Copy Path, Open Terminal Here.
+  * Fixes: F9 terminal on GNOME, new tab error, F7 keyboard focus, empty
+    toolbar, check badge off by default, toolbar text mode, rename field.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Fri, 20 Nov 2026 21:00:00 +0100
+
 panero (0.1.0~preview.3-1) noble; urgency=medium
 
   * Third preview (git tag v0.1.0-preview.3).

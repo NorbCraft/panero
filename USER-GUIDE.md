@@ -9,15 +9,23 @@ specific to Panero.
 
 - **Toolbar** (one row, icons only): sidebar button (wide, far left), Up, Home,
   Refresh, Compare, Pack, Unpack, Search, Trash, Hidden Files, Details |
-  Thumbnails, and at the right edge **View & Colors** (colour wheel) and the
-  **menu button ☰**. Right-click the toolbar to change the icon size or show
-  text; one setting changes all buttons.
-- The **menu button ☰** holds all menus (File, Edit, Go, View, ..., Help).
-  **Settings > Show Menubar** brings the classic menu bar back.
+  Thumbnails, and at the right edge **Quick Settings** (cogwheel) and **Menu**
+  (☰). Right-click the toolbar to change the icon size or show text; one setting
+  changes all buttons. To move the toolbar, uncheck *Lock Toolbar Positions* in
+  that menu and drag the dotted grip.
+- **Menu** (☰) holds all menus (File, Edit, Go, View, ..., Help). If you prefer
+  the classic menu bar (Alt+letter navigation), choose **Menus: Menu bar** in
+  Quick Settings.
+- The window title shows the active panel's folder ("Projects — Panero").
+- The **tab bar** appears when a panel has two or more tabs; the new-tab button
+  sits next to the path.
 - Each panel is a rounded card; the **active panel** has a coloured outline and
   a coloured bottom row (selection count and free space). Next to the path, the
   **drive button** ("System (/)", USB sticks, network locations) opens the list
   of devices.
+- **Copying, moving and deleting** show their progress in the bottom row of the
+  panel that receives the files ("Copying photo.jpg to Projects — 45 %"), with
+  a button for the details window and a Cancel button.
 
 ## Cursor and marks
 
@@ -25,7 +33,8 @@ specific to Panero.
   its left. It is where the keyboard acts. In the inactive panel the frame is
   grey.
 - **Marks** are the files you have picked for an operation. Marked files are
-  shown in **red** with a red **check badge** on their icon. Marks stay until
+  shown in **red** (a check badge on the icon can be switched on in Quick
+  Settings). Marks stay until
   you remove them: moving the cursor with the mouse or the arrow keys,
   switching panels or changing the view does not clear them.
 - Mark or unmark: **short right-click**, **Space** (current file; on a folder it
@@ -42,13 +51,14 @@ specific to Panero.
 | You do | Panero does |
 |---|---|
 | short right-click on a file | toggles its mark |
-| **hold** the right button ~0.6 s on a file | opens the normal context menu (Open With, Properties, service menus, ...). If files are marked, the menu works on the marked files and says "Marked: N items" at the top. Marks are not changed. |
+| **hold** the right button ~0.6 s on a file | a small pie next to the pointer fills up, then the normal context menu opens (Open With, Properties, service menus, ...). If files are marked, the menu works on the marked files and says "Marked: N items" at the top. Marks are not changed. |
 | hold on empty space or on ".." | opens the folder menu (Create New, Paste) |
+| context menu extras | **Copy Path** (full path of the files, or of the folder on empty space) and **Open Terminal Here** |
 | right-click a **column header** | immediately opens the column chooser (show/hide columns such as Ext, Type, Owner) |
 | Menu key or **Shift+F10** | context menu from the keyboard |
 
 To use the original Krusader way instead (left click selects, Ctrl+click adds),
-choose **Selection: Krusader** in **View & Colors**. The hold time and more
+choose **Selection: Krusader** in **Quick Settings**. The hold time and more
 modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
 > Panel > Selection Mode**.
 
@@ -68,7 +78,20 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   (always Home while you are inside Home; on another drive or outside Home it
   starts at that drive or at /) or the **whole file system (/)**, and whether
   hidden folders are shown.
-- Drag the handle between Pinned and Folders to give either part more room.
+- **Cloud**: your cloud drives and servers (can be switched off in Quick
+  Settings). The **+** button offers:
+  - **Add Cloud...**: Google Drive, OneDrive, Dropbox, pCloud, Box, MEGA,
+    Nextcloud/WebDAV. Panero uses the free tool *rclone*; if it is not
+    installed, Panero offers to install it (your system asks for authorisation).
+    For Google, Microsoft, Dropbox, pCloud and Box you sign in in your web
+    browser; then the drive appears in the list.
+  - **Connect to Server...**: Nextcloud/ownCloud or other WebDAV servers, SFTP,
+    Windows shares/NAS (SMB) and FTP. Passwords are asked by the system when
+    needed and are not stored in Panero's settings.
+  - Click an entry to open it in the active panel (cloud drives connect first;
+    files are loaded on demand). Right-click: Disconnect, Remove. Cloud drives
+    are disconnected when Panero closes.
+- Drag the handles between Pinned, Cloud and Folders to give a part more room.
 
 ## Views
 
@@ -87,10 +110,9 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
 - **Trash** in the toolbar opens a menu: **Open Trash** (shows it in the active
   panel, where files can be restored) or **Empty Trash** (asks first).
 
-## View & Colors
+## Quick Settings
 
-**View & Colors** (colour wheel at the right of the toolbar, also in the View
-menu):
+**Quick Settings** (cogwheel at the right of the toolbar, also in the View menu):
 
 - Appearance: follow the desktop's light/dark setting, or force light or dark.
   Only Panero is affected.
@@ -98,16 +120,27 @@ menu):
   and icon size. Rows never get so small that text is cut off.
 - "Use Panero's look": the modern Panero look; unchecked, Panero uses the plain
   system style like Krusader.
+- **Icons**: the system's icons or **Panero Line** (thin line icons for the
+  toolbar and sidebar). **Folder color**: keep the icon theme's folders or pick
+  a colour (or a custom one).
+- **Menus**: Menu button or the classic menu bar. **Cloud** section on or off.
+- **Hold feedback** while the right button is held: pie, ring, bar or off.
+- Changing the appearance, icons or folder colour asks to **restart** Panero
+  (Restart / Later); folders and tabs are kept.
 - **Selection**: Panero (click moves the cursor, right click marks) or Krusader
   (click selects).
 - Alternating row backgrounds and all colours (both stripes, marked text and
-  background, cursor fill and frame, and the **active panel and selection**
+  background, cursor fill (or *Transparent*: frame only) and frame, and the
+  **active panel and selection**
   colour, which is also the colour of the current folder in the tree),
   separately for light and dark. The default active colour is Krusader's blue.
   **Restore Defaults** resets them.
 - "All Settings..." opens the complete original configuration.
 
 ## Comparing files (KDiff3)
+
+**F9** opens a terminal in the active panel's folder (the desktop's terminal
+if Krusader's default, Konsole, is not installed).
 
 **Compare** in the toolbar compares by content with KDiff3:
 

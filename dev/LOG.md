@@ -269,3 +269,21 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Proposal page (private artifact): https://claude.ai/artifact/4ZhX9vcCC9vc657gKXKhcL
   Decisions H (hold), N (settings name), I (icons), C (cloud), R1–R12.
 - Next: owner decisions -> plan -> implement all Phase 11 items -> preview 4.
+
+## 2026-11-20 (evening) — preview 4 implementation
+
+- Owner decisions D-014. Implemented Phase 11 (see PLAN). Cloud backend built
+  by a helper agent in a worktree (app/Cloud, commit d7985a979 after
+  cherry-pick), integrated into the sidebar by me.
+- Findings: F9 failed because konsole is the default terminal; the new-tab
+  error came from an empty URL reaching PaneroPaths (preview 3 regression);
+  F7 focus stayed on a clicked F-key button; KIO progress windows appear
+  because no KUiServer runs on GNOME (now HideProgressInfo + panel row).
+- Live light/dark switch is unreliable -> restart prompt; restart waits for the
+  old process (single-instance safe). Verified under Xvfb.
+- Folder colours: recoloured copies of the provider theme's folder icons in a
+  generated theme under ~/.cache/panero/icon-themes (PNG pixel / SVG hex
+  recolouring, sizes up to 256 px). Panero Line: Lucide 0.460.0 (ISC), installed
+  to /usr/share/panero/icons, layered via a generated index.theme.
+- Tests: ctest 6/6, GUI file-ops 17/17 (context menu navigation updated for
+  Copy Path), interactive checks listed in the release notes.
