@@ -19,12 +19,17 @@
 #include "Panel/krpanel.h"
 #include "Panel/listpanel.h"
 #include "Panel/panelfunc.h"
+#ifdef Q_OS_WIN
+#include "Panel/panerowinshell.h"
+#endif
 #include "MountMan/kmountman.h"
 
 #include <memory>
 
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
+#include <QStorageInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QActionGroup>
@@ -482,6 +487,10 @@ bool PaneroNavigationDock::eventFilter(QObject *watched, QEvent *event)
 void PaneroNavigationDock::addPin(const Pin &pin)
 {
     auto *item = new QListWidgetItem(Icon(iconForUrl(pin.url)), pin.label, m_pins);
+#ifdef Q_OS_WIN
+    if (pin.url.isLocalFile() && QDir(pin.url.toLocalFile()).isRoot())
+        item->setIcon(PaneroWinShell::driveIcon(pin.url.toLocalFile())); // Explorer's drive icon
+#endif
     item->setData(UrlRole, pin.url);
     item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
     item->setData(UdiRole, pin.driveUdi);
@@ -624,6 +633,27 @@ void PaneroNavigationDock::loadPins()
         home.url = QUrl::fromLocalFile(QDir::homePath());
         home.label = i18n("Home");
         addPin(home);
+#ifdef Q_OS_WIN
+        // Windows: what Explorer's Quick access and "This PC" offer first
+        for (auto loc : {QStandardPaths::DesktopLocation, QStandardPaths::DocumentsLocation,
+                         QStandardPaths::DownloadLocation}) {
+            const QString path = QStandardPaths::writableLocation(loc);
+            if (path.isEmpty() || !QFileInfo::exists(path))
+                continue;
+            Pin pin;
+            pin.url = QUrl::fromLocalFile(path);
+            pin.label = QStandardPaths::displayName(loc);
+            addPin(pin);
+        }
+        for (const PaneroWinShell::Drive &drive : PaneroWinShell::drives()) {
+            if (!QStorageInfo(drive.rootPath).isReady())
+                continue; // empty card reader or DVD drive
+            Pin pin;
+            pin.url = QUrl::fromLocalFile(drive.rootPath);
+            pin.label = drive.name;
+            addPin(pin);
+        }
+#endif
         return;
     }
     const QStringList urls = g.readEntry("Urls", QStringList());
