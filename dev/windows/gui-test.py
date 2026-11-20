@@ -26,6 +26,7 @@ import win32gui
 from PIL import ImageGrab
 from pywinauto import Application, Desktop, keyboard, mouse
 
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # the CI console is cp1252
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)
 args = ap.parse_args()

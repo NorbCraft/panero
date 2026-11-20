@@ -54,7 +54,8 @@ public:
         if (role == Qt::DecorationRole && index.column() == KDirModel::Name) {
             const KFileItem item = itemForIndex(index);
             if (!item.isNull() && item.isLocalFile() && PaneroWinShell::useShellIcons(item.isDir()))
-                return PaneroWinShell::fileIcon(item.localPath(), item.isDir());
+                return QIcon(PaneroWinShell::fileIcon(item.localPath(), item.isDir())
+                                 .pixmap(KrFileTreeView::IconSize)); // shell icons come in 16/32/48 px
         }
         return KDirModel::data(index, role);
     }

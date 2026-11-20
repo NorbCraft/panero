@@ -106,6 +106,9 @@ void KrInterDetailedView::doRestoreSettings(KConfigGroup grp)
         hideColumn(KrViewProperties::Group);
         hideColumn(KrViewProperties::Changed);
         hideColumn(KrViewProperties::Accessed);
+#ifdef Q_OS_WIN
+        hideColumn(KrViewProperties::KrPermissions); // Unix rwx bits mean nothing on Windows
+#endif
         headerView->resizeSection(KrViewProperties::Ext, QFontMetrics(_viewFont).horizontalAdvance("tar.bz2  "));
         headerView->resizeSection(KrViewProperties::KrPermissions, QFontMetrics(_viewFont).horizontalAdvance("rwx  "));
         headerView->resizeSection(KrViewProperties::Size, QFontMetrics(_viewFont).horizontalAdvance("9") * 10);
