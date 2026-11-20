@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QEventLoop>
+#include <QStorageInfo>
 
 #include <KConfigCore/KSharedConfig>
 #include <KCoreAddons/KUrlMimeData>
@@ -152,6 +153,21 @@ void DefaultFileSystem::updateFilesystemInfo()
         return;
     }
 
+#ifdef Q_OS_WIN
+    // Windows: drive letter as the "mount point" ("C:/"), NTFS/FAT/exFAT as type
+    {
+        const QStorageInfo storage(_currentDirectory.toLocalFile());
+        if (!storage.isValid() || !storage.isReady()) {
+            _mountPoint = "";
+            emit fileSystemInfoChanged(i18n("Space information unavailable"), "", 0, 0);
+            return;
+        }
+        _mountPoint = storage.rootPath();
+        emit fileSystemInfoChanged("", QString::fromLatin1(storage.fileSystemType()),
+                                   KIO::filesize_t(storage.bytesTotal()), KIO::filesize_t(storage.bytesAvailable()));
+        return;
+    }
+#endif
     const QString path = _currentDirectory.path();
     const KDiskFreeSpaceInfo info = KDiskFreeSpaceInfo::freeSpaceInfo(path);
     if (!info.isValid()) {

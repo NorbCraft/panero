@@ -481,6 +481,19 @@ void KrSlots::runTerminal(const QString & dir)
     QStringList sepdArgs = KShell::splitArgs(term, KShell::TildeExpand);
     // Panero: the default (konsole) is not installed on GNOME/Zorin desktops; when the
     // configured terminal is missing, use the desktop's default terminal
+#ifdef Q_OS_WIN
+    // Windows: Windows Terminal, else PowerShell, else Command Prompt (all start in "dir")
+    if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
+        for (const QStringList &candidate : {QStringList{QStringLiteral("wt"), QStringLiteral("-d"), QStringLiteral("%d")},
+                                             QStringList{QStringLiteral("powershell")}, QStringList{QStringLiteral("cmd")}}) {
+            if (!QStandardPaths::findExecutable(candidate.first()).isEmpty()) {
+                term = candidate.join(QLatin1Char(' '));
+                sepdArgs = candidate;
+                break;
+            }
+        }
+    }
+#endif
     if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
         for (const QString &candidate : {QStringLiteral("x-terminal-emulator"), QStringLiteral("gnome-terminal"),
                                          QStringLiteral("kgx"), QStringLiteral("ptyxis"), QStringLiteral("konsole"),

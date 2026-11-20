@@ -37,12 +37,28 @@
 #include <KIOWidgets/KDirLister>
 #include <KIOWidgets/KFileItemDelegate>
 #include <KIOWidgets/KPropertiesDialog>
+#ifdef Q_OS_WIN
+#include "panerowinshell.h"
+#endif
 
 
 class KrDirModel : public KDirModel
 {
 public:
     KrDirModel(QWidget *parent) : KDirModel(parent) {}
+
+#ifdef Q_OS_WIN
+    // Windows: the folder icons Explorer shows, as in the file list
+    QVariant data(const QModelIndex &index, int role) const override
+    {
+        if (role == Qt::DecorationRole && index.column() == KDirModel::Name) {
+            const KFileItem item = itemForIndex(index);
+            if (!item.isNull() && item.isLocalFile() && PaneroWinShell::useShellIcons(item.isDir()))
+                return PaneroWinShell::fileIcon(item.localPath(), item.isDir());
+        }
+        return KDirModel::data(index, role);
+    }
+#endif
 
 protected:
     Qt::ItemFlags flags(const QModelIndex &index) const override

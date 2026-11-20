@@ -362,6 +362,10 @@ PanelEditor::~PanelEditor()
 
 void PanelEditor::configureDeps()
 {
+    // Panero: only warn when the internal editor is the one F4 uses
+    if (KConfigGroup(krConfig, "General").readEntry("Editor", _Editor) != QLatin1String("internal editor"))
+        return;
+
     bool foundPlugin = false;
 
 #if CREATE_KPART_5_82

@@ -21,6 +21,8 @@ import time
 from pathlib import Path
 
 import psutil
+import win32con
+import win32gui
 from PIL import ImageGrab
 from pywinauto import Application, Desktop, keyboard, mouse
 
@@ -123,10 +125,15 @@ def windows_of(pid):
     return out
 
 
+DIALOG_TITLES = ('Information', 'Search results', 'Konfigurator', 'Missing Plugin', 'Warning', 'Error')
+
+
 def is_main(w):
+    """The main window is the large top-level window without an owner (dialogs have one).
+    UI Automation reports the bare title ("Users"); the title bar shows "Users - Panero"."""
     t = w.window_text()
     r = w.rectangle()
-    return t.endswith('Panero') and not t.startswith(('Information', 'Konfigurator', 'Warning', 'Error')) \
+    return win32gui.GetWindow(w.handle, win32con.GW_OWNER) == 0 and not t.startswith(DIALOG_TITLES) \
         and r.width() > 500 and r.height() > 350
 
 

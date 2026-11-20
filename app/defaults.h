@@ -48,7 +48,12 @@
 // Mark Dirs ///////////
 #define _MarkDirs       false
 // Show Hidden /////////
+#ifdef Q_OS_WIN
+// Windows: hidden and system files stay hidden, as in Explorer and Total Commander
+#define _ShowHidden     false
+#else
 #define _ShowHidden     true
+#endif
 // Sort By Extension ///
 #define _SortByExt      false
 // Case Sensative Sort /
@@ -118,13 +123,23 @@
 // Move To Trash //////
 #define _MoveToTrash   true
 // Terminal ///////////
+#ifdef Q_OS_WIN
+// Windows Terminal when installed, otherwise PowerShell (see KrSlots::runTerminal)
+#define _Terminal      "wt -d %d"
+#else
 #define _Terminal      "konsole --separate"
+#endif
 // Send CDs ///////////
 #define _SendCDs  true
 // Follow Terminal CD ///////////
 #define _FollowTerminalCD  true
 // Editor /////////////
+#ifdef Q_OS_WIN
+// Windows: Notepad, as Total Commander does (the internal editor needs the Kate part)
+#define _Editor        "notepad"
+#else
 #define _Editor        "internal editor"
+#endif
 // Use Okteta as Hex viewer ///////
 #define _UseOktetaViewer false
 // Temp Directory /////
