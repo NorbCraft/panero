@@ -273,4 +273,10 @@ owner decisions D-014:
 - [x] R9 Open Terminal Here.
 - [x] R11 tab bar only with 2+ tabs, new-tab button next to the path.
 - [x] R12 window title "<folder> — Panero".
-- [ ] Docs, tests, release v0.1.0-preview.4 (docs/tests done; package tests, PR, tag in progress).
+- [x] Docs, tests, release v0.1.0-preview.4 (PR #9, release run 44802311531).
+
+## Status notes (2026-11-20, preview 4)
+
+- v0.1.0-preview.4 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.4
+- Open: owner host install + real cloud sign-in test (no accounts available to
+  the agent); owner-decision backports (dev/BACKPORTS.md).

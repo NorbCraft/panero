@@ -287,3 +287,4 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   to /usr/share/panero/icons, layered via a generated index.theme.
 - Tests: ctest 6/6, GUI file-ops 17/17 (context menu navigation updated for
   Copy Path), interactive checks listed in the release notes.
+- Released v0.1.0-preview.4 (PR #9, tag on b0e89cc95, run 44802311531); assets verified; .deb copied to ~/Downloads.

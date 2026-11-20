@@ -101,6 +101,11 @@ are in `dev/TEST-REPORT-packaging.md`.
 - Not verified: real cloud sign-ins (no accounts); PackageKit install of
   rclone/fuse3 (needs authorisation; same code path as KDiff3).
 
+## Release v0.1.0-preview.4 (published 2026-11-20)
+
+- Release workflow run 44802311531 — success. Downloaded assets: checksums OK,
+  `Version: 0.1.0~preview.4-1`, source commit b0e89cc95 = tag commit.
+
 ## Not yet verified (open)
 
 - Preview 3 installed on the owner's Zorin host (owner installed preview 2; launcher and About worked, toolbar issue fixed in preview 3).
