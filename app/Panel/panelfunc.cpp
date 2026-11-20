@@ -404,8 +404,7 @@ void ListPanelFunc::redirectLink()
         KMessageBox::error(krMainWindow, i18n("Failed to create a new link: %1", file));
         return;
     }
-    return;
-#endif
+#else
     // delete the current link
     if (unlink(file.toLocal8Bit()) == -1) {
         KMessageBox::error(krMainWindow, i18n("Cannot remove old link: %1", file));
@@ -416,6 +415,7 @@ void ListPanelFunc::redirectLink()
         KMessageBox:: /* --=={ Patch by Heiner <h.eichmann@gmx.de> }==-- */error(krMainWindow, i18n("Failed to create a new link: %1", file));
         return;
     }
+#endif
 }
 
 void ListPanelFunc::krlink(bool sym)
@@ -451,7 +451,7 @@ void ListPanelFunc::krlink(bool sym)
         KMessageBox::error(krMainWindow, sym ? i18n("Failed to create a new symlink '%1' to: '%2'", linkName, name)
                                              : i18n("Failed to create a new link '%1' to '%2'", linkName, name));
     return;
-#endif
+#else
     // make link name and target absolute path
     if (linkName.left(1) != "/")
         linkName = files()->currentDirectory().path() + '/' + linkName;
@@ -466,6 +466,7 @@ void ListPanelFunc::krlink(bool sym)
             KMessageBox::error(krMainWindow,
                                i18n("Failed to create a new link '%1' to '%2'", linkName, name));
     }
+#endif
 }
 
 void ListPanelFunc::view()
