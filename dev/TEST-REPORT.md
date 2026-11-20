@@ -84,6 +84,23 @@ are in `dev/TEST-REPORT-packaging.md`.
 - Downloaded assets: `sha256sum -c SHA256SUMS` OK; package `Version: 0.1.0~preview.3-1`;
   source archive commit `ba26852269b4ec98a3e981bc39bf099adcbe24fe` = tag commit.
 
+## Preview 4 (2026-11-20, before release)
+
+- ctest 6/6 (new panerocloudtest; paneropathstest empty-URL case; theme test
+  badge default), GUI file-ops 17/17 under Xvfb.
+- Interactive under Xvfb: progress row in the destination panel during a 1.6 GB
+  copy (no KIO window); text-under-icon toolbar; rename field; Quick Settings
+  (all new options); theme change -> restart prompt -> restart (new process,
+  settings kept, fully dark); Panero Line icons + folder colours (light/dark,
+  system icons too); toolbar unlock grip; F9 opens the desktop terminal; new tab
+  without error; F7 cursor on the new folder; Cloud section: rclone alias
+  remote mounted by click, opened in the panel, unmounted on exit (rclone
+  1.60.1 from the noble archive, extracted locally).
+- Container build (ctest 5/5 in the build, lintian only documented overrides)
+  and package tests incl. upgrade from preview 3: 85 pass, 0 fail.
+- Not verified: real cloud sign-ins (no accounts); PackageKit install of
+  rclone/fuse3 (needs authorisation; same code path as KDiff3).
+
 ## Not yet verified (open)
 
 - Preview 3 installed on the owner's Zorin host (owner installed preview 2; launcher and About worked, toolbar issue fixed in preview 3).
