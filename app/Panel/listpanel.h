@@ -87,6 +87,8 @@ public:
         return panelType;
     }
     void changeType(int);
+    /// Panero: show the new-tab button in the path row (when the tab bar is hidden)
+    void setNewTabButtonVisible(bool visible) { if (newTabButton) newTabButton->setVisible(visible); }
     bool isLocked() {
         return _tabState == TabState::LOCKED;
     }
@@ -227,6 +229,8 @@ protected:
     DirHistoryButton* historyButton;
     MediaButton *mediaButton;
     QToolButton *syncBrowseButton;
+    QToolButton *newTabButton = nullptr;
+    class PaneroJobRow *jobRow = nullptr;
     QToolButton *cancelProgressButton; // for thumbnail previews and filesystem refresh
     KrErrorDisplay *fileSystemError;
 

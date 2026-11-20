@@ -10,6 +10,12 @@ QToolBar QToolButton { border: 1px solid transparent; border-radius: 7px; paddin
 QToolBar QToolButton:hover { background: palette(midlight); }
 /* pressed toggles (sidebar shown, active view): accent outline */
 QToolBar QToolButton:checked { background: palette(midlight); border: 1px solid palette(highlight); }
+/* Details | Thumbnails: one rounded segmented control */
+QFrame#panero_view_mode { border: 1px solid palette(mid); border-radius: 9px; background: transparent; }
+QFrame#panero_view_mode QToolButton { border-radius: 7px; }
+/* move handle of an unlocked toolbar: clearly visible grip */
+QToolBar::handle:horizontal { width: 8px; margin: 8px 3px; border-left: 2px dotted palette(shadow); border-right: 2px dotted palette(shadow); }
+QToolBar::handle:vertical { height: 8px; margin: 3px 8px; border-top: 2px dotted palette(shadow); border-bottom: 2px dotted palette(shadow); }
 QMainWindow::separator { width: 6px; height: 6px; background: transparent; }
 
 /* panels as rounded cards; the active panel's card is outlined */
@@ -23,6 +29,13 @@ QHeaderView::section {
     border: none; border-bottom: 1px solid palette(midlight); padding: 5px 8px;
 }
 QHeaderView::section:hover { color: palette(text); }
+
+/* inline rename: a slim field in the row, accent outline */
+KrInterDetailedView QLineEdit, KrInterThumbnailView QLineEdit, KrInterBriefView QLineEdit {
+    border: 1px solid palette(highlight); border-radius: 4px; padding: 0 3px; margin: 0;
+    background: palette(base); color: palette(text);
+    selection-background-color: palette(highlight); selection-color: palette(highlighted-text);
+}
 
 /* drive chip next to the path */
 MediaButton {
@@ -54,4 +67,9 @@ ListPanelFrame[active="true"] { background: palette(highlight); }
 ListPanelFrame[active="true"] QLabel, ListPanelFrame[active="true"] QToolButton { color: palette(highlighted-text); }
 ListPanelFrame[active="false"] { background: transparent; }
 ListPanelFrame[active="false"] QLabel { color: palette(window-text); }
+/* copy/move progress in the bottom row */
+#panero_job_row QProgressBar { border: none; border-radius: 3px; background: palette(midlight); }
+#panero_job_row QProgressBar::chunk { border-radius: 3px; background: palette(highlight); }
+ListPanelFrame[active="true"] #panero_job_row QProgressBar { background: rgba(255, 255, 255, 70); }
+ListPanelFrame[active="true"] #panero_job_row QProgressBar::chunk { background: palette(highlighted-text); }
 /* @end */

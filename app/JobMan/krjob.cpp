@@ -81,31 +81,31 @@ void KrJob::start()
 
     switch (m_type) {
     case Copy: {
-        KIO::CopyJob *job = KIO::copy(m_urls, m_dest, m_flags);
+        KIO::CopyJob *job = KIO::copy(m_urls, m_dest, m_flags | KIO::HideProgressInfo);
         KIO::FileUndoManager::self()->recordCopyJob(job);
         m_job = job;
         break;
     }
     case Move: {
-        KIO::CopyJob *job = KIO::move(m_urls, m_dest, m_flags);
+        KIO::CopyJob *job = KIO::move(m_urls, m_dest, m_flags | KIO::HideProgressInfo);
         KIO::FileUndoManager::self()->recordCopyJob(job);
         m_job = job;
         break;
     }
     case Link: {
-        KIO::CopyJob *job = KIO::link(m_urls, m_dest, m_flags);
+        KIO::CopyJob *job = KIO::link(m_urls, m_dest, m_flags | KIO::HideProgressInfo);
         KIO::FileUndoManager::self()->recordCopyJob(job);
         m_job = job;
         break;
     }
     case Trash: {
-        m_job = KIO::trash(m_urls);
+        m_job = KIO::trash(m_urls, KIO::HideProgressInfo); // Panero: progress in the panel
         KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Trash, m_urls, QUrl("trash:/"),
                                                 m_job);
         break;
     }
     case Delete:
-        m_job = KIO::del(m_urls);
+        m_job = KIO::del(m_urls, KIO::HideProgressInfo);
     }
 
     connectStartedJob();

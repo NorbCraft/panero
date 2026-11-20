@@ -401,6 +401,7 @@ void JobMan::managePrivate(KrJob *job, KJob *kJob)
     connect(job, &KrJob::terminated, this, &JobMan::slotTerminated);
 
     m_jobs.append(job);
+    emit jobManaged(job);
 }
 
 void JobMan::cleanupMenu() {

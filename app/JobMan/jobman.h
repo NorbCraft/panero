@@ -91,6 +91,10 @@ public:
      */
     void manageStartedJob(KrJob *krJob, KJob *job);
 
+signals:
+    /// Panero: a job is now managed (started or queued) - the panels show its progress
+    void jobManaged(KrJob *krJob);
+
 protected slots:
     void slotKJobStarted(KJob *krJob);
     void slotControlActionTriggered();

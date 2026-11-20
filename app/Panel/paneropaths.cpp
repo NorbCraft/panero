@@ -11,6 +11,8 @@
 
 QUrl PaneroPaths::homeOrDriveRoot(const QUrl &url)
 {
+    if (!url.isValid() || url.scheme().isEmpty()) // e.g. a new tab that has no folder yet
+        return QUrl::fromLocalFile(QDir::cleanPath(QDir::homePath()));
     if (!url.isLocalFile()) {
         QUrl root = url;
         root.setPath(QStringLiteral("/"));

@@ -54,6 +54,10 @@ constexpr int LayoutVersion = 32;
  * default layout is used. Must run before the main window is created.
  */
 void migrateLayout();
+
+/// One-time adjustments of saved settings when Panero's defaults change
+/// (Panero / Settings Version). Must run before the main window is created.
+void migrateSettings();
 }
 
 #endif // PANEROTOOLBAR_H

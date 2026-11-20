@@ -384,7 +384,8 @@ static KrColorGroup paneroColors(const KrColorItemType &type)
     result.setText(s.text);
     result.setHighlight(s.markBackground);
     result.setHighlightedText(s.markForeground);
-    if (type.m_currentItem && type.m_activePanel) {
+    // "Transparent" cursor fill: the row keeps its own background, only the frame shows
+    if (type.m_currentItem && type.m_activePanel && s.currentBackground.alpha() > 0) {
         if (type.m_selectedItem) {
             // keep the mark visible on the cursor row: blend mark and cursor fills
             const QColor m = s.markBackground, c = s.currentBackground;

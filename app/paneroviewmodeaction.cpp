@@ -34,6 +34,7 @@ QWidget *PaneroViewModeAction::createWidget(QWidget *parent)
 {
     // a framed pair of buttons that reads as one segmented control
     auto *frame = new QFrame(parent);
+    frame->setObjectName(QStringLiteral("panero_view_mode")); // rounded in the Panero style sheet
     frame->setFrameShape(QFrame::StyledPanel);
     frame->setToolTip(toolTip());
     auto *layout = new QHBoxLayout(frame);
@@ -62,7 +63,13 @@ QWidget *PaneroViewModeAction::createWidget(QWidget *parent)
             for (QToolButton *button : {details, thumbnails}) {
                 button->setIconSize(bar->iconSize());
                 button->setToolButtonStyle(bar->toolButtonStyle());
+                button->setMinimumSize(0, 0);
             }
+            // both halves equally big, also with text ("Details" / "Thumbnails")
+            const QSize a = details->sizeHint(), b = thumbnails->sizeHint();
+            const QSize same(qMax(a.width(), b.width()), qMax(a.height(), b.height()));
+            for (QToolButton *button : {details, thumbnails})
+                button->setMinimumSize(same);
         };
         connect(bar, &QToolBar::iconSizeChanged, frame, follow);
         connect(bar, &QToolBar::toolButtonStyleChanged, frame, follow);

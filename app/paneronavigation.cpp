@@ -5,6 +5,10 @@
 */
 
 #include "paneronavigation.h"
+#include "Cloud/panerocloud.h"
+#include "Cloud/paneroaddclouddialog.h"
+#include "Cloud/paneroconnectserverdialog.h"
+#include "Panel/paneroappearance.h"
 
 #include <QSignalBlocker>
 
@@ -122,6 +126,67 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     connect(m_pins, &QListWidget::customContextMenuRequested, this, &PaneroNavigationDock::pinContextMenu);
     pinLayout->addWidget(m_pins, 1);
 
+    // cloud drives and servers (D-014: rclone remotes, Connect to Server), switchable
+    m_cloudSection = new QWidget(m_splitter);
+    auto *cloudLayout = new QVBoxLayout(m_cloudSection);
+    cloudLayout->setContentsMargins(0, 0, 0, 0);
+    cloudLayout->setSpacing(2);
+    auto *cloudHeader = new QHBoxLayout;
+    cloudHeader->setSpacing(2);
+    cloudHeader->addWidget(sectionLabel(i18n("Cloud"), m_cloudSection));
+    cloudHeader->addStretch();
+    auto *cloudAdd = new QToolButton(m_cloudSection);
+    cloudAdd->setIcon(Icon(QStringLiteral("list-add")));
+    cloudAdd->setAutoRaise(true);
+    cloudAdd->setPopupMode(QToolButton::InstantPopup);
+    cloudAdd->setToolTip(i18n("Add a cloud drive or a server"));
+    cloudAdd->setAccessibleName(i18n("Add cloud or server"));
+    auto *cloudMenu = new QMenu(cloudAdd);
+    cloudMenu->addAction(Icon(QStringLiteral("folder-cloud")), i18n("Add Cloud..."), this, [this]() {
+        PaneroAddCloudDialog dialog(this);
+        if (dialog.exec() == QDialog::Accepted)
+            openCloudEntry(dialog.createdEntry());
+    });
+    cloudMenu->addAction(Icon(QStringLiteral("network-server")), i18n("Connect to Server..."), this, [this]() {
+        PaneroConnectServerDialog dialog(this);
+        if (dialog.exec() == QDialog::Accepted)
+            openCloudEntry(dialog.createdEntry());
+    });
+    cloudAdd->setMenu(cloudMenu);
+    cloudHeader->addWidget(cloudAdd);
+    cloudLayout->addLayout(cloudHeader);
+    m_cloud = new QListWidget(m_cloudSection);
+    m_cloud->setAccessibleName(i18n("Cloud drives and servers"));
+    m_cloud->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_cloud->setUniformItemSizes(true);
+    m_cloud->setMinimumHeight(30);
+    m_cloud->setFrameShape(QFrame::NoFrame);
+    m_cloud->setIconSize(QSize(KrFileTreeView::IconSize, KrFileTreeView::IconSize));
+    connect(m_cloud, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+        openCloudEntry(PaneroCloud::instance()->entry(item->data(UrlRole).toString()));
+    });
+    connect(m_cloud, &QListWidget::itemActivated, this, [this](QListWidgetItem *item) {
+        openCloudEntry(PaneroCloud::instance()->entry(item->data(UrlRole).toString()));
+    });
+    connect(m_cloud, &QListWidget::customContextMenuRequested, this, &PaneroNavigationDock::cloudContextMenu);
+    cloudLayout->addWidget(m_cloud, 1);
+    auto *cloud = PaneroCloud::instance();
+    connect(cloud, &PaneroCloud::entriesChanged, this, &PaneroNavigationDock::loadCloud);
+    connect(cloud, &PaneroCloud::mounted, this, [this](const QString &id, const QUrl &url) {
+        loadCloud();
+        if (id == m_pendingCloud) {
+            m_pendingCloud.clear();
+            openUrlInActivePanel(url);
+        }
+    });
+    connect(cloud, &PaneroCloud::mountFailed, this, [this](const QString &id, const QString &message) {
+        loadCloud();
+        if (id == m_pendingCloud)
+            m_pendingCloud.clear();
+        KMessageBox::error(this, message, i18n("Cloud Drive"));
+    });
+    connect(cloud, &PaneroCloud::unmounted, this, &PaneroNavigationDock::loadCloud);
+
     // folder tree
     auto *treeSection = new QWidget(m_splitter);
     auto *treeLayout = new QVBoxLayout(treeSection);
@@ -146,10 +211,12 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     treeLayout->addWidget(m_tree, 1);
 
     m_splitter->addWidget(pinSection);
+    m_splitter->addWidget(m_cloudSection);
     m_splitter->addWidget(treeSection);
     m_splitter->setStretchFactor(0, 0);
-    m_splitter->setStretchFactor(1, 1);
-    m_splitter->setSizes({150, 400});
+    m_splitter->setStretchFactor(1, 0);
+    m_splitter->setStretchFactor(2, 1);
+    m_splitter->setSizes({150, 90, 400});
     layout->addWidget(m_splitter, 1);
 
     setWidget(content);
@@ -157,6 +224,95 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     // compact: no separate title bar; the toolbar's sidebar button shows/hides it
     setTitleBarWidget(new QWidget(this));
     loadPins();
+    loadCloud();
+    connect(PaneroAppearance::instance(), &PaneroAppearance::settingsChanged, this, &PaneroNavigationDock::loadCloud);
+}
+
+void PaneroNavigationDock::loadCloud()
+{
+    const bool show = KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Cloud", true);
+    m_cloudSection->setVisible(show);
+    if (!show)
+        return;
+    auto *cloud = PaneroCloud::instance();
+    m_cloud->clear();
+    for (const PaneroCloud::Entry &e : cloud->entries()) {
+        QString icon = QStringLiteral("folder-cloud");
+        if (e.isServer())
+            icon = QStringLiteral("network-server");
+        auto *item = new QListWidgetItem(Icon(icon), e.label, m_cloud);
+        item->setData(UrlRole, e.id);
+        item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
+        QString tip = e.isServer() ? e.url.toDisplayString() : i18n("Cloud drive (rclone: %1)", e.rcloneRemote);
+        if (cloud->isMounted(e.id))
+            tip += QLatin1Char('\n') + i18n("Connected");
+        else if (cloud->isMounting(e.id))
+            tip += QLatin1Char('\n') + i18n("Connecting...");
+        item->setToolTip(tip);
+        if (cloud->isMounting(e.id))
+            item->setText(i18nc("cloud entry while connecting", "%1 (connecting...)", e.label));
+    }
+    if (m_cloud->count() == 0) {
+        auto *hint = new QListWidgetItem(i18n("Add a cloud drive or server with +"), m_cloud);
+        hint->setFlags(Qt::NoItemFlags);
+    }
+}
+
+void PaneroNavigationDock::openCloudEntry(const PaneroCloud::Entry &entry)
+{
+    auto *cloud = PaneroCloud::instance();
+    if (entry.id.isEmpty())
+        return;
+    if (entry.isServer()) {
+        openUrlInActivePanel(cloud->urlFor(entry, this));
+        return;
+    }
+    if (cloud->isMounted(entry.id)) {
+        openUrlInActivePanel(cloud->urlFor(entry, this));
+        return;
+    }
+    if (!cloud->ensureRclone(this))
+        return;
+    m_pendingCloud = entry.id;
+    cloud->mount(entry);
+    loadCloud();
+}
+
+void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
+{
+    QListWidgetItem *item = m_cloud->itemAt(pos);
+    auto *cloud = PaneroCloud::instance();
+    const PaneroCloud::Entry entry = item ? cloud->entry(item->data(UrlRole).toString()) : PaneroCloud::Entry();
+    QMenu menu(this);
+    QAction *open = nullptr, *disconnect = nullptr, *remove = nullptr;
+    if (!entry.id.isEmpty()) {
+        open = menu.addAction(Icon(QStringLiteral("document-open-folder")), i18n("Open in Active Panel"));
+        if (entry.isRclone() && cloud->isMounted(entry.id))
+            disconnect = menu.addAction(Icon(QStringLiteral("media-eject")), i18n("Disconnect"));
+        menu.addSeparator();
+        remove = menu.addAction(Icon(QStringLiteral("list-remove")), i18n("Remove..."));
+        menu.addSeparator();
+    }
+    QAction *addCloud = menu.addAction(Icon(QStringLiteral("folder-cloud")), i18n("Add Cloud..."));
+    QAction *addServer = menu.addAction(Icon(QStringLiteral("network-server")), i18n("Connect to Server..."));
+    QAction *chosen = menu.exec(m_cloud->viewport()->mapToGlobal(pos));
+    if (!chosen)
+        return;
+    if (chosen == open) {
+        openCloudEntry(entry);
+    } else if (chosen == disconnect) {
+        cloud->unmount(entry.id);
+    } else if (chosen == remove) {
+        cloud->confirmAndRemove(this, entry);
+    } else if (chosen == addCloud) {
+        PaneroAddCloudDialog dialog(this);
+        if (dialog.exec() == QDialog::Accepted)
+            openCloudEntry(dialog.createdEntry());
+    } else if (chosen == addServer) {
+        PaneroConnectServerDialog dialog(this);
+        if (dialog.exec() == QDialog::Accepted)
+            openCloudEntry(dialog.createdEntry());
+    }
 }
 
 void PaneroNavigationDock::activeLocationChanged(const QUrl &url, bool leftPanel)

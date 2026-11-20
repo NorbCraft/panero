@@ -128,6 +128,8 @@ KrFileTreeView::KrFileTreeView(QWidget *parent)
 
 void KrFileTreeView::setCurrentUrl(const QUrl &url)
 {
+    if (!url.isValid() || url.isEmpty()) // Panero: a new tab without a folder yet
+        return;
     mCurrentUrl = url;
     if (mStartTreeFromCurrent) {
         setTreeRoot(url);
@@ -138,7 +140,11 @@ void KrFileTreeView::setCurrentUrl(const QUrl &url)
             // the places list, which jumped to Documents, Downloads, Pictures, ...
             setTreeRoot(PaneroPaths::homeOrDriveRoot(url));
         }
-        if (isVisible(url)) {
+        if (url.adjusted(QUrl::StripTrailingSlash) == mCurrentTreeBase.adjusted(QUrl::StripTrailingSlash)) {
+            // Panero: the tree's root itself is not a row - nothing to highlight
+            selectionModel()->clearSelection();
+            setCurrentIndex(QModelIndex());
+        } else if (isVisible(url)) {
             // avoid unwanted scrolling by KDirModel::expandToUrl()
             setCurrentIndex(mProxyModel->mapFromSource(mSourceModel->indexForUrl(url)));
         } else {

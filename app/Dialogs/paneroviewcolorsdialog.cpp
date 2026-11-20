@@ -10,6 +10,8 @@
 #include "../Panel/listpanel.h"
 #include "../Panel/paneroappearance.h"
 #include "../Panel/panerotheme.h"
+#include "../Panel/paneroiconthemes.h"
+#include "../krusader.h"
 #include "../Panel/PanelView/krview.h"
 #include "../Panel/PanelView/krviewfactory.h"
 #include "../Panel/PanelView/krselectionmode.h"
@@ -22,6 +24,9 @@
 #include "../paneltabbar.h"
 
 #include <QAbstractItemView>
+#include <QColorDialog>
+#include <QHBoxLayout>
+#include <QPixmap>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -39,6 +44,9 @@
 #include <KI18n/KLocalizedString>
 #include <KWidgetsAddons/KColorButton>
 #include <KWidgetsAddons/KToggleAction>
+#include <KWidgetsAddons/KMessageBox>
+#include <KConfigWidgets/KStandardAction>
+#include <KXmlGui/KActionCollection>
 
 namespace
 {
@@ -78,7 +86,7 @@ void PaneroViewColorsDialog::showDialog(QWidget *parent)
 PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(i18n("View & Colors"));
+    setWindowTitle(i18n("Quick Settings"));
     auto *layout = new QVBoxLayout(this);
 
     // ---- look
@@ -92,6 +100,41 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_paneroStyle = new QCheckBox(i18n("Use Panero's look (Fusion style with Panero colors)"), lookBox);
     m_paneroStyle->setToolTip(i18n("If unchecked, Panero uses the system Qt style and palette."));
     lookForm->addRow(QString(), m_paneroStyle);
+    m_iconSet = new QComboBox(lookBox);
+    m_iconSet->addItem(i18n("System icons"), QString());
+    m_iconSet->addItem(i18n("Panero Line"), QStringLiteral("line"));
+    m_iconSet->setToolTip(i18n("Panero Line: thin line icons for the toolbar and sidebar. File icons always come from the system."));
+    lookForm->addRow(i18n("Icons:"), m_iconSet);
+    m_folderColor = new QComboBox(lookBox);
+    m_folderColor->addItem(i18n("As in the icon theme"), QString());
+    for (const auto &preset : PaneroIconThemes::folderColorPresets()) {
+        QPixmap swatch(16, 16);
+        swatch.fill(preset.second);
+        m_folderColor->addItem(QIcon(swatch), preset.first, preset.second.name());
+    }
+    m_folderColor->addItem(i18n("Custom..."), QStringLiteral("custom"));
+    lookForm->addRow(i18n("Folder color:"), m_folderColor);
+    connect(m_folderColor, QOverload<int>::of(&QComboBox::activated), this, [this](int index) {
+        if (m_folderColor->itemData(index).toString() != QLatin1String("custom"))
+            return;
+        const QColor picked = QColorDialog::getColor(m_customFolderColor.isValid() ? m_customFolderColor : QColor(0x35, 0x84, 0xe4), this,
+                                                     i18n("Folder Color"));
+        if (!picked.isValid()) {
+            m_folderColor->setCurrentIndex(0);
+            return;
+        }
+        m_customFolderColor = picked;
+        QPixmap swatch(16, 16);
+        swatch.fill(picked);
+        m_folderColor->setItemIcon(index, QIcon(swatch));
+    });
+    m_menuMode = new QComboBox(lookBox);
+    m_menuMode->addItem(i18n("Menu button (at the end of the toolbar)"), false);
+    m_menuMode->addItem(i18n("Menu bar (Alt+letter works)"), true);
+    lookForm->addRow(i18n("Menus:"), m_menuMode);
+    m_showCloud = new QCheckBox(i18n("Show the Cloud section in the sidebar"), lookBox);
+    m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
+    lookForm->addRow(QString(), m_showCloud);
     layout->addWidget(lookBox);
 
     // ---- file list
@@ -127,6 +170,13 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_selection->setToolTip(i18n("How the mouse selects files. More modes (Total Commander, Konqueror, "
                                  "custom) are in All Settings > Panel > Selection Mode."));
     mouseForm->addRow(i18n("Selection:"), m_selection);
+    m_holdFeedback = new QComboBox(mouseBox);
+    m_holdFeedback->addItem(i18n("Pie next to the pointer"), QStringLiteral("pie"));
+    m_holdFeedback->addItem(i18n("Ring around the pointer"), QStringLiteral("ring"));
+    m_holdFeedback->addItem(i18n("Bar below the pointer"), QStringLiteral("bar"));
+    m_holdFeedback->addItem(i18n("Off"), QStringLiteral("none"));
+    m_holdFeedback->setToolTip(i18n("Shown while the right button is held, until the context menu opens."));
+    mouseForm->addRow(i18n("Hold feedback:"), m_holdFeedback);
     layout->addWidget(mouseBox);
 
     // ---- colours (light and dark sets)
@@ -144,7 +194,21 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
             auto *label = new QLabel(colorLabel(key) + QLatin1Char(':'), page);
             label->setBuddy(button);
             grid->addWidget(label, row / 2, (row % 2) * 2);
-            grid->addWidget(button, row / 2, (row % 2) * 2 + 1);
+            if (key == QLatin1String("Current Background")) {
+                // "Transparent": only the cursor frame is drawn
+                auto *cell = new QWidget(page);
+                auto *cellLayout = new QHBoxLayout(cell);
+                cellLayout->setContentsMargins(0, 0, 0, 0);
+                cellLayout->addWidget(button, 1);
+                auto *transparent = new QCheckBox(i18n("Transparent"), cell);
+                transparent->setToolTip(i18n("No fill: only the frame shows the cursor row"));
+                connect(transparent, &QCheckBox::toggled, button, &QWidget::setDisabled);
+                cellLayout->addWidget(transparent);
+                m_transparentFill.insert(PaneroTheme::keyPrefix(dark) + key, transparent);
+                grid->addWidget(cell, row / 2, (row % 2) * 2 + 1);
+            } else {
+                grid->addWidget(button, row / 2, (row % 2) * 2 + 1);
+            }
             m_colorButtons.insert(PaneroTheme::keyPrefix(dark) + key, button);
             ++row;
         }
@@ -189,7 +253,24 @@ void PaneroViewColorsDialog::load()
     m_theme->setCurrentIndex(qBound(0, g.readEntry("Theme", 0), 2));
     m_paneroStyle->setChecked(g.readEntry("Panero Style", true));
     m_alternating->setChecked(g.readEntry("Alternating Rows", true));
-    m_markIndicator->setChecked(g.readEntry("Mark Indicator", true));
+    m_markIndicator->setChecked(g.readEntry("Mark Indicator", false));
+    m_iconSet->setCurrentIndex(qMax(0, m_iconSet->findData(g.readEntry("Icon Set", QString()))));
+    const QString folder = g.readEntry("Folder Color", QString());
+    int folderIndex = m_folderColor->findData(folder);
+    if (folderIndex < 0 && QColor(folder).isValid()) {
+        folderIndex = m_folderColor->findData(QStringLiteral("custom"));
+        m_customFolderColor = QColor(folder);
+        QPixmap swatch(16, 16);
+        swatch.fill(m_customFolderColor);
+        m_folderColor->setItemIcon(folderIndex, QIcon(swatch));
+    }
+    m_folderColor->setCurrentIndex(qMax(0, folderIndex));
+    m_menuMode->setCurrentIndex(KConfigGroup(krConfig, "Startup").readEntry("Show menubar", false) ? 1 : 0);
+    if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
+        m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
+    m_showCloud->setChecked(g.readEntry("Show Cloud", true));
+    m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
+        KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
     m_showHidden->setChecked(KrActions::actToggleHidden && KrActions::actToggleHidden->isChecked());
     const QString mode = KConfigGroup(krConfig, "Look&Feel").readEntry("Mouse Selection", QString::number(_MouseSelection));
@@ -208,7 +289,10 @@ void PaneroViewColorsDialog::load()
 
     for (auto it = m_colorButtons.constBegin(); it != m_colorButtons.constEnd(); ++it) {
         const QColor c = PaneroTheme::readColor(g.readEntry(it.key(), QString()));
-        it.value()->setColor(c.isValid() ? c : it.value()->defaultColor());
+        const bool transparent = c.isValid() && c.alpha() == 0;
+        it.value()->setColor(c.isValid() && !transparent ? c : it.value()->defaultColor());
+        if (QCheckBox *box = m_transparentFill.value(it.key()))
+            box->setChecked(transparent);
     }
 }
 
@@ -259,7 +343,14 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_theme->setCurrentIndex(0);
     m_paneroStyle->setChecked(true);
     m_alternating->setChecked(true);
-    m_markIndicator->setChecked(true);
+    m_markIndicator->setChecked(false);
+    m_iconSet->setCurrentIndex(0);
+    m_folderColor->setCurrentIndex(0);
+    m_menuMode->setCurrentIndex(0);
+    m_showCloud->setChecked(true);
+    m_holdFeedback->setCurrentIndex(0);
+    for (QCheckBox *box : qAsConst(m_transparentFill))
+        box->setChecked(false);
     m_classicColors->setChecked(false);
     m_selection->setCurrentIndex(m_selection->findData(QString::number(_MouseSelection)));
     m_density->setCurrentIndex(1); // comfortable: sets row height and icon size
@@ -270,6 +361,22 @@ void PaneroViewColorsDialog::restoreDefaults()
 void PaneroViewColorsDialog::apply()
 {
     KConfigGroup g(krConfig, PaneroTheme::GROUP);
+    // these need a restart: a live switch leaves old icons and colours behind
+    const QString folderValue = m_folderColor->currentData().toString() == QLatin1String("custom")
+        ? (m_customFolderColor.isValid() ? m_customFolderColor.name() : QString())
+        : m_folderColor->currentData().toString();
+    const bool needsRestart = g.readEntry("Theme", 0) != m_theme->currentIndex()
+        || g.readEntry("Panero Style", true) != m_paneroStyle->isChecked()
+        || g.readEntry("Icon Set", QString()) != m_iconSet->currentData().toString()
+        || g.readEntry("Folder Color", QString()) != folderValue;
+    g.writeEntry("Icon Set", m_iconSet->currentData().toString());
+    g.writeEntry("Folder Color", folderValue);
+    g.writeEntry("Show Cloud", m_showCloud->isChecked());
+    KConfigGroup(krConfig, "Look&Feel").writeEntry("Hold Indicator", m_holdFeedback->currentData().toString());
+    if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar))) {
+        if (menubar->isChecked() != m_menuMode->currentData().toBool())
+            menubar->trigger();
+    }
     g.writeEntry("Theme", m_theme->currentIndex());
     g.writeEntry("Panero Style", m_paneroStyle->isChecked());
     g.writeEntry("Alternating Rows", m_alternating->isChecked());
@@ -277,6 +384,11 @@ void PaneroViewColorsDialog::apply()
     g.writeEntry("Use Panero Colors", !m_classicColors->isChecked());
     g.writeEntry("Row Height", m_rowHeight->value());
     for (auto it = m_colorButtons.constBegin(); it != m_colorButtons.constEnd(); ++it) {
+        QCheckBox *transparent = m_transparentFill.value(it.key());
+        if (transparent && transparent->isChecked()) {
+            g.writeEntry(it.key(), QStringLiteral("transparent"));
+            continue;
+        }
         // store only real customisations so later default improvements still apply
         if (it.value()->color() == it.value()->defaultColor())
             g.deleteEntry(it.key());
@@ -302,6 +414,19 @@ void PaneroViewColorsDialog::apply()
         MAIN_VIEW->leftManager()->slotRecreatePanels();
         MAIN_VIEW->rightManager()->slotRecreatePanels();
         (leftActive ? LEFT_PANEL : RIGHT_PANEL)->slotFocusOnMe();
+    }
+
+    emit PaneroAppearance::instance()->settingsChanged();
+
+    if (needsRestart) {
+        const auto answer = KMessageBox::questionTwoActions(
+            this, i18n("Restart Panero now to apply the new appearance?\nYour folders and tabs are kept."),
+            i18n("Restart Panero"), KGuiItem(i18n("Restart"), QStringLiteral("view-refresh")),
+            KGuiItem(i18n("Later"), QStringLiteral("chronometer")));
+        if (answer == KMessageBox::PrimaryAction) {
+            Krusader::restart();
+            return;
+        }
     }
 
     if (KrActions::actToggleHidden && KrActions::actToggleHidden->isChecked() != m_showHidden->isChecked())

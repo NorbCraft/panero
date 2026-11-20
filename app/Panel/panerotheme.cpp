@@ -168,7 +168,7 @@ bool alternatingRows()
 
 bool markIndicator()
 {
-    return group().readEntry("Mark Indicator", true);
+    return group().readEntry("Mark Indicator", false); // Panero: red marks, no badge
 }
 
 int configuredRowHeight()

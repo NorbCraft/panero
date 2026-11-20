@@ -6,6 +6,7 @@
 
 #include "paneroappearance.h"
 #include "panerotheme.h"
+#include "paneroiconthemes.h"
 
 #include "../krglobal.h"
 
@@ -150,6 +151,52 @@ QPalette PaneroAppearance::paneroPalette(bool dark)
     return p;
 }
 
+QIcon PaneroAppearance::symbolicIcon(const QString &name, const QColor &color)
+{
+    QStringList themes = {QIcon::themeName()};
+    // Zorin's Blue/Grey/... variants inherit the symbolic icons from "Zorin"
+    for (const QString &t : {QStringLiteral("Zorin"), QStringLiteral("Adwaita"), QIcon::fallbackThemeName()}) {
+        if (!themes.contains(t))
+            themes << t;
+    }
+    QString source;
+    for (const QString &theme : qAsConst(themes)) {
+        for (const QString &root : QIcon::themeSearchPaths()) {
+            for (const QString &kind : {QStringLiteral("scalable"), QStringLiteral("symbolic")}) {
+                const QDir dir(root + QLatin1Char('/') + theme + QLatin1Char('/') + kind);
+                for (const QString &context : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+                    const QString file = dir.filePath(context + QLatin1Char('/') + name + QStringLiteral(".svg"));
+                    if (QFile::exists(file)) {
+                        source = file;
+                        break;
+                    }
+                }
+                if (!source.isEmpty())
+                    break;
+            }
+            if (!source.isEmpty())
+                break;
+        }
+        if (!source.isEmpty())
+            break;
+    }
+    QFile in(source);
+    if (source.isEmpty() || !in.open(QIODevice::ReadOnly))
+        return QIcon();
+    QString svg = QString::fromUtf8(in.readAll());
+    svg.replace(QRegularExpression(QStringLiteral("#[0-9a-fA-F]{6}\\b|#[0-9a-fA-F]{3}\\b")), color.name());
+    // cached as a file: the Qt SVG icon engine renders it at every size
+    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QStringLiteral("/icons");
+    QDir().mkpath(cacheDir);
+    const QString cached = cacheDir + QLatin1Char('/') + name + QLatin1Char('-') + color.name().mid(1) + QStringLiteral(".svg");
+    QFile out(cached);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return QIcon();
+    out.write(svg.toUtf8());
+    out.close();
+    return QIcon(cached);
+}
+
 static bool iconThemeExists(const QString &name)
 {
     if (name.isEmpty())
@@ -166,6 +213,21 @@ void PaneroAppearance::applyIconTheme(bool dark)
     // Keep the user's icon theme, but use its light/dark counterpart when Panero's
     // look does not match the desktop (e.g. ZorinBlue-Light <-> ZorinBlue-Dark).
     QString theme = m_originalIconTheme;
+    // Panero Appearance / Icon Theme: an icon set chosen in Panero (empty = the desktop's)
+    const KConfigGroup look(krConfig ? KConfigGroup(krConfig, PaneroTheme::GROUP)
+                                     : KConfigGroup(KSharedConfig::openConfig(), PaneroTheme::GROUP));
+    const QString chosen = look.readEntry("Icon Theme", QString());
+    if (!chosen.isEmpty() && iconThemeExists(chosen)) {
+        theme = chosen;
+        if (dark) {
+            for (const QString &variant : {chosen + QStringLiteral("-Dark"), chosen + QStringLiteral("-dark")}) {
+                if (iconThemeExists(variant)) {
+                    theme = variant;
+                    break;
+                }
+            }
+        }
+    }
     const bool themeIsDark = theme.contains(QLatin1String("dark"), Qt::CaseInsensitive);
     if (dark != themeIsDark) {
         QString counterpart = theme;
@@ -184,6 +246,10 @@ void PaneroAppearance::applyIconTheme(bool dark)
         else if (iconThemeExists(dark ? QStringLiteral("breeze-dark") : QStringLiteral("breeze")))
             theme = dark ? QStringLiteral("breeze-dark") : QStringLiteral("breeze");
     }
+    // Panero layers: "Panero Line" icons and recoloured folders (D-014)
+    const bool line = look.readEntry("Icon Set", QString()) == QLatin1String("line");
+    const QColor folderColor = PaneroTheme::readColor(look.readEntry("Folder Color", QString()));
+    theme = PaneroIconThemes::compose(theme, line, dark, folderColor);
     if (!theme.isEmpty() && theme != QIcon::themeName())
         QIcon::setThemeName(theme);
     // KIconThemes makes light Breeze Qt's global fallback theme; icons missing from the

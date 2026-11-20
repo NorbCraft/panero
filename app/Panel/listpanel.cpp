@@ -7,6 +7,7 @@
 */
 
 #include "listpanel.h"
+#include "panerojobrow.h"
 
 // QtCore
 #include <QStringList>
@@ -235,6 +236,10 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     totals->setMinimumHeight(std::max(quickSizeCalcProgress->height(), cancelQuickSizeCalcButton->height()));
 
     // progress indicator for the preview job
+    // Panero: copy/move progress of jobs that target this panel
+    jobRow = new PaneroJobRow(this);
+    ADD_WIDGET(jobRow);
+
     previewProgress = new QProgressBar(this);
     previewProgress->hide();
     ADD_WIDGET(previewProgress);
@@ -296,6 +301,18 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     });
     syncBrowseButton->setAutoRaise(true);
     toolbarLayout->addWidget(syncBrowseButton);
+
+    // Panero: new tab next to the path while the tab bar is hidden (one tab)
+    newTabButton = new QToolButton(toolbar);
+    newTabButton->setIcon(Icon("tab-new"));
+    newTabButton->setAutoRaise(true);
+    newTabButton->setToolTip(i18n("New tab"));
+    newTabButton->setAccessibleName(i18n("New tab"));
+    newTabButton->hide();
+    connect(newTabButton, &QToolButton::clicked, this, [this]() {
+        this->manager()->newTab(QUrl::fromLocalFile(QDir::homePath()));
+    });
+    toolbarLayout->addWidget(newTabButton);
 
     setButtons();
 

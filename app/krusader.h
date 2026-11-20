@@ -103,6 +103,8 @@ public:
      * (KCrash emergency save) and when SIGTERM/SIGHUP/SIGINT is received.
      */
     static void emergencySaveSettings();
+    /// Panero: quit and start again once this process has exited (appearance changes)
+    static void restart();
 
 public slots:
     void quit();

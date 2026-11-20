@@ -13,6 +13,7 @@
 #include "Panel/paneroappearance.h"
 
 #include <QFile>
+#include <QProcess>
 #include <QToolButton>
 #include <KConfigWidgets/KHamburgerMenu>
 #include <KConfigWidgets/KStandardAction>
@@ -201,6 +202,14 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
     _navigationDock = new PaneroNavigationDock(this);
     addDockWidget(Qt::LeftDockWidgetArea, _navigationDock);
     connect(MAIN_VIEW, &KrusaderView::activeLocationChanged, _navigationDock, &PaneroNavigationDock::activeLocationChanged);
+    // window title "<folder> — Panero" (KMainWindow appends the application name)
+    setCaption(QString());
+    connect(MAIN_VIEW, &KrusaderView::activeLocationChanged, this, [this](const QUrl &url) {
+        QString folder = url.adjusted(QUrl::StripTrailingSlash).fileName();
+        if (folder.isEmpty())
+            folder = url.toDisplayString(QUrl::PreferLocalFile);
+        setCaption(folder);
+    });
     {
         QAction *toggleNavigation = _navigationDock->toggleViewAction();
         toggleNavigation->setIcon(Icon(QStringLiteral("view-list-tree")));
@@ -220,19 +229,39 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         connect(showMenubar, &QAction::toggled, this, [this](bool on) { menuBar()->setVisible(on); });
         KHamburgerMenu *menuButton = KStandardAction::hamburgerMenu(nullptr, nullptr, actionCollection());
         menuButton->setMenuBar(menuBar());
+        menuButton->setText(i18n("Menu"));
+        menuButton->setIconText(i18n("Menu"));
         menuButton->setShowMenuBarAction(showMenubar);
-        // the "three lines" icon: desktop themes like Zorin draw application-menu as a
-        // gear; use Breeze's in the variant matching Panero's light/dark look
-        auto menuIcon = [menuButton]() {
-            const QString fallback = QIcon::fallbackThemeName();
-            for (const QString &dir : QIcon::themeSearchPaths()) {
-                const QString file = dir + QLatin1Char('/') + fallback + QStringLiteral("/actions/22/application-menu.svg");
-                if (!fallback.isEmpty() && QFile::exists(file)) {
-                    menuButton->setIcon(QIcon(file));
-                    return;
-                }
-            }
+        // the "three lines" icon: the desktop's symbolic open-menu icon in the toolbar's
+        // text colour (Zorin draws application-menu as a gear), else Breeze's
+        // with the Panero Line icons the theme itself has the line icons
+        auto lineIcons = []() {
+            return KConfigGroup(krConfig, "Panero Appearance").readEntry("Icon Set", QString()) == QLatin1String("line");
         };
+        auto menuIcon = [menuButton, lineIcons]() {
+            if (lineIcons()) {
+                menuButton->setIcon(QIcon::fromTheme(QStringLiteral("application-menu")));
+                return;
+            }
+            const QIcon symbolic = PaneroAppearance::symbolicIcon(QStringLiteral("open-menu-symbolic"),
+                                                                  QApplication::palette().color(QPalette::ButtonText));
+            menuButton->setIcon(!symbolic.isNull() ? symbolic : Icon(QStringLiteral("application-menu")));
+        };
+        // the View & Colors button: the classic cogwheel, in the same way
+        auto gearIcon = [this, lineIcons]() {
+            QAction *settings = actionCollection()->action(QStringLiteral("panero view colors"));
+            if (lineIcons()) {
+                if (settings)
+                    settings->setIcon(QIcon::fromTheme(QStringLiteral("configure")));
+                return;
+            }
+            const QIcon symbolic = PaneroAppearance::symbolicIcon(QStringLiteral("emblem-system-symbolic"),
+                                                                  QApplication::palette().color(QPalette::ButtonText));
+            if (settings)
+                settings->setIcon(!symbolic.isNull() ? symbolic : Icon(QStringLiteral("configure")));
+        };
+        gearIcon();
+        connect(PaneroAppearance::instance(), &PaneroAppearance::appearanceChanged, this, gearIcon);
         menuIcon();
         connect(PaneroAppearance::instance(), &PaneroAppearance::appearanceChanged, menuButton, menuIcon);
     }
@@ -270,6 +299,10 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
 
         const KConfigGroup cfgActionsBar(krConfig, "Actions Toolbar");
         toolBar("actionsToolBar")->applySettings(cfgActionsBar);
+        // Panero: the actions toolbar (user actions) is an empty strip unless the user
+        // put actions on it; Settings > Toolbars > Show Actions Toolbar still works
+        if (toolBar("actionsToolBar")->actions().isEmpty())
+            toolBar("actionsToolBar")->hide();
 
         // the main toolbar owns its whole row (its spacer pushes the appearance button to
         // the right edge); the optional actions/job toolbars go below it when shown
@@ -277,7 +310,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         insertToolBarBreak(toolBar("jobToolBar"));
 
         _navigationDock->restoreSettings();
-        _navigationDock->activeLocationChanged(ACTIVE_PANEL->virtualPath(), ACTIVE_PANEL->gui->isLeft());
+        emit MAIN_VIEW->activeLocationChanged(ACTIVE_PANEL->virtualPath(), ACTIVE_PANEL->gui->isLeft()); // sidebar + title
 
         // restore toolbars position and visibility
         restoreState(startupGroup.readEntry("State", QByteArray()));
@@ -712,7 +745,7 @@ void Krusader::setupPaneroToolbarLabels()
         {"toggle hidden files", i18nc("toolbar", "Hidden Files")},
         {"view0", i18nc("toolbar", "Details")},
         {"view2", i18nc("toolbar", "Thumbnails")},
-        {"panero view colors", i18nc("toolbar", "View && Colors")},
+        {"panero view colors", i18nc("toolbar", "Quick Settings")},
     };
     for (const auto &label : labels) {
         if (QAction *a = actionCollection()->action(QLatin1String(label.first)))
@@ -727,6 +760,24 @@ void Krusader::setupPaneroToolbarLabels()
         if (hidden->icon().isNull())
             hidden->setIcon(Icon(QStringLiteral("view-hidden")));
     }
+}
+
+void Krusader::restart()
+{
+    if (!App)
+        return;
+    // the new process waits until this one is gone (single instance mode would
+    // otherwise hand the start over to this closing window); settings and tabs are
+    // saved on quit and restored by the new process
+    const QString exe = QCoreApplication::applicationFilePath();
+    const QString pid = QString::number(QCoreApplication::applicationPid());
+    connect(qApp, &QCoreApplication::aboutToQuit, qApp, [exe, pid]() {
+        QProcess::startDetached(QStringLiteral("/bin/sh"),
+                                {QStringLiteral("-c"),
+                                 QStringLiteral("while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; exec \"$2\""),
+                                 QStringLiteral("panero-restart"), pid, exe});
+    });
+    App->quit();
 }
 
 void Krusader::emergencySaveSettings()

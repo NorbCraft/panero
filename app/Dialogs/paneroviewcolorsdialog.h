@@ -7,7 +7,9 @@
 #ifndef PANEROVIEWCOLORSDIALOG_H
 #define PANEROVIEWCOLORSDIALOG_H
 
+#include <QColor>
 #include <QDialog>
+#include <QHash>
 #include <QMap>
 
 class QCheckBox;
@@ -48,6 +50,13 @@ private:
     QCheckBox *m_alternating;
     QCheckBox *m_markIndicator;
     QComboBox *m_selection = nullptr;
+    QComboBox *m_iconSet = nullptr;
+    QComboBox *m_folderColor = nullptr;
+    QColor m_customFolderColor;
+    QComboBox *m_menuMode = nullptr;
+    QCheckBox *m_showCloud = nullptr;
+    QComboBox *m_holdFeedback = nullptr;
+    QHash<QString, QCheckBox *> m_transparentFill;
     QCheckBox *m_showHidden;
     QCheckBox *m_classicColors;
     QMap<QString, KColorButton *> m_colorButtons; ///< key: "Light <name>" / "Dark <name>"

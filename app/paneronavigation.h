@@ -8,6 +8,8 @@
 #define PANERONAVIGATION_H
 
 #include <QDockWidget>
+
+#include "Cloud/panerocloud.h"
 #include <QUrl>
 
 class QLabel;
@@ -59,6 +61,12 @@ private slots:
 
 private:
     void updatePinHighlight();
+    void loadCloud();
+    void openCloudEntry(const PaneroCloud::Entry &entry);
+    void cloudContextMenu(const QPoint &pos);
+    QWidget *m_cloudSection = nullptr;
+    QListWidget *m_cloud = nullptr;
+    QString m_pendingCloud;
     struct Pin {
         QUrl url;
         QString label;

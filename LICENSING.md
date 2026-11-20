@@ -37,6 +37,7 @@ bundled assets and runtime dependencies is in
 | libisofs 0.2 (ISO 9660 reader for the `iso:/` worker) | `plugins/iso/libisofs/` | GPL-2.0-or-later as declared (see note 1) | Szombathelyi György, Krusader Krew |
 | Fallback "missing icon", compiled into `panero` | `app/icons/icon-missing.svgz` | LGPL-3.0-or-later (see note 2) | Nikita Melnichenko; Breeze icon theme authors |
 | Krusader action icons and SVG artwork | `app/resources/` | GPL-2.0-or-later (no per-file notice; project license) | Krusader Krew |
+| "Panero Line" toolbar/sidebar icons (Lucide 0.460.0, recoloured and renamed) | `app/icons/panero-line/` | ISC | Cole Bemis (portions from Feather), Lucide Contributors; selection/colours Panero contributors |
 | Panero application icon | `app/icons/panero/` | GPL-2.0-or-later | Panero contributors (see [`dev/ICON-PROVENANCE.md`](dev/ICON-PROVENANCE.md)) |
 | AppStream metainfo | `app/io.github.norbcraft.panero.metainfo.xml` | FSFAP | Panero contributors, Krusader Krew |
 | Handbook and man page | `doc/` | GFDL-1.1-or-later (no invariant sections) | Shie Erlich, Rafi Yanai, Frank Schoolmeesters, Krusader Krew |
@@ -82,6 +83,7 @@ Notes:
 - `GFDL-1.1-or-later.txt`: GNU Free Documentation License version 1.1
 - `LGPL-3.0-or-later.txt`: GNU Lesser General Public License version 3
 - `FSFAP.txt`: FSF All Permissive License
+- `ISC.txt`: ISC License (Lucide icons)
 
 The Debian package installs them, together with this file, `README.md`,
 `USER-GUIDE.md`, `AUTHORS` and `CREDITS`, in `/usr/share/doc/panero/`. Debian's packaging

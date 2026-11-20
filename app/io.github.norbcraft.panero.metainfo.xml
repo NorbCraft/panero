@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.4" date="2026-11-20" type="development">
+      <description>
+        <p>Cloud drives and servers in the sidebar, Quick Settings with icon and folder colour options, progress in the panel, Copy Path and Open Terminal Here, and many fixes.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.3" date="2026-11-19" type="development">
       <description>
         <p>Modern look with a menu button, one icon-only toolbar, reliable folder tree, zoom between Details and Thumbnails, folder size on Space, active panel colour and selection style options.</p>

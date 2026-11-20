@@ -241,3 +241,36 @@ Release
 - v0.1.0-preview.3 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.3
 - Open: owner host install of preview 3 (sudo) and feedback on the Modern look;
   owner-decision backports (dev/BACKPORTS.md).
+
+## Phase 11 — Preview 4 (owner requests 2026-11-20)
+
+Step 1: proposals with visuals (owner decides), then implementation.
+
+Fixes / changes requested directly
+- [x] Details | Thumbnails frame rounded; both icons equal size also with text under icons.
+- [x] Window title shows "Panero".
+- [x] Sidebar button same height as the other buttons when text is shown under icons.
+- [x] Context menu: Copy Path.
+- [x] Theme switch must work without restart (easy fix) or ask to restart (Restart / Cancel).
+- [x] Menu button text "Menu"; option in Panero's settings: menu bar or menu button (Alt navigation).
+- [x] F7 new folder: cursor lands on the new folder, keyboard focus in the panel (not the F-key bar).
+- [x] Toolbar move handles clearly visible (light look).
+- [x] Inline rename editor integrated with the row look.
+- [x] F9 Term error.
+- [x] Remove the empty toolbar.
+- [x] No check badge on marked files (default off).
+- [x] New tab: "malformed URL /." error.
+- [x] Cursor row fill: "transparent" option (frame only).
+
+Proposals (done, page https://claude.ai/artifact/4ZhX9vcCC9vc657gKXKhcL) —
+owner decisions D-014:
+- [x] H1 pie hold feedback (default) + setting.
+- [x] N1 "Quick Settings" (gear), "Menu" button, menu bar / Menu button option.
+- [x] I1 icons: System / Panero Line (bundled Lucide); folder colour option.
+- [x] C2 Connect to Server; C3 rclone Add Cloud (install on demand, mount);
+      sidebar Cloud section, switchable.
+- [x] R6 progress in the panel bottom row.
+- [x] R9 Open Terminal Here.
+- [x] R11 tab bar only with 2+ tabs, new-tab button next to the path.
+- [x] R12 window title "<folder> — Panero".
+- [ ] Docs, tests, release v0.1.0-preview.4 (docs/tests done; package tests, PR, tag in progress).

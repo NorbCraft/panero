@@ -53,17 +53,26 @@ QWidget *PaneroSidebarButtonAction::createWidget(QWidget *parent)
     button->setChecked(m_toggle->isChecked());
     connect(button, &QToolButton::clicked, m_toggle, &QAction::trigger);
     connect(m_toggle, &QAction::toggled, button, &QToolButton::setChecked);
-    // twice as wide as a normal toolbar button: the sidebar toggle stands out
-    auto resize = [button](const QSize &iconSize) {
-        button->setIconSize(iconSize);
-        button->setFixedWidth(2 * button->sizeHint().height());
+    button->setText(m_toggle->iconText());
+    // twice as wide as a normal toolbar button: the sidebar toggle stands out; it
+    // follows the toolbar's icon size and text position like the other buttons
+    auto *bar = qobject_cast<QToolBar *>(parent);
+    auto resize = [button, bar]() {
+        if (bar) {
+            button->setIconSize(bar->iconSize());
+            button->setToolButtonStyle(bar->toolButtonStyle());
+        }
+        button->setMinimumWidth(0);
+        button->setMaximumWidth(QWIDGETSIZE_MAX);
+        const QSize hint = button->sizeHint();
+        const int iconOnly = 2 * (button->iconSize().height() + 10);
+        button->setFixedWidth(qMax(hint.width(), iconOnly));
     };
-    if (auto *bar = qobject_cast<QToolBar *>(parent)) {
+    if (bar) {
         connect(bar, &QToolBar::iconSizeChanged, button, resize);
-        resize(bar->iconSize());
-    } else {
-        resize(button->iconSize());
+        connect(bar, &QToolBar::toolButtonStyleChanged, button, resize);
     }
+    resize();
     return button;
 }
 
@@ -120,4 +129,18 @@ void PaneroToolBar::migrateLayout()
     startup.deleteEntry("State");
     panero.writeEntry("Toolbar Layout", LayoutVersion);
     panero.sync();
+}
+
+void PaneroToolBar::migrateSettings()
+{
+    KConfigGroup panero(KSharedConfig::openConfig(), QStringLiteral("Panero"));
+    const int version = panero.readEntry("Settings Version", 0);
+    if (version < 4) {
+        // preview 4: no check badge on marked files by default (the dialog used to save it)
+        KConfigGroup(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance")).deleteEntry("Mark Indicator");
+    }
+    if (version < 4) {
+        panero.writeEntry("Settings Version", 4);
+        panero.sync();
+    }
 }

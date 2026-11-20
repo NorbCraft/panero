@@ -94,12 +94,12 @@ if [ -n "$ARCH" ]; then
 fi
 
 # 9. restore the symlink from the Trash: toolbar Trash button, select, context menu > Restore
-#    (navigated from the bottom of the menu: Properties, Paste, Copy, Cut, Empty Trash, Restore)
+#    (navigated from the bottom of the menu: Properties, Copy Path, Paste, Copy, Cut, Empty Trash, Restore)
 xdotool mousemove $((X+500)) $((Y+174)) click 1; sleep 0.4
 xdotool mousemove $((X+376)) $((Y+27)) click 1; sleep 0.8   # toolbar Trash menu
 xdotool mousemove $((X+420)) $((Y+57)) click 1; sleep 2.5   # > Open Trash
 xdotool mousemove $((X+500)) $((Y+174)) click 1; sleep 0.4
-k End; k shift+F10; sleep 0.6; k Up Up Up Up Up Up; k Return; sleep 2.5
+k End; k shift+F10; sleep 0.6; k Up Up Up Up Up Up Up; k Return; sleep 2.5
 check "restore from Trash brought the symlink back" test -L "$OPS/L/zz link"
 check "restored symlink still points to its target" test "$(readlink "$OPS/L/zz link")" = "a file ü.txt"
 xdotool key alt+Left; sleep 1   # back to the previous folder
