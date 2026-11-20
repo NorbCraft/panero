@@ -288,3 +288,17 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Tests: ctest 6/6, GUI file-ops 17/17 (context menu navigation updated for
   Copy Path), interactive checks listed in the release notes.
 - Released v0.1.0-preview.4 (PR #9, tag on b0e89cc95, run 44802311531); assets verified; .deb copied to ~/Downloads.
+
+## 2026-11-20/21 — Windows experiment (branch experiment/windows)
+
+- Owner asked for a native Windows x64 preview in a separate worktree, with a
+  CI job, a portable ZIP, a clean-launch check and a Total Commander-style
+  first-run test.
+- MSYS2 dropped KF5 from its package database, but repo.msys2.org still serves
+  the final 5.116 builds. Dependency closure computed against the live
+  database: 31 pinned files, the rest comes from the repository. The only
+  unresolved DLL import is kwalletd5 -> libgpgmepp-6 (not used). Pinned with
+  SHA-256 in dev/windows/kf5-packages.sha256.
+- CI round 1: 5 files failed (QT_OPENDIR/readdir, lstat, readlink, kill) ->
+  QDir/QFileInfo on Windows. Round 2: symlink/link, QT_MKDIR -> WinAPI
+  helpers. The Linux job stays green on the branch.

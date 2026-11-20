@@ -280,3 +280,20 @@ owner decisions D-014:
 - v0.1.0-preview.4 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.4
 - Open: owner host install + real cloud sign-in test (no accounts available to
   the agent); owner-decision backports (dev/BACKPORTS.md).
+
+## Experiment W — Native Windows x64 preview (owner request 2026-11-20)
+
+Branch `experiment/windows` in a separate worktree, based on main 62d024dd9.
+Not merged into main. Details: `dev/windows/README.md`, decision D-015.
+
+- [x] Toolchain: MSYS2 UCRT64 + final KF5 5.116 packages pinned by SHA-256
+- [x] Windows build fixes: compat header, D-Bus optional, Qt directory listing,
+      links, krarc, ISO worker and handbook off on Windows
+- [x] Windows look: .ico + version resource, shell icons for drives, folders
+      and files, Explorer drive names, Alt+F1/Alt+F2 drive lists
+- [x] CI: windows-build (build, ctest, ZIP artifact), windows-launch (clean
+      runner, module audit, GUI test); Linux CI also runs on experiment/**
+- [ ] Windows build green in CI
+- [ ] Launch on a clean runner (no MSYS2 on PATH): window up, all modules
+      from ZIP/Windows
+- [ ] Total Commander first-run checks (gui-test.py) and report to the owner
