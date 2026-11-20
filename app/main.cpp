@@ -47,6 +47,7 @@
 #include "panelmanager.h"
 #include "paneroimport.h"
 #include "panerotoolbar.h"
+#include "Cloud/panerocloud.h"
 #include "Panel/paneroappearance.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
@@ -367,5 +368,8 @@ int main(int argc, char *argv[])
         delete splash;
     }
     // let's go.
-    return app.exec();
+    const int result = app.exec();
+    // Panero: unmount connected cloud drives (rclone) before leaving
+    PaneroCloud::instance()->unmountAll();
+    return result;
 }

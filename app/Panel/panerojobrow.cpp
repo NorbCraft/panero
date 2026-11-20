@@ -79,8 +79,10 @@ bool PaneroJobRow::isTarget(KrJob *job) const
             && panel->virtualPath().adjusted(QUrl::StripTrailingSlash) == url.adjusted(QUrl::StripTrailingSlash);
     };
     ListPanel *target = nullptr;
+    // a single-file copy names the target file: its folder is shown
+    const QUrl destFolder = job->destination().adjusted(QUrl::StripTrailingSlash | QUrl::RemoveFilename);
     for (ListPanel *panel : panels) {
-        if (!target && shows(panel, job->destination()))
+        if (!target && (shows(panel, job->destination()) || shows(panel, destFolder)))
             target = panel;
     }
     const QUrl sourceFolder = job->sources().isEmpty() ? QUrl()
@@ -131,7 +133,32 @@ void PaneroJobRow::refresh()
     }
     KrJob *job = m_jobs.last();
     const int percent = job->percent();
-    QString text = job->description();
+    // "Copying big.bin to Documents", "Moving 3 items to Projects", "Deleting 2 items"
+    const QList<QUrl> sources = job->sources();
+    const QString what = sources.count() == 1 ? sources.first().adjusted(QUrl::StripTrailingSlash).fileName()
+                                              : i18np("1 item", "%1 items", sources.count());
+    QUrl dest = job->destination().adjusted(QUrl::StripTrailingSlash);
+    if (sources.count() == 1 && dest.fileName() == what)
+        dest = dest.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash);
+    const QString where = dest.fileName().isEmpty() ? dest.toDisplayString(QUrl::PreferLocalFile) : dest.fileName();
+    QString text;
+    switch (job->type()) {
+    case KrJob::Copy:
+        text = i18nc("progress: copying <file(s)> to <folder>", "Copying %1 to %2", what, where);
+        break;
+    case KrJob::Move:
+        text = i18nc("progress: moving <file(s)> to <folder>", "Moving %1 to %2", what, where);
+        break;
+    case KrJob::Link:
+        text = i18nc("progress: linking <file(s)> in <folder>", "Linking %1 in %2", what, where);
+        break;
+    case KrJob::Trash:
+        text = i18nc("progress: moving <file(s)> to the trash", "Moving %1 to the Trash", what);
+        break;
+    case KrJob::Delete:
+        text = i18nc("progress: deleting <file(s)>", "Deleting %1", what);
+        break;
+    }
     if (m_jobs.count() > 1)
         text = i18nc("job description, number of more jobs", "%1 (+%2)", text, m_jobs.count() - 1);
     m_label->setText(i18nc("job description, percent", "%1 — %2 %", text, percent));
