@@ -177,3 +177,21 @@ dev/scripts/make-mockups.sh).
 - The sidebar's "Opens in: … panel" label is removed (the active panel is visible).
 - A stale local `paneroui.rc` from an older layout is backed up and its toolbars
   dropped on upgrade (shortcuts kept).
+
+## D-014 — Preview 4 decisions (2026-11-20, owner, from the proposal page)
+
+- H1: right-press feedback is a pie below-right of the pointer (Look&Feel /
+  Hold Indicator; pie default, ring/bar/none remain options).
+- N1: the cogwheel button and its dialog are called "Quick Settings"; the ☰
+  button is "Menu"; Quick Settings offers menu bar or Menu button.
+- I1: Quick Settings > Icons: System (default) or "Panero Line" (bundled
+  Lucide icons, ISC). Plus a folder colour option (recoloured folder icons).
+- C2 + C3: "Connect to Server…" (WebDAV/SMB/SFTP/FTP via KIO) and "Add Cloud…"
+  with rclone (installed on demand via PackageKit like KDiff3; mounted with
+  `rclone mount`). Both appear in a sidebar "Cloud" section that can be
+  switched on/off in Quick Settings. C1 (GNOME Online Accounts) not chosen.
+- R6: copy/move progress in the panel's bottom row (cancel; details on click).
+- R9: context menu "Open Terminal Here" (Copy Path from the owner's list too).
+- R11: tab bar only with two or more tabs; a new-tab button next to the path.
+- R12: window title "<folder> — Panero".
+- Theme change asks to restart (live switch is unreliable, see LOG 2026-11-20).

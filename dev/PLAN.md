@@ -262,10 +262,15 @@ Fixes / changes requested directly
 - [ ] New tab: "malformed URL /." error.
 - [ ] Cursor row fill: "transparent" option (frame only).
 
-Proposals for the owner (decisions pending)
-- [ ] Long right-press indicator: pie vs bar, position.
-- [ ] View & Colors: gear icon and a new name.
-- [ ] Icons: OS icons or a custom icon set (candidates with screenshots).
-- [ ] Cloud drives (Google Drive, OneDrive, others): research + proposal.
-- [ ] Look/usability review: further modernisation, users new to commanders.
-- [ ] Krusader parity: what (if anything) a Krusader user would miss.
+Proposals (done, page https://claude.ai/artifact/4ZhX9vcCC9vc657gKXKhcL) —
+owner decisions D-014:
+- [ ] H1 pie hold feedback (default) + setting.
+- [ ] N1 "Quick Settings" (gear), "Menu" button, menu bar / Menu button option.
+- [ ] I1 icons: System / Panero Line (bundled Lucide); folder colour option.
+- [ ] C2 Connect to Server; C3 rclone Add Cloud (install on demand, mount);
+      sidebar Cloud section, switchable.
+- [ ] R6 progress in the panel bottom row.
+- [ ] R9 Open Terminal Here.
+- [ ] R11 tab bar only with 2+ tabs, new-tab button next to the path.
+- [ ] R12 window title "<folder> — Panero".
+- [ ] Docs, tests, release v0.1.0-preview.4.
