@@ -304,7 +304,11 @@ void DefaultFileSystem::slotWatcherDeleted(const QString& path)
 }
 
 bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
+#ifdef Q_OS_WIN
+    QString path = KrServices::urlToLocalPath(directory);
+#else
     const QString path = KrServices::urlToLocalPath(directory);
+#endif
 
 #ifdef Q_OS_WIN
     if (!path.contains("/")) { // change C: to C:/
@@ -325,6 +329,27 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     _currentDirectory = directory;
     _currentDirectory.setPath(QDir::cleanPath(_currentDirectory.path()));
 
+#ifdef Q_OS_WIN
+    // Windows: QDir gives Unicode names and knows the "hidden" and "system" attributes
+    // (hidden like Explorer: both are listed only when hidden files are shown).
+    {
+        const bool showHidden = showHiddenFiles();
+        QDir::Filters filters = QDir::AllEntries | QDir::NoDotAndDotDot;
+        if (showHidden)
+            filters |= QDir::Hidden | QDir::System;
+        const QDir qdir(path);
+        if (!qdir.isReadable()) {
+            emit error(i18nc("%1=folder path", "Access to %1 denied", path));
+            return false;
+        }
+        const QSet<QString> hiddenFiles = filesInDotHidden(path);
+        for (const QString &name : qdir.entryList(filters, QDir::NoSort)) {
+            if (!showHidden && (name.startsWith(QLatin1Char('.')) || hiddenFiles.contains(name)))
+                continue;
+            addFileItem(createLocalFileItem(name, path));
+        }
+    }
+#else
     // Note: we are using low-level Qt functions here.
     // It's around twice as fast as using the QDir class.
 
@@ -362,6 +387,7 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     // clean up
     QT_CLOSEDIR(dir);
     QDir::setCurrent(savedDir);
+#endif
 
     if (!onlyScan) {
         // start watching the new dir for file changes

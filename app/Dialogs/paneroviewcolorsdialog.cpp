@@ -268,7 +268,7 @@ void PaneroViewColorsDialog::load()
     m_menuMode->setCurrentIndex(KConfigGroup(krConfig, "Startup").readEntry("Show menubar", false) ? 1 : 0);
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
         m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
-    m_showCloud->setChecked(g.readEntry("Show Cloud", true));
+    m_showCloud->setChecked(g.readEntry("Show Cloud", PANERO_CLOUD_DEFAULT));
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));

@@ -230,7 +230,7 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
 
 void PaneroNavigationDock::loadCloud()
 {
-    const bool show = KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Cloud", true);
+    const bool show = KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Cloud", PANERO_CLOUD_DEFAULT);
     m_cloudSection->setVisible(show);
     if (!show)
         return;

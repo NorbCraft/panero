@@ -114,6 +114,10 @@ if(WIN32)
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_SOURCE_DIR}/app/compat/panero_win32_compat.h>")
     # Plugins live next to the executable (qt.conf), not in a compiled-in path
     add_definitions(-DPANERO_PORTABLE_PLUGINS)
+    # Cloud mounts use rclone + FUSE (Linux); hidden by default on Windows
+    add_definitions(-DPANERO_CLOUD_DEFAULT=false)
+else()
+    add_definitions(-DPANERO_CLOUD_DEFAULT=true)
 endif()
 option(PANERO_BUILD_HANDBOOK "Build the DocBook handbook" ${UNIX})
 

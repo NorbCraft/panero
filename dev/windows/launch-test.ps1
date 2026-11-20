@@ -114,7 +114,7 @@ Get-Process kioslave5, kiod5 -ErrorAction SilentlyContinue | Stop-Process -Force
 # --- 3. GUI checks --------------------------------------------------------
 $gui = Join-Path $PSScriptRoot 'gui-test.py'
 if (Test-Path $gui) {
-    python -m pip install --quiet pywinauto==0.6.9 pillow==12.0.0
+    python -m pip install --quiet pywinauto==0.6.9 pillow==11.3.0
     $env:PANERO_EXE = $exe
     $env:PANERO_CLEAN_PATH = $cleanPath
     python $gui --out $OutDir

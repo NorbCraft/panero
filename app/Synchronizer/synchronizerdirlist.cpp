@@ -104,6 +104,24 @@ bool SynchronizerDirList::load(const QString &urlIn, bool wait)
     }
 
     if (url.isLocalFile()) {
+#ifdef Q_OS_WIN
+        const QString dir = FileSystem::ensureTrailingSlash(url).toLocalFile();
+        const QDir qdir(dir);
+        if (!qdir.exists() || !qdir.isReadable()) {
+            KMessageBox::error(parentWidget, i18n("Cannot open the folder %1.", dir), i18n("Error"));
+            emit finished(result = false);
+            return false;
+        }
+        QDir::Filters filters = QDir::AllEntries | QDir::NoDotAndDotDot;
+        if (!ignoreHidden)
+            filters |= QDir::Hidden | QDir::System;
+        for (const QString &name : qdir.entryList(filters, QDir::NoSort)) {
+            if (ignoreHidden && name.startsWith('.')) continue;
+            insert(name, FileSystem::createLocalFileItem(name, dir));
+        }
+        emit finished(result = true);
+        return true;
+#else
         const QString dir = FileSystem::ensureTrailingSlash(url).path();
 
         QT_DIR* qdir = QT_OPENDIR(dir.toLocal8Bit());
@@ -129,6 +147,7 @@ bool SynchronizerDirList::load(const QString &urlIn, bool wait)
         QT_CLOSEDIR(qdir);
         emit finished(result = true);
         return true;
+#endif
     } else {
         KIO::ListJob *job = KIO::listDir(KrServices::escapeFileUrl(url), KIO::HideProgressInfo, true);
         connect(job, &KIO::ListJob::entries, this, &SynchronizerDirList::slotEntries);

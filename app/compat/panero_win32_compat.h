@@ -29,6 +29,13 @@ inline gid_t getgid() { return 1000; }
 inline gid_t getegid() { return 1000; }
 inline int getgroups(int, gid_t *) { return 0; }
 inline int lstat(const char *path, struct stat *buf) { return stat(path, buf); }
+#include <direct.h>
+inline int mkdir(const char *path, int /*mode*/) { return _mkdir(path); }
+#endif
+
+// qplatformdefs.h has no lstat on Windows (no symbolic-link mode bits there)
+#ifndef QT_LSTAT
+#define QT_LSTAT QT_STAT
 #endif
 
 #ifndef S_IFLNK

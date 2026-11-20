@@ -191,6 +191,33 @@ FileItem *FileSystem::createLocalFileItem(const QString &name, const QString &di
     const QString fileItemName = virt ? path : name;
     const QUrl fileItemUrl = QUrl::fromLocalFile(path);
 
+#ifdef Q_OS_WIN
+    // Windows: QFileInfo (Unicode paths). Symbolic links and junctions are links;
+    // .lnk shortcuts are ordinary files, as in Explorer and Total Commander.
+    const QFileInfo fi(path);
+    const bool winLink = fi.isSymbolicLink();
+    if (!fi.exists() && !winLink)
+        return FileItem::createBroken(fileItemName, fileItemUrl);
+    const bool winDir = fi.isDir();
+    QString winLinkDest;
+    bool winBroken = false;
+    if (winLink) {
+        winLinkDest = fi.symLinkTarget();
+        winBroken = !QFileInfo::exists(winLinkDest);
+    }
+    mode_t winMode = (winDir ? S_IFDIR | 0755 : S_IFREG | 0644);
+    if (!fi.isWritable())
+        winMode &= ~mode_t(0222);
+    if (winLink)
+        winMode = (winMode & ~mode_t(0170000)) | S_IFLNK;
+    const auto secs = [](const QDateTime &t) { return t.isValid() ? time_t(t.toSecsSinceEpoch()) : time_t(-1); };
+    return new FileItem(fileItemName, fileItemUrl, winDir,
+                        winDir ? 0 : KIO::filesize_t(fi.size()), winMode,
+                        secs(fi.lastModified()), secs(fi.metadataChangeTime()), secs(fi.lastRead()),
+                        secs(fi.birthTime()), -1, -1, QString(), QString(),
+                        winLink, winLinkDest, winBroken);
+#else
+
     // read file status; in case of error create a "broken" file item
     QT_STATBUF stat_p;
     memset(&stat_p, 0, sizeof(stat_p));
@@ -227,10 +254,15 @@ FileItem *FileSystem::createLocalFileItem(const QString &name, const QString &di
                         stat_p.st_mtime, stat_p.st_ctime, stat_p.st_atime, -1,
                         stat_p.st_uid, stat_p.st_gid, QString(), QString(),
                         isLink, linkDestination, brokenLink);
+#endif
 }
 
 QString FileSystem::readLinkSafely(const char *path)
 {
+#ifdef Q_OS_WIN
+    const QString target = QFileInfo(QString::fromLocal8Bit(path)).symLinkTarget();
+    return target.isEmpty() ? QString() : target;
+#else
     // inspired by the areadlink_with_size function from gnulib, which is used for coreutils
     // idea: start with a small buffer and gradually increase it as we discover it wasn't enough
 
@@ -267,6 +299,7 @@ QString FileSystem::readLinkSafely(const char *path)
             bufferSize = maxBufferSize;
         }
     }
+#endif
 }
 
 FileItem *FileSystem::createFileItemFromKIO(const KIO::UDSEntry &entry, const QUrl &directory, bool virt)
