@@ -7,7 +7,9 @@
 */
 
 #include <csignal>
+#ifndef Q_OS_WIN
 #include <unistd.h>
+#endif
 
 // QtCore
 #include <QFile>
@@ -106,7 +108,9 @@ int main(int argc, char *argv[])
     // Panero ships its own KIO workers (krarc, iso) in a private plugin directory so that
     // it can be installed next to Krusader. Prepend it (and an optional developer override)
     // to the plugin search path before any KIO protocol lookup happens.
+#ifndef PANERO_PORTABLE_PLUGINS
     QCoreApplication::addLibraryPath(QStringLiteral(PANERO_PRIVATE_PLUGIN_DIR));
+#endif
     if (!qEnvironmentVariableIsEmpty("PANERO_PLUGIN_DIR"))
         QCoreApplication::addLibraryPath(qEnvironmentVariable("PANERO_PLUGIN_DIR"));
 
@@ -264,13 +268,18 @@ int main(int argc, char *argv[])
     if (!singleInstanceMode)
         appName += QString("%1").arg(getpid());
 
-    if (!QDBusConnection::sessionBus().isConnected()) {
+    // Windows has no D-Bus session bus: single-instance mode and remote control are
+    // not available there, everything else works without it.
+    const bool haveDBus = QDBusConnection::sessionBus().isConnected();
+#ifndef Q_OS_WIN
+    if (!haveDBus) {
         fprintf(stderr, "Cannot connect to the D-BUS session bus.\n"
                 "To start it, run:\n"
                 "\teval `dbus-launch --auto-syntax`\n");
     }
+#endif
 
-    if (singleInstanceMode) {
+    if (singleInstanceMode && haveDBus) {
         QDBusInterface remoteApp(QStringLiteral(PANERO_APP_ID), "/Instances/" + appName,
                                 QStringLiteral(PANERO_APP_ID ".Instance"), QDBusConnection::sessionBus());
         QDBusReply<bool> reply;
@@ -328,6 +337,7 @@ int main(int argc, char *argv[])
         krusader->openUrl(url);
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
+    if (haveDBus) {
     if (!dbus.interface()->isServiceRegistered(QStringLiteral(PANERO_APP_ID)) && !dbus.registerService(QStringLiteral(PANERO_APP_ID))) {
         fprintf(stderr, "DBus Error: %s, %s\n", dbus.lastError().name().toLocal8Bit().constData(), dbus.lastError().message().toLocal8Bit().constData());
     }
@@ -340,10 +350,13 @@ int main(int argc, char *argv[])
     if (!dbus.registerObject("/Instances/" + appName + "/right_manager", RIGHT_MNG, QDBusConnection::ExportScriptableSlots)) {
         fprintf(stderr, "DBus Error: %s, %s\n", dbus.lastError().name().toLocal8Bit().constData(), dbus.lastError().message().toLocal8Bit().constData());
     }
+    }
 
     // catching SIGTERM, SIGHUP, SIGINT
     std::signal(SIGTERM, handleExitSignal);
+#ifdef SIGHUP
     std::signal(SIGHUP, handleExitSignal);
+#endif
     std::signal(SIGINT, handleExitSignal);
 
     QObject::connect(&app, &QGuiApplication::applicationStateChanged, SLOTS, &KrSlots::applicationStateChanged);

@@ -48,7 +48,16 @@ set(krusader_SRCS
 
 qt5_add_resources(krusader_RC_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc" )
 
+if(WIN32)
+    # Icon and version resource; WIN32_EXECUTABLE = no console window
+    configure_file(windows/panero.rc.in ${CMAKE_CURRENT_BINARY_DIR}/panero.rc @ONLY)
+    list(APPEND krusader_SRCS ${CMAKE_CURRENT_BINARY_DIR}/panero.rc)
+endif()
+
 add_executable(panero ${krusader_SRCS} ${krusader_RC_SRCS})
+if(WIN32)
+    set_target_properties(panero PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 target_link_libraries(panero
                       Panel

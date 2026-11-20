@@ -108,6 +108,15 @@ message(STATUS "kdesu path has been hard-coded: ${KDESU_PATH}")
 
 add_definitions(${QT_DEFINITIONS} ${KF5_DEFINITIONS})
 
+# ===== Experimental Windows build (see dev/windows/README.md) =====
+if(WIN32)
+    # POSIX names MinGW does not provide (uid_t, lstat, S_ISLNK, ...)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_SOURCE_DIR}/app/compat/panero_win32_compat.h>")
+    # Plugins live next to the executable (qt.conf), not in a compiled-in path
+    add_definitions(-DPANERO_PORTABLE_PLUGINS)
+endif()
+option(PANERO_BUILD_HANDBOOK "Build the DocBook handbook" ${UNIX})
+
 add_definitions(-DKRARC_ENABLED)
 add_definitions(-DQT_NO_URL_CAST_FROM_STRING)
 
@@ -162,8 +171,13 @@ endif()
 # ===== Subdirectories =====
 
 add_subdirectory(app)
-add_subdirectory(doc/handbook)
-add_subdirectory(plugins/iso)
+if(PANERO_BUILD_HANDBOOK)
+    add_subdirectory(doc/handbook)
+endif()
+if(NOT WIN32)
+    # ISO images use Linux CD-ROM ioctls
+    add_subdirectory(plugins/iso)
+endif()
 add_subdirectory(plugins/krarc)
 if(BUILD_TESTING)
     add_subdirectory(autotests)
@@ -173,7 +187,9 @@ endif()
 # ===== Translations =====
 
 ki18n_install(po)
-kdoctools_install(po)
+if(PANERO_BUILD_HANDBOOK)
+    kdoctools_install(po)
+endif()
 
 
 # ===== Output configuration =====

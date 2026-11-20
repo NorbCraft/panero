@@ -65,6 +65,11 @@ Copyright: 2026 Panero contributors
 License: GPL-2.0-or-later
 Comment: Original Panero application icon; see dev/ICON-PROVENANCE.md
 
+Files: app/windows/panero.ico
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
+Comment: Windows icon file built from app/icons/panero/*.png
+
 Files: AGENTS.md CLAUDE.md README.md USER-GUIDE.md LICENSING.md dev/*.md
  dev/*.txt dev/scripts/* dev/release-notes/* debian/* .github/*
 Copyright: 2026 Panero contributors

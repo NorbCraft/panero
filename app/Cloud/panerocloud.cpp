@@ -25,7 +25,9 @@
 #include <KWidgetsAddons/KMessageBox>
 
 #include <csignal>
+#ifdef Q_OS_LINUX
 #include <sys/prctl.h>
+#endif
 
 namespace
 {
@@ -43,7 +45,9 @@ public:
 protected:
     void setupChildProcess() override
     {
+#ifdef Q_OS_LINUX
         ::prctl(PR_SET_PDEATHSIG, SIGTERM);
+#endif
     }
 };
 

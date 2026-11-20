@@ -18,7 +18,9 @@ void Kr7zEncryptionChecker::setupChildProcess()
 {
     // This function is called after the fork but for the exec. We create a process group
     // to work around a broken wrapper script of 7z. Without this only the wrapper is killed.
+#ifndef Q_OS_WIN
     setsid(); // make this process leader of a new process group
+#endif
 }
 
 void Kr7zEncryptionChecker::receivedOutput()
@@ -43,7 +45,11 @@ void Kr7zEncryptionChecker::receivedOutput()
         if ((line.contains("password") && line.contains("enter")) ||
              line == QStringLiteral("encrypted = +")) {
             encrypted = true;
+#ifdef Q_OS_WIN
+            kill();
+#else
             ::kill(static_cast<pid_t>(- processId()), SIGKILL); // kill the whole process group by giving the negative PID
+#endif
             break;
         }
     }
