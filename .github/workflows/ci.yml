@@ -32,6 +32,12 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             $(grep -v '^#' dev/build-deps.txt | xargs)
+          # cloud security tests: FUSE mounts, a private D-Bus session and keyring
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            fuse3 dbus dbus-daemon gnome-keyring unzip curl
+
+      - name: Fetch Panero's rclone (pinned, checksum verified)
+        run: dev/scripts/fetch-rclone.sh "$RUNNER_TEMP/rclone" amd64
 
       - name: Record build environment
         run: |
@@ -40,7 +46,9 @@ jobs:
           dpkg-query -W qtbase5-dev libkf5kio-dev extra-cmake-modules
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=ON
+          -DPANERO_RCLONE_BINARY="$RUNNER_TEMP/rclone/rclone"
 
       - name: Build
         run: ninja -C build
@@ -49,6 +57,9 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: cd build && xvfb-run -a ctest --output-on-failure
+
+      - name: Cloud security tests (private keyring, no accounts)
+        run: dev/scripts/cloud-security-test.sh build -v1
 
       - name: Stage install
         run: DESTDIR="$PWD/stage" ninja -C build install && find stage -type f | sort | head -50

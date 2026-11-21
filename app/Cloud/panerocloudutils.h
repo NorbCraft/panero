@@ -13,6 +13,8 @@
 #include <QStringList>
 #include <QUrl>
 
+class QJsonObject;
+
 class KConfigGroup;
 
 /**
@@ -76,7 +78,51 @@ QStringList parseMountInfo(const QByteArray &mountinfo);
 
 /// Finds the sign-in link in rclone's OAuth output
 /// ("... go to the following link: http://127.0.0.1:53682/auth?state=...").
+/// Only rclone's own local helper link is accepted (R4).
 QUrl parseAuthUrl(const QString &output);
+
+/// "1.76.0" from the output of `rclone version` ("rclone v1.76.0").
+QString parseRcloneVersion(const QString &output);
+/// <0, 0, >0 like strcmp, numerically per dot-separated part.
+int compareVersions(const QString &a, const QString &b);
+/// True when @p head (the start of an rclone config file) is an encrypted config.
+bool isEncryptedRcloneConfig(const QByteArray &head);
+/// A remote name as a single folder name: percent-encoded except A-Z a-z 0-9
+/// - _ . ~, and a leading '.' encoded too, so different names never share a
+/// folder and no name becomes "." or "..".
+QString safeFileName(const QString &name);
+
+/// Number of files in the remote's VFS cache that rclone has not uploaded yet
+/// ("Dirty": true in <cache>/vfsMeta). Such a cache must not be deleted.
+int dirtyCacheEntries(const QString &remoteCacheDir);
+
+/// Replaces tokens, passwords, OAuth codes and bearer values in @p text by
+/// "***" (rclone messages, before they are shown anywhere).
+QString redactSecrets(const QString &text);
+
+/// rclone's pCloud host rule (v1.76): one or more labels, then ".pcloud.com".
+bool isAllowedPcloudHost(const QString &host);
+
+/// Value of "key = value" in INI-like text (`rclone config redacted`), or empty.
+QString iniValue(const QString &text, const QString &key);
+
+/// rclone config file text for remotes given as the JSON object of
+/// `rclone config dump` ({"name": {"type": ..., ...}}). Values are written
+/// verbatim (already obscured where rclone obscures them).
+QByteArray rcloneIniFromDump(const QJsonObject &remotes);
+
+/// OneDrive access_scopes for Panero's choices (own files by default).
+QString oneDriveScopes(bool readOnly, bool includeShared);
+
+/// Path of the rclone VFS cache file for @p relativePath of @p remote below
+/// the remote's cache folder (rclone 1.76 layout: <cache>/vfs/<remote>/<path>).
+QString vfsCacheFile(const QString &remoteCacheDir, const QString &remote, const QString &relativePath);
+/// The VFS cache subfolder of an "alias" remote: rclone names the cache after
+/// the backend the alias points to ("other:sub" -> "other/sub", "/data" ->
+/// "local/data").
+QString aliasCacheSubPath(const QString &aliasTarget);
+/// True when @p cacheFile exists and has no holes up to @p size (fully downloaded).
+bool isFullyCached(const QString &cacheFile, qint64 size);
 
 /// One rclone log line without its "<5>" level / date prefix and "ERROR : " tag.
 QString cleanRcloneLogLine(const QString &line);
@@ -86,12 +132,13 @@ QString cleanRcloneLogLine(const QString &line);
 QString rcloneErrorSummary(const QString &stderrText, int maxLines = 3);
 
 /// Directory where rclone remotes get mounted:
-/// $XDG_RUNTIME_DIR/panero-cloud, else ~/.cache/panero/cloud.
+/// $XDG_RUNTIME_DIR/panero-cloud, else ~/.cache/panero/mounts.
 QString mountBaseDir();
 
-/// rclone's config file: $RCLONE_CONFIG, else $XDG_CONFIG_HOME/rclone/rclone.conf
-/// (what rclone itself uses when no legacy ~/.rclone.conf exists).
-QString rcloneConfigPath();
+/// The user's own rclone config file (only read for "Import"): $RCLONE_CONFIG,
+/// else ~/.rclone.conf if it exists, else $XDG_CONFIG_HOME/rclone/rclone.conf.
+/// Panero's own configuration is PaneroRclone::configPath().
+QString userRcloneConfigPath();
 }
 
 #endif // PANEROCLOUDUTILS_H

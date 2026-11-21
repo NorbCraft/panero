@@ -46,6 +46,7 @@ bundled assets and runtime dependencies is in
 | Colour schemes, keymaps, user action examples, UI layout files | `app/*.color`, `app/*.keymap*`, `app/*.rc`, `app/layout.xml`, `app/useraction_examples.xml` | GPL-2.0-or-later | Krusader Krew; Panero contributors for renamed/edited files |
 | Panero tests, packaging, CI, scripts, user guide, development documents | `autotests/`, `debian/`, `.github/`, `dev/`, `*.md` (incl. `USER-GUIDE.md`) | GPL-2.0-or-later | Panero contributors |
 | Development hand-off material | `dev/handoff/` | GPL-2.0-or-later | Panero project owner (the icon concept image in it is AI generated) |
+| rclone (bundled program for cloud drives, unmodified upstream build) | not in the source tree; pinned in `dev/rclone/` | MIT (`LICENSES/MIT.txt`); the Go modules compiled into it carry their own free licenses (see note 4) | Nick Craig-Wood and the rclone contributors |
 
 Notes:
 
@@ -75,6 +76,17 @@ Notes:
    code by Sebastian Trueg and Bruno Nova). Upstream distributes these files
    under GPL-2.0-or-later, which the GPL/LGPL terms of the original code allow.
 
+4. **Bundled rclone.** Since preview 5 the package contains the official
+   rclone release binary (version and SHA-256 pinned in
+   `dev/rclone/rclone.sha256`, see `dev/rclone/README.md`), because the
+   distribution's rclone is too old for safe sign-ins. It is installed
+   unmodified as `/usr/lib/x86_64-linux-gnu/libexec/panero/rclone`. Its license
+   is in `/usr/share/doc/panero/rclone/COPYING`; the Go modules compiled into
+   it (various MIT, BSD, Apache-2.0, MPL-2.0 and similar licenses) are listed
+   in `/usr/share/doc/panero/rclone/dependencies.txt` and in the licenses
+   archive of each release. Its complete source code is at
+   <https://github.com/rclone/rclone> under the pinned tag.
+
 ## License texts
 
 `LICENSES/` holds the full texts of every license used in the tree:
@@ -84,6 +96,7 @@ Notes:
 - `LGPL-3.0-or-later.txt`: GNU Lesser General Public License version 3
 - `FSFAP.txt`: FSF All Permissive License
 - `ISC.txt`: ISC License (Lucide icons)
+- `MIT.txt`: MIT License (bundled rclone)
 
 The Debian package installs them, together with this file, `README.md`,
 `USER-GUIDE.md`, `AUTHORS` and `CREDITS`, in `/usr/share/doc/panero/`. Debian's packaging
@@ -102,9 +115,11 @@ tools compress the larger files there (`.gz`); read them with `zless`.
 | `/usr/share/metainfo/io.github.norbcraft.panero.metainfo.xml` | `app/` | FSFAP |
 | `/usr/share/locale/*/LC_MESSAGES/panero.mo` | `po/*/panero.po` | GPL-2.0-or-later |
 | `/usr/share/doc/HTML/*/panero/`, `/usr/share/man/man1/panero.1.gz` | `doc/`, `po/*/docs/` | GFDL-1.1-or-later |
+| `/usr/lib/x86_64-linux-gnu/libexec/panero/panero-cloud-key` | `app/Cloud/panerocloudkey.cpp` | GPL-2.0-or-later |
+| `/usr/lib/x86_64-linux-gnu/libexec/panero/rclone` | upstream rclone release (note 4) | MIT (+ licenses of its Go modules) |
 
-Nothing else is bundled: no fonts, no third-party libraries and no Qt or KDE
-plugins other than Panero's own two KIO workers.
+Apart from rclone (note 4), nothing else is bundled: no fonts, no third-party
+libraries and no Qt or KDE plugins other than Panero's own two KIO workers.
 
 ## Runtime dependencies are not bundled
 

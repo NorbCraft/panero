@@ -80,6 +80,7 @@
 #include "../KViewer/krviewer.h"
 #include "../MountMan/kmountman.h"
 #include "../compat.h"
+#include "../Cloud/panerooffline.h"
 
 QPointer<ListPanelFunc> ListPanelFunc::copyToClipboardOrigin;
 
@@ -213,7 +214,14 @@ void ListPanelFunc::immediateOpenUrl(const QUrl &url)
 void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCurrent,
                                     bool immediately, bool manuallyEntered)
 {
-    const QUrl cleanUrl = cleanPath(url);
+    QUrl cleanUrl = cleanPath(url);
+    // Panero: a folder kept on this device opens as its local copy (R10)
+    if (cleanUrl.isLocalFile()) {
+        const QString local = cleanUrl.toLocalFile();
+        const QString redirected = PaneroOffline::instance()->redirect(local);
+        if (redirected != local)
+            cleanUrl = QUrl::fromLocalFile(redirected);
+    }
 
     if (panel->isLocked() &&
             !files()->currentDirectory().matches(cleanUrl, QUrl::StripTrailingSlash)) {

@@ -111,7 +111,28 @@ Limits:
 - Offline copies are plain files on disk. The plan should recommend full-disk encryption and offer a "Remove offline copies on sign-out" option.
 - bisync conflicts are kept as `*.conflict` files and reported.
 
-## 4. Test plan
+## 4. Implementation (preview 5, D-016)
+
+| Item | Where |
+|---|---|
+| R1 | `dev/rclone/` (pin, license, README); `dev/scripts/fetch-rclone.sh`; `app/Cloud/CMakeLists.txt` (`PANERO_RCLONE_BINARY`, installed as `libexec/panero/rclone`); `PaneroRclone::usable()` refuses < 1.75.2; `.github/workflows/rclone-watch.yml`; `test-deb.sh` checks the installed binary is byte-identical. |
+| R2 | `app/Cloud/panerosecretstore.*` (Secret Service client), `app/Cloud/panerorclone.*` (`ensureStore`, `globalArgs`), `app/Cloud/panerocloudkey.cpp` (`panero-cloud-key`, refuses a terminal). |
+| R3 | `PaneroCloudSetup::createWebDavRemote` (stdin answers, stored result checked); `PaneroRclone::environment()` drops `RCLONE_*`. |
+| R4 | `PaneroCloudSetup::callbackPortFree`, `LoopbackRedirector` and `SignInDialog` in `paneroaddclouddialog.cpp`, `PaneroCloudUtils::parseAuthUrl` (loopback only), `checkPcloudHost`, `accessDescription`, `oauthOptions`. |
+| R5 | `app/Cloud/panerocloudrevoke.*`; `PaneroCloud::confirmAndRemove` / `signOutAll`. |
+| R6 | `PaneroRclone::cacheDir`, `PaneroOffline::mountCacheArgs`; `PaneroCloudUtils::redactSecrets` in every error summary. |
+| R7 | provider list without MEGA; app-password guidance. |
+| R8 | `PaneroCloudSetup::importRemotes`, `interactiveConfigCommand`. |
+| R9 | rclone 1.76.0 (R1) + host check; regression test `pcloudCallbackCsrfRejected`. |
+| R10 | `app/Cloud/panerooffline.*`, `paneroofflinedialog.*`; badges in `krview.cpp`, redirect in `panelfunc.cpp`, context menu in `panelcontextmenu.cpp`. |
+
+Tests: `autotests/panerocloudtest.cpp` (unit), `autotests/panerocloudsecuritytest.cpp`
+run by `dev/scripts/cloud-security-test.sh` (private D-Bus session and
+gnome-keyring in a temporary HOME; process scanner with a positive control;
+at-rest scan; WebDAV via a local server; pCloud CSRF regression against the
+bundled rclone; mount, offline files, import, missing key), in CI on every push.
+
+## 5. Test plan
 
 Automated tests run in CI, with no accounts:
 - Encrypted config round-trip with the keyring helper (gnome-keyring in a headless D-Bus session): no token or password text in any file under `HOME`.

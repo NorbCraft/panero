@@ -5,9 +5,14 @@
 */
 
 #include "panerocloud.h"
+#include "panerocloudrevoke.h"
+#include "panerocloudsetup.h"
 #include "panerocloudutils.h"
 
 #include <QDir>
+#include <QHostAddress>
+#include <QJsonObject>
+#include <QTcpServer>
 #include <QFile>
 #include <QProcess>
 #include <QSignalSpy>
@@ -41,15 +46,20 @@ private slots:
     void parseAuthUrl();
     void rcloneErrorSummary();
     void mountBaseDir();
-    void rcloneMountRoundTrip();
-    void rcloneMountFailure();
-    void rcloneRemove();
-    void holdMountForCrashCheck();
+    void versions();
+    void encryptedConfigDetection();
+    void redaction();
+    void pcloudHosts();
+    void iniAndDump();
+    void oneDriveScopes();
+    void passwordsAndAddresses();
+    void offlineCacheFiles();
+    void revokeRequests();
+    void identityRequests();
+    void callbackPort();
 
 private:
-    bool runRclone(const QStringList &args);
     QTemporaryDir m_tmp;
-    bool m_haveRclone = false;
 };
 
 void PaneroCloudTest::initTestCase()
@@ -66,9 +76,6 @@ void PaneroCloudTest::initTestCase()
     qputenv("XDG_DATA_HOME", QFile::encodeName(root + QStringLiteral("/data")));
     qputenv("XDG_RUNTIME_DIR", QFile::encodeName(root + QStringLiteral("/run")));
     qputenv("RCLONE_CONFIG", QFile::encodeName(root + QStringLiteral("/rclone.conf")));
-    m_haveRclone = PaneroCloud::rcloneAvailable();
-    if (!m_haveRclone)
-        qWarning("rclone not found in PATH: the mount tests are skipped");
 }
 
 void PaneroCloudTest::cleanupTestCase()
@@ -77,12 +84,6 @@ void PaneroCloudTest::cleanupTestCase()
     PaneroCloud::instance()->unmountAll();
 }
 
-bool PaneroCloudTest::runRclone(const QStringList &args)
-{
-    QProcess p;
-    p.start(PaneroCloud::rcloneProgram(), args);
-    return p.waitForFinished(15000) && p.exitCode() == 0;
-}
 
 void PaneroCloudTest::parseListRemotes_data()
 {
@@ -254,6 +255,12 @@ void PaneroCloudTest::parseAuthUrl()
         "<5>NOTICE: Waiting for code...\n");
     QCOMPARE(PaneroCloudUtils::parseAuthUrl(out), QUrl(QStringLiteral("http://127.0.0.1:53682/auth?state=-cUpCJDmlVNS6jQ6R2YFmA")));
     QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("nothing here")).isValid());
+    // only rclone's own loopback helper is accepted
+    QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("go to the following link: https://evil.example/auth?state=abcdefghij")).isValid());
+    QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("following link: http://localhost:53682/auth?state=abcdefghij")).isValid());
+    QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("following link: http://127.0.0.1:53683/auth?state=abcdefghij")).isValid());
+    QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("following link: http://127.0.0.1:53682/auth?state=abc")).isValid());
+    QVERIFY(!PaneroCloudUtils::parseAuthUrl(QStringLiteral("following link: http://127.0.0.1:53682/auth?state=abcdefghij@evil.example")).isValid());
 }
 
 void PaneroCloudTest::rcloneErrorSummary()
@@ -276,142 +283,243 @@ void PaneroCloudTest::rcloneErrorSummary()
 void PaneroCloudTest::mountBaseDir()
 {
     QCOMPARE(PaneroCloudUtils::mountBaseDir(), m_tmp.path() + QStringLiteral("/run/panero-cloud"));
-    QCOMPARE(PaneroCloudUtils::rcloneConfigPath(), m_tmp.path() + QStringLiteral("/rclone.conf"));
+    QCOMPARE(PaneroCloudUtils::userRcloneConfigPath(), m_tmp.path() + QStringLiteral("/rclone.conf"));
 }
 
-void PaneroCloudTest::rcloneMountRoundTrip()
+void PaneroCloudTest::versions()
 {
-    if (!m_haveRclone)
-        QSKIP("rclone not installed");
-    if (!PaneroCloud::fuseAvailable() || !QFileInfo(QStringLiteral("/dev/fuse")).isWritable())
-        QSKIP("FUSE not usable here");
-
-    // an "alias" remote pointing at a local folder stands in for a cloud drive
-    const QString data = m_tmp.path() + QStringLiteral("/clouddata");
-    QDir().mkpath(data + QStringLiteral("/sub"));
-    QFile hello(data + QStringLiteral("/hello.txt"));
-    QVERIFY(hello.open(QIODevice::WriteOnly));
-    hello.write("hello from the cloud\n");
-    hello.close();
-    QVERIFY(runRclone({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("testcloud"), QStringLiteral("alias"),
-                       QStringLiteral("remote"), data}));
-
-    PaneroCloud *cloud = PaneroCloud::instance();
-    QVERIFY(cloud->refreshNow());
-    const PaneroCloud::Entry e = cloud->entry(QStringLiteral("rclone:testcloud"));
-    QCOMPARE(e.rcloneRemote, QStringLiteral("testcloud"));
-    QCOMPARE(e.rcloneType, QStringLiteral("alias"));
-    QVERIFY(!cloud->urlFor(e).isValid());
-
-    QSignalSpy mounted(cloud, &PaneroCloud::mounted);
-    QSignalSpy failed(cloud, &PaneroCloud::mountFailed);
-    cloud->mount(e);
-    QVERIFY(cloud->isMounting(e.id));
-    QTRY_VERIFY_WITH_TIMEOUT(mounted.count() == 1 || failed.count() == 1, 20000);
-    if (!failed.isEmpty())
-        QFAIL(qPrintable(failed.first().at(1).toString()));
-    const QUrl localUrl = mounted.first().at(1).toUrl();
-    const QString dir = localUrl.toLocalFile();
-    QCOMPARE(dir, m_tmp.path() + QStringLiteral("/run/panero-cloud/testcloud"));
-    QVERIFY(cloud->isMounted(e.id));
-    QCOMPARE(cloud->urlFor(cloud->entry(e.id)), localUrl);
-
-    // contents visible through the mount
-    QFile through(dir + QStringLiteral("/hello.txt"));
-    QVERIFY(through.open(QIODevice::ReadOnly));
-    QCOMPARE(through.readAll(), QByteArray("hello from the cloud\n"));
-    through.close();
-    QVERIFY(QFileInfo(dir + QStringLiteral("/sub")).isDir());
-
-    // writing through the mount reaches the "cloud" (VFS cache uploads after close)
-    QFile written(dir + QStringLiteral("/new.txt"));
-    QVERIFY(written.open(QIODevice::WriteOnly));
-    written.write("written via panero\n");
-    written.close();
-    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(data + QStringLiteral("/new.txt")), 15000);
-
-    // mounting again just reports the existing mount
-    cloud->mount(e);
-    QCOMPARE(mounted.count(), 2);
-
-    QSignalSpy unmounted(cloud, &PaneroCloud::unmounted);
-    cloud->unmount(e.id);
-    QCOMPARE(unmounted.count(), 1);
-    QVERIFY(!cloud->isMounted(e.id));
-    QVERIFY(!QFileInfo::exists(dir)); // mount point removed
-    QFile mi(QStringLiteral("/proc/self/mountinfo"));
-    QVERIFY(mi.open(QIODevice::ReadOnly));
-    QVERIFY(!PaneroCloudUtils::parseMountInfo(mi.readAll()).contains(dir));
-    QFile copied(data + QStringLiteral("/new.txt"));
-    QVERIFY(copied.open(QIODevice::ReadOnly));
-    QCOMPARE(copied.readAll(), QByteArray("written via panero\n"));
-
-    // unmountAll() (shutdown path) with a live mount
-    cloud->mount(e);
-    QTRY_COMPARE_WITH_TIMEOUT(mounted.count(), 3, 20000);
-    cloud->unmountAll();
-    QVERIFY(!cloud->isMounted(e.id));
-    QVERIFY(!QFileInfo::exists(dir));
+    QCOMPARE(parseRcloneVersion(QStringLiteral("rclone v1.76.0\n- os/version: ubuntu 24.04\n")), QStringLiteral("1.76.0"));
+    QCOMPARE(parseRcloneVersion(QStringLiteral("rclone v1.60.1-DEV\n")), QStringLiteral("1.60.1"));
+    QVERIFY(parseRcloneVersion(QStringLiteral("garbage")).isEmpty());
+    QVERIFY(compareVersions(QStringLiteral("1.60.1"), QStringLiteral("1.75.2")) < 0);
+    QVERIFY(compareVersions(QStringLiteral("1.75.2"), QStringLiteral("1.75.2")) == 0);
+    QVERIFY(compareVersions(QStringLiteral("1.76.0"), QStringLiteral("1.75.2")) > 0);
+    QVERIFY(compareVersions(QStringLiteral("1.100.0"), QStringLiteral("1.99.9")) > 0);
 }
 
-void PaneroCloudTest::rcloneMountFailure()
+void PaneroCloudTest::encryptedConfigDetection()
 {
-    if (!m_haveRclone)
-        QSKIP("rclone not installed");
-    if (!PaneroCloud::fuseAvailable())
-        QSKIP("FUSE not usable here");
-    PaneroCloud::Entry bogus;
-    bogus.type = QStringLiteral("rclone");
-    bogus.id = QStringLiteral("rclone:nosuchremote");
-    bogus.rcloneRemote = QStringLiteral("nosuchremote");
-    PaneroCloud *cloud = PaneroCloud::instance();
-    QSignalSpy failed(cloud, &PaneroCloud::mountFailed);
-    cloud->mount(bogus);
-    QTRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 20000);
-    const QString message = failed.first().at(1).toString();
-    qDebug() << "mountFailed message:" << message;
-    QVERIFY(!message.isEmpty());
-    QVERIFY(!cloud->isMounting(bogus.id));
-    QVERIFY(!QFileInfo::exists(PaneroCloudUtils::mountBaseDir() + QStringLiteral("/nosuchremote")));
+    QVERIFY(isEncryptedRcloneConfig("# Encrypted rclone configuration File\n\nRCLONE_ENCRYPT_V0:\nabc"));
+    QVERIFY(!isEncryptedRcloneConfig("[gd]\ntype = drive\ntoken = {}\n"));
+    QVERIFY(!isEncryptedRcloneConfig(""));
+    QVERIFY(!isEncryptedRcloneConfig("# comment\n[x]\nRCLONE_ENCRYPT_V0:\n"));
 }
 
-void PaneroCloudTest::rcloneRemove()
+void PaneroCloudTest::redaction()
 {
-    if (!m_haveRclone)
-        QSKIP("rclone not installed");
-    QVERIFY(runRclone({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("gone"), QStringLiteral("memory")}));
-    PaneroCloud *cloud = PaneroCloud::instance();
-    QVERIFY(cloud->refreshNow());
-    PaneroCloud::Entry e = cloud->entry(QStringLiteral("rclone:gone"));
-    QCOMPARE(e.rcloneType, QStringLiteral("memory"));
-    cloud->setLabel(e, QStringLiteral("Gone Drive"));
-    QCOMPARE(cloud->entry(e.id).label, QStringLiteral("Gone Drive"));
-    QString error;
-    QVERIFY2(cloud->removeEntry(cloud->entry(e.id), &error), qPrintable(error));
-    QVERIFY(cloud->refreshNow());
-    QVERIFY(!cloud->remoteNames().contains(QStringLiteral("gone")));
-    QVERIFY(cloud->remoteNames().contains(QStringLiteral("testcloud")));
+    const QString token = QStringLiteral("{\"access_token\":\"ya29.SECRETVALUE\",\"token_type\":\"Bearer\",\"refresh_token\":\"1//REFRESHSECRET\"}");
+    QString r = redactSecrets(QStringLiteral("token = ") + token);
+    QVERIFY(!r.contains(QLatin1String("SECRETVALUE")));
+    QVERIFY(!r.contains(QLatin1String("REFRESHSECRET")));
+    r = redactSecrets(token);
+    QVERIFY(!r.contains(QLatin1String("SECRETVALUE")));
+    QVERIFY(r.contains(QLatin1String("\"token_type\":\"Bearer\"")));
+    r = redactSecrets(QStringLiteral("Authorization: Bearer abc.def-ghi"));
+    QVERIFY(!r.contains(QLatin1String("abc.def")));
+    r = redactSecrets(QStringLiteral("GET http://127.0.0.1:53682/?code=4/0AXcode&state=xyz123&hostname=api.pcloud.com"));
+    QVERIFY(!r.contains(QLatin1String("4/0AXcode")));
+    QVERIFY(!r.contains(QLatin1String("xyz123")));
+    QVERIFY(r.contains(QLatin1String("hostname=api.pcloud.com")));
+    r = redactSecrets(QStringLiteral("[nc]\ntype = webdav\npass = AbCdObscured\nuser = me\n"));
+    QVERIFY(!r.contains(QLatin1String("AbCdObscured")));
+    QVERIFY(r.contains(QLatin1String("user = me")));
+    r = redactSecrets(QStringLiteral("Error: Auth state doesn't match\nDescription: Expecting \"p4jnGXaA5H3\" got \"\""));
+    QVERIFY(!r.contains(QLatin1String("p4jnGXaA5H3")));
+    // rclone error summaries are redacted too
+    QVERIFY(!PaneroCloudUtils::rcloneErrorSummary(QStringLiteral("2026/11/21 ERROR : failed: token = {\"access_token\":\"LEAK\"}\n")).contains(QLatin1String("LEAK")));
 }
 
-// Manual check that a crashed Panero leaves no rclone mount behind (PR_SET_PDEATHSIG):
-// PANERO_CLOUD_TEST_HOLD=1 panerocloudtest holdMountForCrashCheck, then kill -9 the test.
-void PaneroCloudTest::holdMountForCrashCheck()
+void PaneroCloudTest::pcloudHosts()
 {
-    if (qEnvironmentVariableIsEmpty("PANERO_CLOUD_TEST_HOLD"))
-        QSKIP("manual check, set PANERO_CLOUD_TEST_HOLD=1");
-    if (!m_haveRclone)
-        QSKIP("rclone not installed");
-    const QString data = m_tmp.path() + QStringLiteral("/holddata");
-    QDir().mkpath(data);
-    QVERIFY(runRclone({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("hold"), QStringLiteral("alias"),
-                       QStringLiteral("remote"), data}));
-    PaneroCloud *cloud = PaneroCloud::instance();
-    QVERIFY(cloud->refreshNow());
-    QSignalSpy mounted(cloud, &PaneroCloud::mounted);
-    cloud->mount(cloud->entry(QStringLiteral("rclone:hold")));
-    QTRY_COMPARE_WITH_TIMEOUT(mounted.count(), 1, 20000);
-    qInfo("MOUNTED %s pid %lld", qPrintable(cloud->mountPath(QStringLiteral("rclone:hold"))), QCoreApplication::applicationPid());
-    QTest::qWait(60000);
+    QVERIFY(isAllowedPcloudHost(QStringLiteral("api.pcloud.com")));
+    QVERIFY(isAllowedPcloudHost(QStringLiteral("eapi.pcloud.com")));
+    QVERIFY(!isAllowedPcloudHost(QStringLiteral("evil.example")));
+    QVERIFY(!isAllowedPcloudHost(QStringLiteral("pcloud.com")));
+    QVERIFY(!isAllowedPcloudHost(QStringLiteral("api.pcloud.com.evil.example")));
+    QVERIFY(!isAllowedPcloudHost(QStringLiteral("evilpcloud.com")));
+    QVERIFY(!isAllowedPcloudHost(QStringLiteral("api.pcloud.com/x")));
+}
+
+void PaneroCloudTest::iniAndDump()
+{
+    QCOMPARE(iniValue(QStringLiteral("[p]\ntype = pcloud\nhostname = eapi.pcloud.com\ntoken = XXX\n"), QStringLiteral("hostname")),
+             QStringLiteral("eapi.pcloud.com"));
+    QVERIFY(iniValue(QStringLiteral("[p]\ntype = pcloud\n"), QStringLiteral("hostname")).isEmpty());
+    QJsonObject remotes;
+    QJsonObject gd;
+    gd.insert(QStringLiteral("type"), QStringLiteral("drive"));
+    gd.insert(QStringLiteral("token"), QStringLiteral("{\"access_token\":\"a\"}"));
+    gd.insert(QStringLiteral("scope"), QStringLiteral("drive"));
+    remotes.insert(QStringLiteral("gd"), gd);
+    QJsonObject bad;
+    bad.insert(QStringLiteral("type"), QStringLiteral("x\ninjected = 1"));
+    remotes.insert(QStringLiteral("bad]name"), bad);
+    const QByteArray ini = rcloneIniFromDump(remotes);
+    QVERIFY(ini.startsWith("[gd]\ntype = drive\n"));
+    QVERIFY(ini.contains("token = {\"access_token\":\"a\"}\n"));
+    QVERIFY(!ini.contains("bad]name"));
+    QVERIFY(!ini.contains("injected"));
+}
+
+void PaneroCloudTest::oneDriveScopes()
+{
+    QCOMPARE(PaneroCloudUtils::oneDriveScopes(false, false), QStringLiteral("Files.Read Files.ReadWrite offline_access"));
+    QCOMPARE(PaneroCloudUtils::oneDriveScopes(true, false), QStringLiteral("Files.Read offline_access"));
+    QVERIFY(PaneroCloudUtils::oneDriveScopes(false, true).contains(QLatin1String("Files.ReadWrite.All")));
+    QVERIFY(!PaneroCloudUtils::oneDriveScopes(false, true).contains(QLatin1String("Sites")));
+    QCOMPARE(PaneroCloudSetup::oauthOptions(QStringLiteral("drive"), true, false), QStringList{QStringLiteral("scope=drive.readonly")});
+    QCOMPARE(PaneroCloudSetup::oauthOptions(QStringLiteral("drive"), false, false), QStringList{QStringLiteral("scope=drive")});
+    const QStringList od = PaneroCloudSetup::oauthOptions(QStringLiteral("onedrive"), false, false);
+    QVERIFY(od.contains(QStringLiteral("disable_site_permission=true")));
+    QVERIFY(od.contains(QStringLiteral("access_scopes=Files.Read Files.ReadWrite offline_access")));
+    QVERIFY(PaneroCloudSetup::oauthOptions(QStringLiteral("dropbox"), true, true).isEmpty());
+    QVERIFY(PaneroCloudSetup::accessDescription(QStringLiteral("drive"), false, false).contains(QLatin1String("e-mail")));
+}
+
+void PaneroCloudTest::passwordsAndAddresses()
+{
+    QVERIFY(PaneroCloudSetup::passwordProblem(QStringLiteral("good pass")).isEmpty());
+    QVERIFY(!PaneroCloudSetup::passwordProblem(QString()).isEmpty());
+    QVERIFY(!PaneroCloudSetup::passwordProblem(QStringLiteral(" lead")).isEmpty());
+    QVERIFY(!PaneroCloudSetup::passwordProblem(QStringLiteral("trail ")).isEmpty());
+    QVERIFY(!PaneroCloudSetup::passwordProblem(QStringLiteral("two\nlines")).isEmpty());
+    QCOMPARE(PaneroCloudSetup::webDavAddress(QStringLiteral("cloud.example.com/"), QStringLiteral("nextcloud"), QStringLiteral("anna b")),
+             QStringLiteral("https://cloud.example.com/remote.php/dav/files/anna%20b"));
+    QCOMPARE(PaneroCloudSetup::webDavAddress(QStringLiteral("https://o.example.com"), QStringLiteral("owncloud"), QStringLiteral("x")),
+             QStringLiteral("https://o.example.com/remote.php/webdav"));
+    QCOMPARE(PaneroCloudSetup::webDavAddress(QStringLiteral("https://d.example.com/dav"), QStringLiteral("other"), QStringLiteral("x")),
+             QStringLiteral("https://d.example.com/dav"));
+}
+
+void PaneroCloudTest::offlineCacheFiles()
+{
+    QCOMPARE(vfsCacheFile(QStringLiteral("/c/gd"), QStringLiteral("gd"), QStringLiteral("Docs/a.txt")), QStringLiteral("/c/gd/vfs/gd/Docs/a.txt"));
+    QVERIFY(vfsCacheFile(QStringLiteral("/c/gd"), QStringLiteral("gd"), QStringLiteral("../../etc/passwd")).isEmpty());
+    QCOMPARE(aliasCacheSubPath(QStringLiteral("/srv/data/")), QStringLiteral("local/srv/data"));
+    QCOMPARE(aliasCacheSubPath(QStringLiteral("gd:Work/Docs")), QStringLiteral("gd/Work/Docs"));
+    QCOMPARE(aliasCacheSubPath(QStringLiteral("gd:")), QStringLiteral("gd"));
+    // a sparse file (partly downloaded) is not "available"; a full one is
+    const QString sparse = m_tmp.path() + QStringLiteral("/sparse.bin");
+    QFile f(sparse);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write("head");
+    QVERIFY(f.resize(4 * 1024 * 1024));
+    f.close();
+    QVERIFY(!isFullyCached(sparse, 4 * 1024 * 1024));
+    const QString full = m_tmp.path() + QStringLiteral("/full.bin");
+    QFile g(full);
+    QVERIFY(g.open(QIODevice::WriteOnly));
+    g.write(QByteArray(300000, 'x'));
+    g.close();
+    QVERIFY(isFullyCached(full, 300000));
+    QVERIFY(!isFullyCached(full, 300001));
+    QVERIFY(!isFullyCached(m_tmp.path() + QStringLiteral("/missing"), 1));
+    QCOMPARE(safeFileName(QStringLiteral("../x/y")), QStringLiteral("%2E.%2Fx%2Fy"));
+    QCOMPARE(safeFileName(QStringLiteral("gd")), QStringLiteral("gd"));
+    QCOMPARE(safeFileName(QStringLiteral("..")), QStringLiteral("%2E."));
+    QVERIFY(safeFileName(QStringLiteral(".x")) != safeFileName(QStringLiteral("_x")));
+    QVERIFY(safeFileName(QStringLiteral("a b")) != safeFileName(QStringLiteral("a_b")));
+    QVERIFY(!safeFileName(QStringLiteral("a/b")).contains(QLatin1Char('/')));
+}
+
+void PaneroCloudTest::revokeRequests()
+{
+    using namespace PaneroCloudRevoke;
+    QJsonObject gd;
+    gd.insert(QStringLiteral("token"), QStringLiteral("{\"access_token\":\"AT\",\"refresh_token\":\"1//RT\"}"));
+    Request r;
+    QVERIFY(buildRequest(QStringLiteral("drive"), gd, QString(), &r));
+    QCOMPARE(r.url, QUrl(QStringLiteral("https://oauth2.googleapis.com/revoke")));
+    QCOMPARE(r.method, QByteArray("POST"));
+    QCOMPARE(r.body, QByteArray("token=1%2F%2FRT"));
+
+    QVERIFY(buildRequest(QStringLiteral("dropbox"), gd, QString(), &r));
+    QCOMPARE(r.url, QUrl(QStringLiteral("https://api.dropboxapi.com/2/auth/token/revoke")));
+    QVERIFY(r.headers.contains(qMakePair(QByteArrayLiteral("Authorization"), QByteArrayLiteral("Bearer AT"))));
+    QVERIFY(r.headers.contains(qMakePair(QByteArrayLiteral("Content-Type"), QByteArrayLiteral("application/json"))));
+    QCOMPARE(r.body, QByteArray("null"));
+
+    QVERIFY(buildRequest(QStringLiteral("box"), gd, QStringLiteral("BOXSECRET"), &r));
+    QCOMPARE(r.url, QUrl(QStringLiteral("https://api.box.com/oauth2/revoke")));
+    QVERIFY(r.body.contains("client_id=d0374ba6pgmaguie02ge15sv1mllndho"));
+    QVERIFY(r.body.contains("client_secret=BOXSECRET"));
+    QVERIFY(r.body.contains("token=1%2F%2FRT"));
+    QVERIFY(!buildRequest(QStringLiteral("box"), gd, QString(), &r)); // no secret, no request
+
+    QJsonObject pc = gd;
+    QVERIFY(buildRequest(QStringLiteral("pcloud"), pc, QString(), &r));
+    QCOMPARE(r.url, QUrl(QStringLiteral("https://api.pcloud.com/logout")));
+    QCOMPARE(r.method, QByteArray("GET"));
+    pc.insert(QStringLiteral("hostname"), QStringLiteral("eapi.pcloud.com"));
+    QVERIFY(buildRequest(QStringLiteral("pcloud"), pc, QString(), &r));
+    QCOMPARE(r.url.host(), QStringLiteral("eapi.pcloud.com"));
+    pc.insert(QStringLiteral("hostname"), QStringLiteral("evil.example"));
+    QString why;
+    QVERIFY(!buildRequest(QStringLiteral("pcloud"), pc, QString(), &r, &why)); // never send a token to a foreign host
+    QVERIFY(!why.isEmpty());
+
+    QVERIFY(!buildRequest(QStringLiteral("onedrive"), gd, QString(), &r));
+    QVERIFY(!buildRequest(QStringLiteral("drive"), QJsonObject(), QString(), &r));
+
+    QVERIFY(responseConfirmsRevocation(QStringLiteral("drive"), 200, QByteArray()));
+    QVERIFY(!responseConfirmsRevocation(QStringLiteral("drive"), 400, QByteArray()));
+    QVERIFY(responseConfirmsRevocation(QStringLiteral("pcloud"), 200, "{\"result\":0,\"auth_deleted\":true}"));
+    QVERIFY(!responseConfirmsRevocation(QStringLiteral("pcloud"), 200, "{\"result\":2000,\"error\":\"Log in failed.\"}"));
+
+    QCOMPARE(manageUrl(QStringLiteral("onedrive"), QJsonObject()), QUrl(QStringLiteral("https://account.live.com/consent/Manage")));
+    QJsonObject biz;
+    biz.insert(QStringLiteral("drive_type"), QStringLiteral("business"));
+    QCOMPARE(manageUrl(QStringLiteral("onedrive"), biz), QUrl(QStringLiteral("https://myapps.microsoft.com")));
+    QJsonObject nc;
+    nc.insert(QStringLiteral("vendor"), QStringLiteral("nextcloud"));
+    nc.insert(QStringLiteral("url"), QStringLiteral("https://cloud.example.com/remote.php/dav/files/anna"));
+    QCOMPARE(manageUrl(QStringLiteral("webdav"), nc), QUrl(QStringLiteral("https://cloud.example.com/index.php/settings/user/security")));
+}
+
+void PaneroCloudTest::identityRequests()
+{
+    using namespace PaneroCloudRevoke;
+    QJsonObject cfg;
+    cfg.insert(QStringLiteral("token"), QStringLiteral("{\"access_token\":\"AT\"}"));
+    Request r;
+    QVERIFY(buildIdentityRequest(QStringLiteral("onedrive"), cfg, &r));
+    QCOMPARE(r.url.host(), QStringLiteral("graph.microsoft.com"));
+    QCOMPARE(r.url.scheme(), QStringLiteral("https"));
+    QVERIFY(buildIdentityRequest(QStringLiteral("drive"), cfg, &r));
+    QCOMPARE(r.url.host(), QStringLiteral("www.googleapis.com"));
+    QVERIFY(buildIdentityRequest(QStringLiteral("dropbox"), cfg, &r));
+    QCOMPARE(r.body, QByteArray("null"));
+    cfg.insert(QStringLiteral("hostname"), QStringLiteral("evil.example"));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("pcloud"), cfg, &r));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("webdav"), cfg, &r));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("drive"), QJsonObject(), &r));
+    QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","email":"t@example.com"}}})"),
+             QStringLiteral("Test User <t@example.com>"));
+    QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","id":"abc"}}})"),
+             QStringLiteral("Test User (ID abc)"));
+    QCOMPARE(parseIdentity(QStringLiteral("drive"), R"({"user":{"displayName":"A B","emailAddress":"a@gmail.com"}})"),
+             QStringLiteral("A B <a@gmail.com>"));
+    QCOMPARE(parseIdentity(QStringLiteral("dropbox"), R"({"name":{"display_name":"D"},"email":"d@x.org"})"), QStringLiteral("D <d@x.org>"));
+    QCOMPARE(parseIdentity(QStringLiteral("pcloud"), R"({"result":0,"email":"p@x.org"})"), QStringLiteral("p@x.org"));
+    QVERIFY(parseIdentity(QStringLiteral("pcloud"), R"({"result":2000})").isEmpty());
+    QVERIFY(parseIdentity(QStringLiteral("box"), "not json").isEmpty());
+}
+
+void PaneroCloudTest::callbackPort()
+{
+    QString why;
+    QTcpServer squatter;
+    if (!squatter.listen(QHostAddress::LocalHost, PaneroCloudSetup::CALLBACK_PORT))
+        QSKIP("port 53682 is in use on this machine");
+    QVERIFY(!PaneroCloudSetup::callbackPortFree(&why));
+    QVERIFY(why.contains(QLatin1String("53682")));
+    squatter.close();
+    QTcpServer squatter6;
+    if (squatter6.listen(QHostAddress::LocalHostIPv6, PaneroCloudSetup::CALLBACK_PORT)) {
+        QVERIFY(!PaneroCloudSetup::callbackPortFree(&why));
+        squatter6.close();
+    }
+    QVERIFY2(PaneroCloudSetup::callbackPortFree(&why), qPrintable(why));
 }
 
 QTEST_GUILESS_MAIN(PaneroCloudTest)

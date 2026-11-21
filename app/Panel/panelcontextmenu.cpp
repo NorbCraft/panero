@@ -45,6 +45,7 @@
 #include "../FileSystem/filesystem.h"
 #include "../FileSystem/krtrashhandler.h"
 #include "../MountMan/kmountman.h"
+#include "../Cloud/panerooffline.h"
 #include "../UserAction/useractionpopupmenu.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
@@ -331,6 +332,24 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- copy/paste
     addSeparator();
+    // Panero: offline files of cloud drives (R10)
+    if (!multipleSelections && file->isDir() && file->getUrl().isLocalFile()) {
+        QString remote, rel;
+        bool inMirror = false;
+        PaneroOffline *offline = PaneroOffline::instance();
+        if (offline->cloudPath(file->getUrl().toLocalFile(), &remote, &rel, &inMirror) && !rel.isEmpty()) {
+            const QString pin = offline->pinFor(remote, rel);
+            if (pin.isNull()) {
+                if (!inMirror)
+                    addAction(Icon("folder-download"), i18n("Keep on This Device"))->setData(QVariant(CLOUD_KEEP_ID));
+            } else if (pin == rel) {
+                addAction(Icon("view-refresh"), i18n("Synchronise Now"))->setData(QVariant(CLOUD_SYNC_ID));
+                addAction(Icon("edit-clear"), i18n("Free Up Space"))->setData(QVariant(CLOUD_FREE_ID));
+            }
+            addSeparator();
+        }
+    }
+
     addAction(panel->gui->actions()->actCut);
     addAction(panel->gui->actions()->actCopy);
     addAction(panel->gui->actions()->actPaste);
@@ -451,6 +470,30 @@ void PanelContextMenu::performAction(int id)
         for (const QUrl &url : urls)
             paths << url.toDisplayString(QUrl::PreferLocalFile | QUrl::StripTrailingSlash);
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
+        break;
+    }
+    case CLOUD_KEEP_ID :
+    case CLOUD_FREE_ID :
+    case CLOUD_SYNC_ID : {
+        QString remote, rel;
+        PaneroOffline *offline = PaneroOffline::instance();
+        if (!singleURL.isLocalFile() || !offline->cloudPath(singleURL.toLocalFile(), &remote, &rel))
+            break;
+        if (id == CLOUD_KEEP_ID) {
+            QString error;
+            if (!offline->pin(remote, rel, &error))
+                KMessageBox::error(this, error, i18n("Keep on This Device"));
+        } else if (id == CLOUD_SYNC_ID) {
+            offline->syncNow(remote, rel);
+        } else {
+            const auto answer = KMessageBox::questionTwoActions(
+                this, i18n("<p>Free up space for <b>%1</b>?</p><p>Changes are uploaded first, then the local copy is deleted. The folder "
+                           "stays in the cloud and is downloaded again when you open files.</p>", rel.toHtmlEscaped()),
+                i18n("Free Up Space"), KGuiItem(i18n("Free Up Space"), QStringLiteral("edit-clear")), KStandardGuiItem::cancel());
+            if (answer == KMessageBox::PrimaryAction && offline->unpin(this, remote, rel))
+                panel->func->refresh();
+        }
+        panel->func->refresh();
         break;
     }
     case TERMINAL_HERE_ID : {

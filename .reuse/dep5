@@ -92,3 +92,8 @@ Copyright: 2013-2022 Cole Bemis (portions, as part of Feather)
 License: ISC
 Comment: Lucide icons (lucide-static 0.460.0, https://lucide.dev), recoloured
  for light/dark and renamed to freedesktop icon names (see map.txt).
+
+Files: dev/rclone/COPYING
+Copyright: 2012 Nick Craig-Wood
+License: MIT
+Comment: rclone's license, shipped with Panero's bundled rclone (dev/rclone/README.md).

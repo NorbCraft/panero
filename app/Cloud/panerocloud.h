@@ -26,9 +26,9 @@ class QWidget;
  * connections (KIO URLs: WebDAV, SFTP, SMB, FTP) for the sidebar "Cloud"
  * section (D-014 C2 + C3).
  *
- * - rclone remotes come from the user's normal rclone configuration
- *   ($RCLONE_CONFIG or ~/.config/rclone/rclone.conf), so remotes created with
- *   rclone elsewhere show up as well.
+ * - rclone remotes live in Panero's own encrypted rclone configuration
+ *   (PaneroRclone, dev/CLOUD-SECURITY-AUDIT.md); the user's own rclone setup
+ *   is never read or changed (except by an explicit import).
  * - Server connections are stored in panerorc, group [Panero Cloud]
  *   (Servers / Labels). Passwords are never stored by Panero: KIO asks and can
  *   keep them in KWallet.
@@ -56,13 +56,14 @@ public:
     void setConfig(KSharedConfigPtr config);
 
     // ---- rclone availability --------------------------------------------
-    /// rclone is found in PATH.
+    /// Panero's rclone is installed and recent enough.
     static bool rcloneAvailable();
     static QString rcloneProgram();
     /// fusermount3 or fusermount is found (needed by `rclone mount`).
     static bool fuseAvailable();
-    /// Makes sure rclone (and fuse3) are installed, offering to install the
-    /// missing packages via PackageKit. True when everything is available.
+    /// Makes sure Panero's rclone, fuse3 and the encrypted configuration
+    /// (key in the keyring) are ready, offering to install fuse3 via
+    /// PackageKit. Shows what is wrong otherwise. True when ready.
     bool ensureRclone(QWidget *parent);
 
     // ---- entries ----------------------------------------------------------
@@ -83,8 +84,15 @@ public:
     /// Servers: removed from the config. rclone: unmounted and deleted with
     /// `rclone config delete` (the caller confirms first, see confirmAndRemove()).
     bool removeEntry(const Entry &entry, QString *error = nullptr);
-    /// Asks "Remove <label>?" and removes the entry. True when removed.
+    /// Asks "Remove <label>?", then signs out: local copies are synchronised
+    /// (and deleted per setting), the token is revoked at the provider where
+    /// possible, the remote and its cache are deleted. True when removed.
     bool confirmAndRemove(QWidget *parent, const Entry &entry);
+    /// Signs out of every cloud drive (one confirmation for all).
+    void signOutAll(QWidget *parent);
+
+    /// Mount folders of the mounted remotes (remote name -> folder).
+    QHash<QString, QString> mountDirs() const;
 
     // ---- opening ----------------------------------------------------------
     /// Server: its KIO url. rclone: the local mount url if mounted, else an invalid url

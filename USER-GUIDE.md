@@ -80,17 +80,16 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   hidden folders are shown.
 - **Cloud**: your cloud drives and servers (can be switched off in Quick
   Settings). The **+** button offers:
-  - **Add Cloud...**: Google Drive, OneDrive, Dropbox, pCloud, Box, MEGA,
-    Nextcloud/WebDAV. Panero uses the free tool *rclone*; if it is not
-    installed, Panero offers to install it (your system asks for authorisation).
-    For Google, Microsoft, Dropbox, pCloud and Box you sign in in your web
-    browser; then the drive appears in the list.
+  - **Add Cloud...**: Google Drive, OneDrive, Dropbox, pCloud, Box,
+    Nextcloud/WebDAV, **Import from rclone** and **Other services** (rclone's
+    own setup in a terminal). See *Cloud sign-in and safety* below.
   - **Connect to Server...**: Nextcloud/ownCloud or other WebDAV servers, SFTP,
     Windows shares/NAS (SMB) and FTP. Passwords are asked by the system when
     needed and are not stored in Panero's settings.
   - Click an entry to open it in the active panel (cloud drives connect first;
-    files are loaded on demand). Right-click: Disconnect, Remove. Cloud drives
-    are disconnected when Panero closes.
+    files are loaded on demand). Right-click: Open Offline Files, Offline
+    Files..., Disconnect, Sign Out and Remove, Sign Out of All Clouds. Cloud
+    drives are disconnected when Panero closes.
 - Drag the handles between Pinned, Cloud and Folders to give a part more room.
 
 ## Views
@@ -137,6 +136,50 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   **Restore Defaults** resets them.
 - "All Settings..." opens the complete original configuration.
 
+## Cloud sign-in and safety
+
+- **Google, Microsoft, Dropbox, pCloud, Box**: you sign in on the provider's
+  own page in your web browser (check the address). Panero never sees your
+  password. Before the browser opens, Panero says what access is granted:
+  the files of the drive only, never your e-mail, contacts or calendar, and
+  never your password. Google Drive and OneDrive can be added **read-only**;
+  OneDrive asks only for your own files unless you tick *Also files others
+  shared with me*.
+- **Nextcloud/WebDAV**: use an **app password** (Nextcloud: Settings >
+  Security), which you can revoke for this computer alone.
+- **Where sign-ins are kept**: in Panero's own, **encrypted** file
+  `~/.config/panero/cloud/rclone.conf`. Its key is kept in your desktop
+  keyring (GNOME Keyring on Zorin), which unlocks when you log in. A copy of
+  your home folder or a backup does not reveal your sign-ins. Your own
+  rclone setup (`~/.config/rclone`) is not used or changed; *Import from
+  rclone* moves remotes from it into the encrypted file.
+- **Sign Out and Remove** cancels Panero's access at the provider (Google,
+  Dropbox, Box, pCloud) and deletes the sign-in and downloaded files. For
+  Microsoft, Panero opens the page where you remove the access
+  (<https://account.live.com/consent/Manage>). You can always check:
+  Google <https://myaccount.google.com/connections>, Dropbox
+  <https://www.dropbox.com/account/connected_apps>, pCloud *Settings > Linked
+  apps*.
+- Panero uses its own, up-to-date copy of the free tool *rclone* (part of the
+  package), not the older one of the system.
+- Protect the computer itself: a login password, a screen lock, and
+  full-disk encryption if it could be lost or stolen. Panero cannot protect
+  sign-ins from malicious programs that already run under your user account.
+
+## Offline files
+
+- Files you open from a cloud drive stay **available on this device**
+  (green check outline) for up to 30 days, within a size limit; others are
+  **online-only** (cloud badge) and are downloaded when you open them.
+- Right-click a folder of a cloud drive > **Keep on This Device**: the folder
+  is copied to `~/Cloud Offline/<drive>/...` (green filled check) and kept in
+  sync both ways, also without internet. Opening the folder opens the local
+  copy. **Free Up Space** uploads changes and deletes the local copy.
+  Conflicting changes are kept side by side as `*.conflict1/2` files.
+- Right-click the cloud drive > **Offline Files...**: the kept folders and
+  their state, *Synchronise Now*, the space for opened files, and whether
+  offline files are deleted when you remove the drive (default: yes).
+
 ## Comparing files (KDiff3)
 
 **F9** opens a terminal in the active panel's folder (the desktop's terminal
@@ -167,6 +210,8 @@ installed side by side.
 
 - Settings: `~/.config/panerorc`
 - Bookmarks, user actions: `~/.local/share/panero/`
+- Cloud sign-ins (encrypted): `~/.config/panero/cloud/`; downloaded cloud
+  files: `~/.cache/panero/cloud/`; folders kept offline: `~/Cloud Offline/`
 - Toolbar/menu customisations: `~/.local/share/kxmlgui5/panero/` (when a new
   version changes the toolbar, an older file is saved as `paneroui.rc.bak` and
   only your shortcuts are kept)

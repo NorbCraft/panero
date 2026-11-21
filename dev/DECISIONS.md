@@ -195,3 +195,40 @@ dev/scripts/make-mockups.sh).
 - R11: tab bar only with two or more tabs; a new-tab button next to the path.
 - R12: window title "<folder> — Panero".
 - Theme change asks to restart (live switch is unreliable, see LOG 2026-11-20).
+
+## D-016 — Safe cloud sign-in (2026-11-21, owner: "implement R1 to R10")
+
+Supersedes the rclone parts of D-014 (C3). Details and reasons:
+`dev/CLOUD-SECURITY-AUDIT.md`.
+
+- R1: Panero ships its own rclone (upstream release binary, version and
+  SHA-256 pinned in `dev/rclone/`, signature checked when pinning) as
+  `libexec/panero/rclone`; the distribution's rclone is never used; versions
+  below 1.75.2 are refused (CVE-2026-116194). Weekly `rclone-watch` workflow.
+  Owner did not pick between "bundle" and "download on demand"; the
+  recommended bundle was taken.
+- R2: Panero's own rclone configuration `~/.config/panero/cloud/rclone.conf`
+  (0700/0600), always encrypted with rclone's config encryption. The key is 32
+  random bytes in the desktop keyring (Secret Service, own minimal D-Bus client,
+  no new library) and reaches rclone only via `--password-command
+  panero-cloud-key`. No keyring -> no cloud sign-in (never a plain fallback).
+- R3: no secret in argv or environment (WebDAV password via stdin); inherited
+  RCLONE_* variables are removed.
+- R4: callback port checks (127.0.0.1 and ::1), [::1]:53682 held and forwarded
+  during sign-in, only rclone's loopback auth URL is opened, pCloud host
+  allowlist, access explained before sign-in, read-only option (Drive,
+  OneDrive), OneDrive limited to own files by default.
+- R5: Remove = revoke (Google, Dropbox, Box, pCloud) or the provider page
+  (Microsoft, Nextcloud), then delete remote and cache; Sign Out of All Clouds.
+- R6: per-remote cache below `~/.cache/panero/cloud/`; secrets redacted from
+  every rclone message shown.
+- R7: MEGA removed from the guided list (still possible via Other services).
+  Google Drive: no own-client-ID field yet (rclone's shared client still
+  answers); if Google retires it, the user can set up a client in Other
+  services or import.
+- R8: only Panero's own remotes; import from the user's plain rclone config
+  (assembled and encrypted in $XDG_RUNTIME_DIR); Other services = rclone's
+  interactive setup on the encrypted configuration.
+- R10: offline files (VFS cache with 30-day age and size limit; Keep on This
+  Device = bisync to `~/Cloud Offline/<remote>/`; Free Up Space). Offline
+  copies are deleted on sign-out by default (setting per cloud).

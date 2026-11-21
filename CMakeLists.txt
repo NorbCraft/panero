@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(panero)
 
 # Panero version (Debian mapping: 0.1.0-preview.1 -> 0.1.0~preview.1-1).
-set(VERSION "0.1.0-preview.4")
+set(VERSION "0.1.0-preview.5")
 # Upstream Krusader release this fork is based on (see dev/DECISIONS.md D-001).
 set(KRUSADER_BASE_VERSION "2.8.1")
 # Reverse-DNS application identifier derived from the project owner
@@ -36,6 +36,7 @@ find_package(Qt5 ${MIN_QT_VERSION} CONFIG REQUIRED
   Core
   Gui
   DBus
+  Network
   Widgets
   PrintSupport
   Xml

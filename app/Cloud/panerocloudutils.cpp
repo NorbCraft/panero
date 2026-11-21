@@ -7,11 +7,19 @@
 #include "panerocloudutils.h"
 
 #include <QDir>
+#include <QDirIterator>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QStandardPaths>
 
 #include <KConfigCore/KConfigGroup>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 namespace PaneroCloudUtils
 {
@@ -252,15 +260,208 @@ QStringList parseMountInfo(const QByteArray &mountinfo)
 
 QUrl parseAuthUrl(const QString &output)
 {
-    static const QRegularExpression linkRe(QStringLiteral("following link:\\s*(https?://\\S+)"));
-    QRegularExpressionMatch m = linkRe.match(output);
-    if (m.hasMatch())
-        return QUrl(m.captured(1));
-    static const QRegularExpression localRe(QStringLiteral("(http://(?:127\\.0\\.0\\.1|localhost):\\d+/auth\\S*)"));
-    m = localRe.match(output);
+    // only rclone's own helper on the loopback address, with a random state
+    static const QRegularExpression localRe(QStringLiteral("(http://127\\.0\\.0\\.1:53682/auth\\?state=[A-Za-z0-9_\\-]{8,})(?![^\\s])"));
+    const QRegularExpressionMatch m = localRe.match(output);
     if (m.hasMatch())
         return QUrl(m.captured(1));
     return QUrl();
+}
+
+QString parseRcloneVersion(const QString &output)
+{
+    static const QRegularExpression re(QStringLiteral("^rclone v(\\d+\\.\\d+\\.\\d+)"), QRegularExpression::MultilineOption);
+    const QRegularExpressionMatch m = re.match(output);
+    return m.hasMatch() ? m.captured(1) : QString();
+}
+
+int compareVersions(const QString &a, const QString &b)
+{
+    const QStringList pa = a.split(QLatin1Char('.'));
+    const QStringList pb = b.split(QLatin1Char('.'));
+    for (int i = 0; i < qMax(pa.size(), pb.size()); ++i) {
+        const int x = pa.value(i).toInt();
+        const int y = pb.value(i).toInt();
+        if (x != y)
+            return x < y ? -1 : 1;
+    }
+    return 0;
+}
+
+bool isEncryptedRcloneConfig(const QByteArray &head)
+{
+    const QList<QByteArray> lines = head.split('\n');
+    for (const QByteArray &raw : lines) {
+        const QByteArray line = raw.trimmed();
+        if (line.isEmpty() || line.startsWith('#'))
+            continue;
+        return line == "RCLONE_ENCRYPT_V0:";
+    }
+    return false;
+}
+
+QString safeFileName(const QString &name)
+{
+    if (name.isEmpty())
+        return QStringLiteral("remote");
+    QString f = QString::fromLatin1(QUrl::toPercentEncoding(name));
+    if (f.startsWith(QLatin1Char('.')))
+        f.replace(0, 1, QLatin1String("%2E"));
+    return f;
+}
+
+int dirtyCacheEntries(const QString &remoteCacheDir)
+{
+    int dirty = 0;
+    QDirIterator it(remoteCacheDir + QLatin1String("/vfsMeta"), QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QFile f(it.next());
+        if (f.size() > 1024 * 1024 || !f.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+        if (o.value(QStringLiteral("Dirty")).toBool(false))
+            ++dirty;
+    }
+    return dirty;
+}
+
+QString redactSecrets(const QString &text)
+{
+    QString s = text;
+    // JSON fields ("access_token":"...", "pass": "...")
+    static const QRegularExpression jsonRe(QStringLiteral(
+        "(\"(?:access_token|refresh_token|id_token|token|client_secret|password|pass|bearer_token|code)\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\""),
+        QRegularExpression::CaseInsensitiveOption);
+    s.replace(jsonRe, QStringLiteral("\\1\"***\""));
+    // config lines (token = {...}, pass = xyz)
+    static const QRegularExpression iniRe(QStringLiteral(
+        "^(\\s*(?:token|pass|password|client_secret|bearer_token|access_token|refresh_token|password2|session_token|secret_access_key)\\s*=\\s*).+$"),
+        QRegularExpression::CaseInsensitiveOption | QRegularExpression::MultilineOption);
+    s.replace(iniRe, QStringLiteral("\\1***"));
+    static const QRegularExpression bearerRe(QStringLiteral("(Bearer\\s+)[A-Za-z0-9._~+/=\\-]+"), QRegularExpression::CaseInsensitiveOption);
+    s.replace(bearerRe, QStringLiteral("\\1***"));
+    static const QRegularExpression authHeaderRe(QStringLiteral("(Authorization:\\s*)\\S+(\\s+\\S+)?"), QRegularExpression::CaseInsensitiveOption);
+    s.replace(authHeaderRe, QStringLiteral("\\1***"));
+    static const QRegularExpression queryRe(QStringLiteral("([?&](?:code|state|access_token|refresh_token|token|auth|password|pass)=)[^&\\s\"']+"),
+                                            QRegularExpression::CaseInsensitiveOption);
+    s.replace(queryRe, QStringLiteral("\\1***"));
+    // rclone's "Expecting \"<state>\" got \"...\"" message
+    static const QRegularExpression stateRe(QStringLiteral("(Expecting )\"[^\"]*\""));
+    s.replace(stateRe, QStringLiteral("\\1\"***\""));
+    return s;
+}
+
+bool isAllowedPcloudHost(const QString &host)
+{
+    static const QRegularExpression re(QStringLiteral("^([a-z0-9]([a-z0-9\\-]*[a-z0-9])?\\.)+pcloud\\.com$"));
+    return re.match(host).hasMatch();
+}
+
+QString iniValue(const QString &text, const QString &key)
+{
+    const QStringList lines = text.split(QLatin1Char('\n'));
+    for (const QString &raw : lines) {
+        const QString line = raw.trimmed();
+        const int eq = line.indexOf(QLatin1Char('='));
+        if (eq <= 0)
+            continue;
+        if (line.left(eq).trimmed() == key)
+            return line.mid(eq + 1).trimmed();
+    }
+    return QString();
+}
+
+QByteArray rcloneIniFromDump(const QJsonObject &remotes)
+{
+    QByteArray out;
+    for (auto it = remotes.constBegin(); it != remotes.constEnd(); ++it) {
+        const QString name = it.key();
+        if (name.contains(QLatin1Char('[')) || name.contains(QLatin1Char(']')) || name.contains(QLatin1Char('\n')))
+            continue;
+        out += '[' + name.toUtf8() + "]\n";
+        const QJsonObject options = it.value().toObject();
+        // type first, as rclone writes it
+        if (options.contains(QStringLiteral("type")))
+            out += "type = " + options.value(QStringLiteral("type")).toString().toUtf8() + '\n';
+        for (auto o = options.constBegin(); o != options.constEnd(); ++o) {
+            if (o.key() == QLatin1String("type"))
+                continue;
+            QString value = o.value().isString() ? o.value().toString() : QString::fromUtf8(QJsonDocument(o.value().toObject()).toJson(QJsonDocument::Compact));
+            if (o.key().contains(QLatin1Char('\n')) || value.contains(QLatin1Char('\n')) || o.key().contains(QLatin1Char('=')))
+                continue;
+            out += o.key().toUtf8() + " = " + value.toUtf8() + '\n';
+        }
+        out += '\n';
+    }
+    return out;
+}
+
+QString oneDriveScopes(bool readOnly, bool includeShared)
+{
+    QStringList scopes;
+    if (readOnly) {
+        scopes << QStringLiteral("Files.Read");
+        if (includeShared)
+            scopes << QStringLiteral("Files.Read.All");
+    } else {
+        scopes << QStringLiteral("Files.Read") << QStringLiteral("Files.ReadWrite");
+        if (includeShared)
+            scopes << QStringLiteral("Files.Read.All") << QStringLiteral("Files.ReadWrite.All");
+    }
+    scopes << QStringLiteral("offline_access");
+    return scopes.join(QLatin1Char(' '));
+}
+
+QString vfsCacheFile(const QString &remoteCacheDir, const QString &remote, const QString &relativePath)
+{
+    QString rel = QDir::cleanPath(relativePath);
+    while (rel.startsWith(QLatin1Char('/')))
+        rel.remove(0, 1);
+    if (rel == QLatin1String(".") || rel.startsWith(QLatin1String("../")) || rel == QLatin1String(".."))
+        return QString();
+    return remoteCacheDir + QLatin1String("/vfs/") + remote + (rel.isEmpty() ? QString() : QLatin1Char('/') + rel);
+}
+
+QString aliasCacheSubPath(const QString &aliasTarget)
+{
+    const QString t = aliasTarget.trimmed();
+    const int colon = t.indexOf(QLatin1Char(':'));
+    const int slash = t.indexOf(QLatin1Char('/'));
+    QString name, path;
+    if (colon > 0 && (slash < 0 || colon < slash)) {
+        name = t.left(colon);
+        path = t.mid(colon + 1);
+    } else {
+        name = QStringLiteral("local");
+        path = t;
+    }
+    path = QDir::cleanPath(path);
+    while (path.startsWith(QLatin1Char('/')))
+        path.remove(0, 1);
+    if (path == QLatin1String("."))
+        path.clear();
+    return path.isEmpty() ? name : name + QLatin1Char('/') + path;
+}
+
+bool isFullyCached(const QString &cacheFile, qint64 size)
+{
+    if (cacheFile.isEmpty())
+        return false;
+    const QByteArray path = QFile::encodeName(cacheFile);
+    struct stat st;
+    if (::stat(path.constData(), &st) != 0 || !S_ISREG(st.st_mode))
+        return false;
+    if (size <= 0)
+        return true;
+    if (st.st_size < size)
+        return false;
+    const int fd = ::open(path.constData(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+        return false;
+    const off_t hole = ::lseek(fd, 0, SEEK_HOLE);
+    ::close(fd);
+    // the end of the file counts as a hole: no earlier hole means fully downloaded
+    return hole >= 0 && hole >= off_t(size);
 }
 
 QString cleanRcloneLogLine(const QString &line)
@@ -280,14 +481,16 @@ QString rcloneErrorSummary(const QString &stderrText, int maxLines)
     QStringList out;
     const QStringList lines = stderrText.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
     for (const QString &raw : lines) {
-        if (skipRe.match(raw.trimmed()).hasMatch())
+        // rclone reports fatal errors at NOTICE level ("NOTICE: Fatal error: ...")
+        if (skipRe.match(raw.trimmed()).hasMatch() && !raw.contains(QLatin1String("Fatal error"))
+            && !raw.contains(QLatin1String("Failed to")))
             continue;
         const QString line = cleanRcloneLogLine(raw);
         if (line.startsWith(QLatin1String("Usage:")))
             break;
         if (line.isEmpty() || out.contains(line))
             continue;
-        out << line;
+        out << redactSecrets(line);
     }
     while (out.count() > maxLines)
         out.removeFirst();
@@ -301,10 +504,11 @@ QString mountBaseDir()
         if (!runtime.isEmpty())
             return runtime + QLatin1String("/panero-cloud");
     }
-    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/panero/cloud");
+    // not the cache folder (PaneroRclone::cacheBase()): a mount point must be empty
+    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/panero/mounts");
 }
 
-QString rcloneConfigPath()
+QString userRcloneConfigPath()
 {
     const QString env = qEnvironmentVariable("RCLONE_CONFIG");
     if (!env.isEmpty())
