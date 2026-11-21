@@ -48,6 +48,13 @@
 // Mark Dirs ///////////
 #define _MarkDirs       false
 // Show Hidden /////////
+// Rename Selects Extension ///
+#ifdef Q_OS_WIN
+// Windows: F2 selects the name without the extension, as in Explorer and Total Commander
+#define _RenameSelectsExtension false
+#else
+#define _RenameSelectsExtension true
+#endif
 #ifdef Q_OS_WIN
 // Windows: hidden and system files stay hidden, as in Explorer and Total Commander
 #define _ShowHidden     false

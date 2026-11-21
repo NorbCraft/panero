@@ -80,6 +80,21 @@ def wait_for(cond, timeout=10.0):
     return False
 
 
+def press_button(pid, label):
+    """Click a dialog button by its text (falls back to Enter). Returns how it was pressed."""
+    for w in windows_of(pid):
+        try:
+            for b in w.descendants(control_type='Button'):
+                if b.window_text().replace('&', '') == label:
+                    b.click_input()
+                    time.sleep(0.6)
+                    return 'clicked'
+        except Exception:  # noqa: BLE001
+            pass
+    keys('{ENTER}', 0.6)
+    return 'Enter'
+
+
 def keys(seq, pause=0.6):
     keyboard.send_keys(seq, pause=0.05, with_spaces=True)
     time.sleep(pause)
@@ -106,6 +121,7 @@ ORDER = ['..', 'docs', 'alpha.txt', 'beta.txt', 'delta.txt', 'gamma.txt', 'omega
 env = dict(os.environ)
 env['PATH'] = os.environ['PANERO_CLEAN_PATH']
 env['QT_FORCE_STDERR_LOGGING'] = '1'
+env['QT_LOGGING_RULES'] = 'kf.kio.*=true'
 APP_DIR = str(Path(EXE).parent).lower()
 WINDIR = os.environ.get('SystemRoot', r'C:\Windows').lower()
 
@@ -303,8 +319,11 @@ keys('renamed', 0.3)
 keys('{ENTER}', 0.5)
 ok = wait_for(lambda: not (LEFT / 'gamma.txt').exists()
               and ((LEFT / 'renamed.txt').exists() or (LEFT / 'renamed').exists()))
-which = 'renamed.txt (extension kept)' if (LEFT / 'renamed.txt').exists() else 'renamed (extension replaced)'
-record('F2 renames in place', ok, which if ok else '', must=True)
+record('F2 renames in place', ok, must=True)
+record('F2 keeps the extension (selects the name only, as in TC)', (LEFT / 'renamed.txt').exists(),
+       'renamed.txt' if (LEFT / 'renamed.txt').exists() else 'typed text replaced "gamma.txt" completely')
+if (LEFT / 'renamed').exists():
+    (LEFT / 'renamed').rename(LEFT / 'renamed.txt')   # keep the rest of the script on track
 shot('after-f2')
 
 # --- new folder with F7 ---------------------------------------------------------------
@@ -329,11 +348,14 @@ go_to('omega.txt')
 before = recycle_bin_names()
 keys('{F8}', 1.5)
 shot('f8-confirm')
-keys('{ENTER}', 0.5)
+how = press_button(proc.pid, 'Trash')
 gone = wait_for(lambda: not (LEFT / 'omega.txt').exists())
+time.sleep(1)
+shot('f8-result')
+errors = [w.window_text() for w in windows_of(proc.pid) if not is_main(w)]
 in_bin = wait_for(lambda: 'omega.txt' in recycle_bin_names() or
                   any(n.startswith('omega') for n in set(recycle_bin_names()) - set(before)), 8)
-record('F8 removes the file', gone, must=True)
+record('F8 removes the file', gone, f'Trash button {how}; dialogs after: {errors}', must=True)
 record('F8 sends the file to the Recycle Bin', gone and in_bin, must=True)
 shot('after-f8')
 
@@ -342,7 +364,7 @@ ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'beta.txt', 'renamed.txt']
 go_to('beta.txt')
 keys('{DELETE}', 1.5)
 shot('del-confirm')
-keys('{ENTER}', 0.5)
+press_button(proc.pid, 'Trash')
 ok = wait_for(lambda: not (LEFT / 'beta.txt').exists())
 record('Del key deletes to the Recycle Bin (TC habit)', ok and 'beta.txt' in recycle_bin_names())
 
