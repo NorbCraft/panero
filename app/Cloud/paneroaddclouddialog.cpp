@@ -86,10 +86,16 @@ public:
                 connect(s, &QTcpSocket::disconnected, s, &QObject::deleteLater);
             }
         });
-        m_server.listen(QHostAddress::LocalHostIPv6, PaneroCloudSetup::CALLBACK_PORT); // fails quietly without IPv6
+        // without IPv6 the address does not exist and the browser cannot use it either
+        m_taken = !m_server.listen(QHostAddress::LocalHostIPv6, PaneroCloudSetup::CALLBACK_PORT)
+            && m_server.serverError() == QAbstractSocket::AddressInUseError;
     }
 
+    /// Another program holds [::1]:53682: the sign-in must not start.
+    bool taken() const { return m_taken; }
+
 private:
+    bool m_taken = false;
     QTcpServer m_server;
 };
 
@@ -130,7 +136,14 @@ public:
             QDesktopServices::openUrl(m_authUrl);
         });
 
-        new LoopbackRedirector(this);
+        auto *redirector = new LoopbackRedirector(this);
+        if (redirector->taken()) {
+            m_finished = true;
+            m_error = i18n("Another program is using the sign-in port %1 on this computer (::1). Close it and try again.",
+                           QString::number(PaneroCloudSetup::CALLBACK_PORT));
+            QMetaObject::invokeMethod(this, [this]() { QDialog::reject(); }, Qt::QueuedConnection);
+            return;
+        }
         PaneroRclone::prepare(m_process, args);
         m_process.setStandardOutputFile(QProcess::nullDevice()); // never read: may contain the new config
         connect(&m_process, &QProcess::readyReadStandardError, this, [this]() {
@@ -368,7 +381,8 @@ void PaneroAddCloudDialog::providerChanged()
                                     "Jottacloud, SFTP and many more). The button opens rclone's interactive setup in a terminal; what "
                                     "you set up there is stored in Panero's encrypted storage and appears in the Cloud section.</p>"
                                     "<p>Avoid options that ask for your main account password where the service offers app passwords "
-                                    "or tokens.</p>"));
+                                    "or tokens. Do not use the menu entry that sets or removes the configuration password: Panero "
+                                    "manages it through your keyring.</p>"));
         break;
     }
 
@@ -601,6 +615,28 @@ void PaneroAddCloudDialog::connectClicked()
         if (answer == KMessageBox::PrimaryAction) {
             if (p.kind == Kind::OAuth)
                 PaneroCloudRevoke::revoke(remote, p.type);
+            PaneroCloudSetup::deleteRemote(remote);
+            cloud->refreshNow();
+            return;
+        }
+    }
+
+    if (p.kind == Kind::OAuth) {
+        // show which account was signed in: an account slipped into the sign-in
+        // by someone else would receive everything uploaded to this drive
+        QString idError;
+        const QString identity = PaneroCloudRevoke::accountIdentity(remote, p.type, &idError);
+        const QString text = identity.isEmpty()
+            ? i18n("<p>Panero could not ask %1 which account is signed in (%2).</p><p>Keep this cloud drive only if you just signed "
+                   "in with your own account in the browser.</p>",
+                   p.title.toHtmlEscaped(), idError.toHtmlEscaped())
+            : i18n("<p>Signed in to %1 as:</p><p><b>%2</b></p><p>Is this your account?</p>", p.title.toHtmlEscaped(),
+                   identity.toHtmlEscaped());
+        const auto answer = KMessageBox::questionTwoActions(this, text, i18n("Check the Account"),
+                                                            KGuiItem(i18n("Yes, Keep It"), QStringLiteral("dialog-ok")),
+                                                            KGuiItem(i18n("No, Remove It"), QStringLiteral("edit-delete")));
+        if (answer != KMessageBox::PrimaryAction) {
+            PaneroCloudRevoke::revoke(remote, p.type);
             PaneroCloudSetup::deleteRemote(remote);
             cloud->refreshNow();
             return;

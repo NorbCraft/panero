@@ -87,8 +87,14 @@ QString parseRcloneVersion(const QString &output);
 int compareVersions(const QString &a, const QString &b);
 /// True when @p head (the start of an rclone config file) is an encrypted config.
 bool isEncryptedRcloneConfig(const QByteArray &head);
-/// A remote name usable as a single folder name ('/' and leading dots replaced).
+/// A remote name as a single folder name: percent-encoded except A-Z a-z 0-9
+/// - _ . ~, and a leading '.' encoded too, so different names never share a
+/// folder and no name becomes "." or "..".
 QString safeFileName(const QString &name);
+
+/// Number of files in the remote's VFS cache that rclone has not uploaded yet
+/// ("Dirty": true in <cache>/vfsMeta). Such a cache must not be deleted.
+int dirtyCacheEntries(const QString &remoteCacheDir);
 
 /// Replaces tokens, passwords, OAuth codes and bearer values in @p text by
 /// "***" (rclone messages, before they are shown anywhere).
@@ -126,7 +132,7 @@ QString cleanRcloneLogLine(const QString &line);
 QString rcloneErrorSummary(const QString &stderrText, int maxLines = 3);
 
 /// Directory where rclone remotes get mounted:
-/// $XDG_RUNTIME_DIR/panero-cloud, else ~/.cache/panero/cloud.
+/// $XDG_RUNTIME_DIR/panero-cloud, else ~/.cache/panero/mounts.
 QString mountBaseDir();
 
 /// The user's own rclone config file (only read for "Import"): $RCLONE_CONFIG,

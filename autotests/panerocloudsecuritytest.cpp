@@ -36,6 +36,7 @@
 #include <QPushButton>
 #include <QDir>
 #include <QDirIterator>
+#include <KConfigCore/KConfigGroup>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -530,6 +531,39 @@ void PaneroCloudSecurityTest::mountAndOfflineFiles()
     QVERIFY(QFileInfo::exists(data + QStringLiteral("/docs/made-offline.txt")));
     QVERIFY(QFileInfo::exists(mirror + QStringLiteral("/made-in-cloud.txt")));
 
+    // review finding 1: when bisync loses its state, nothing is resynced
+    // automatically (a resync would let the cloud overwrite local edits)
+    QFile edit(mirror + QStringLiteral("/a.txt"));
+    QVERIFY(edit.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    edit.write("local edit that must survive\n");
+    edit.close();
+    {
+        QDirIterator lst(PaneroRclone::cacheDir(QStringLiteral("lc")) + QStringLiteral("/bisync"), {QStringLiteral("*.lst*")}, QDir::Files,
+                         QDirIterator::Subdirectories);
+        int removed = 0;
+        while (lst.hasNext())
+            removed += QFile::remove(lst.next()) ? 1 : 0;
+        QVERIFY(removed > 0);
+    }
+    offline->syncNow(QStringLiteral("lc"), QStringLiteral("docs"));
+    QTRY_VERIFY_WITH_TIMEOUT(!offline->isBusy(QStringLiteral("lc")), 60000);
+    st = offline->status(QStringLiteral("lc"), QStringLiteral("docs"));
+    QVERIFY2(st.needsRepair, qPrintable(st.error));
+    QVERIFY(edit.open(QIODevice::ReadOnly));
+    QCOMPARE(edit.readAll(), QByteArray("local edit that must survive\n"));
+    edit.close();
+    QString blockingError;
+    QVERIFY(!offline->syncAllBlocking(QStringLiteral("lc"), &blockingError)); // sign-out/unpin see the problem
+    // a repair keeps the newer local edit and uploads it
+    offline->repair(QStringLiteral("lc"), QStringLiteral("docs"));
+    QTRY_VERIFY_WITH_TIMEOUT(!offline->isBusy(QStringLiteral("lc")), 60000);
+    st = offline->status(QStringLiteral("lc"), QStringLiteral("docs"));
+    QVERIFY2(st.error.isEmpty() && !st.needsRepair, qPrintable(st.error));
+    QFile up(data + QStringLiteral("/docs/a.txt"));
+    QVERIFY(up.open(QIODevice::ReadOnly));
+    QCOMPARE(up.readAll(), QByteArray("local edit that must survive\n"));
+    up.close();
+
     // a missing local copy is never synchronised as "delete everything"
     QVERIFY(QDir().rename(mirror, mirror + QStringLiteral(".moved")));
     offline->syncNow(QStringLiteral("lc"), QStringLiteral("docs"));
@@ -541,10 +575,49 @@ void PaneroCloudSecurityTest::mountAndOfflineFiles()
     // free up space: final sync, local copy deleted, cloud untouched
     QVERIFY(offline->unpin(nullptr, QStringLiteral("lc"), QStringLiteral("docs")));
     QVERIFY(!QFileInfo::exists(mirror));
-    QVERIFY(!QFileInfo::exists(root() + QStringLiteral("/home/Cloud Offline")));
+    QVERIFY(!QFileInfo::exists(PaneroOffline::mirrorRoot(QStringLiteral("lc"))));
     QVERIFY(QFileInfo::exists(data + QStringLiteral("/docs/a.txt")));
     QVERIFY(QFileInfo::exists(data + QStringLiteral("/docs/made-offline.txt")));
     QVERIFY(offline->pins(QStringLiteral("lc")).isEmpty());
+
+    // review finding 8: pin paths from the configuration cannot leave the folder
+    {
+        KConfigGroup g(KSharedConfig::openConfig(root() + QStringLiteral("/config/panerorc")), QStringLiteral("Panero Cloud Offline lc"));
+        g.writeEntry("Pins", QStringList{QStringLiteral("../.."), QStringLiteral("docs/../../x"), QStringLiteral("/etc")});
+        g.sync();
+        QVERIFY(offline->pins(QStringLiteral("lc")).isEmpty());
+        g.writeEntry("Pins", QStringList());
+        g.sync();
+        QString why;
+        QVERIFY(!offline->pin(QStringLiteral("lc"), QStringLiteral("../outside"), &why));
+    }
+
+    // review finding 3: a folder left from an earlier sign-in is never used
+    // for a new remote of the same name
+    offline->forgetRemote(QStringLiteral("lc"), false);
+    QDir().mkpath(PaneroOffline::mirrorRoot(QStringLiteral("lc")) + QStringLiteral("/photos"));
+    QFile old(PaneroOffline::mirrorRoot(QStringLiteral("lc")) + QStringLiteral("/photos/old-account.txt"));
+    QVERIFY(old.open(QIODevice::WriteOnly));
+    old.write("from the previous account\n");
+    old.close();
+    QString claimError;
+    QVERIFY(!offline->pin(QStringLiteral("lc"), QStringLiteral("photos"), &claimError));
+    QVERIFY(claimError.contains(QLatin1String("earlier sign-in")));
+    QVERIFY(!QFileInfo::exists(data + QStringLiteral("/photos/old-account.txt")));
+    QCOMPARE(int(offline->state(PaneroOffline::mirrorRoot(QStringLiteral("lc")) + QStringLiteral("/photos/old-account.txt"), 0, false)),
+             int(PaneroOffline::State::NotCloud));
+    QVERIFY(QDir(root() + QStringLiteral("/home/Cloud Offline")).removeRecursively());
+
+    // review finding 2: files not uploaded yet are detected in the cache
+    const QString meta = PaneroRclone::cacheDir(QStringLiteral("lc")) + QStringLiteral("/vfsMeta/local/x");
+    QDir().mkpath(meta);
+    QFile dirtyMeta(meta + QStringLiteral("/pending.txt"));
+    QVERIFY(dirtyMeta.open(QIODevice::WriteOnly));
+    dirtyMeta.write("{\"Size\": 3, \"Dirty\": true}");
+    dirtyMeta.close();
+    QCOMPARE(PaneroCloudUtils::dirtyCacheEntries(PaneroRclone::cacheDir(QStringLiteral("lc"))), 1);
+    QVERIFY(QFile::remove(meta + QStringLiteral("/pending.txt")));
+    QCOMPARE(PaneroCloudUtils::dirtyCacheEntries(PaneroRclone::cacheDir(QStringLiteral("lc"))), 0);
 
     // without "keep opened files", the cache goes away with the connection
     PaneroOffline::Settings s = offline->settings(QStringLiteral("lc"));
@@ -578,13 +651,15 @@ void PaneroCloudSecurityTest::importFromPlainConfig()
     QFile f(userConfig);
     QVERIFY(f.open(QIODevice::WriteOnly));
     f.write("[imp]\ntype = alias\nremote = " + QFile::encodeName(root() + QStringLiteral("/clouddata")) + "\ntoken = {\"access_token\":\""
-            + IMPORT_TOKEN + "\"}\n\n[keep]\ntype = memory\n");
+            + IMPORT_TOKEN + "\"}\n\n[keep]\ntype = memory\n\n[evilpc]\ntype = pcloud\nhostname = evil.example\ntoken = {\"access_token\":\"x\"}\n");
     f.close();
     QString error;
     const auto remotes = PaneroCloudSetup::listUserRemotes(&error);
-    QCOMPARE(remotes.size(), 2);
+    QCOMPARE(remotes.size(), 3);
     QStringList imported;
-    QVERIFY2(PaneroCloudSetup::importRemotes({QStringLiteral("imp"), QStringLiteral("lc")}, true, &imported, &error), qPrintable(error));
+    QVERIFY2(PaneroCloudSetup::importRemotes({QStringLiteral("imp"), QStringLiteral("lc"), QStringLiteral("evilpc")}, true, &imported, &error),
+             qPrintable(error));
+    QVERIFY(!PaneroCloud::instance()->remoteNames().contains(QStringLiteral("evilpc"))); // review finding 7
     QCOMPARE(imported, QStringList{QStringLiteral("imp")}); // "lc" is not in the user's file
     QVERIFY(PaneroRclone::configIsEncrypted());
     QVERIFY(PaneroCloud::instance()->refreshNow());

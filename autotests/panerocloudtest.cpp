@@ -55,6 +55,7 @@ private slots:
     void passwordsAndAddresses();
     void offlineCacheFiles();
     void revokeRequests();
+    void identityRequests();
     void callbackPort();
 
 private:
@@ -413,8 +414,12 @@ void PaneroCloudTest::offlineCacheFiles()
     QVERIFY(isFullyCached(full, 300000));
     QVERIFY(!isFullyCached(full, 300001));
     QVERIFY(!isFullyCached(m_tmp.path() + QStringLiteral("/missing"), 1));
-    QCOMPARE(safeFileName(QStringLiteral("../x/y")), QStringLiteral("_._x_y"));
+    QCOMPARE(safeFileName(QStringLiteral("../x/y")), QStringLiteral("%2E.%2Fx%2Fy"));
     QCOMPARE(safeFileName(QStringLiteral("gd")), QStringLiteral("gd"));
+    QCOMPARE(safeFileName(QStringLiteral("..")), QStringLiteral("%2E."));
+    QVERIFY(safeFileName(QStringLiteral(".x")) != safeFileName(QStringLiteral("_x")));
+    QVERIFY(safeFileName(QStringLiteral("a b")) != safeFileName(QStringLiteral("a_b")));
+    QVERIFY(!safeFileName(QStringLiteral("a/b")).contains(QLatin1Char('/')));
 }
 
 void PaneroCloudTest::revokeRequests()
@@ -431,7 +436,8 @@ void PaneroCloudTest::revokeRequests()
     QVERIFY(buildRequest(QStringLiteral("dropbox"), gd, QString(), &r));
     QCOMPARE(r.url, QUrl(QStringLiteral("https://api.dropboxapi.com/2/auth/token/revoke")));
     QVERIFY(r.headers.contains(qMakePair(QByteArrayLiteral("Authorization"), QByteArrayLiteral("Bearer AT"))));
-    QVERIFY(r.body.isEmpty());
+    QVERIFY(r.headers.contains(qMakePair(QByteArrayLiteral("Content-Type"), QByteArrayLiteral("application/json"))));
+    QCOMPARE(r.body, QByteArray("null"));
 
     QVERIFY(buildRequest(QStringLiteral("box"), gd, QStringLiteral("BOXSECRET"), &r));
     QCOMPARE(r.url, QUrl(QStringLiteral("https://api.box.com/oauth2/revoke")));
@@ -468,6 +474,35 @@ void PaneroCloudTest::revokeRequests()
     nc.insert(QStringLiteral("vendor"), QStringLiteral("nextcloud"));
     nc.insert(QStringLiteral("url"), QStringLiteral("https://cloud.example.com/remote.php/dav/files/anna"));
     QCOMPARE(manageUrl(QStringLiteral("webdav"), nc), QUrl(QStringLiteral("https://cloud.example.com/index.php/settings/user/security")));
+}
+
+void PaneroCloudTest::identityRequests()
+{
+    using namespace PaneroCloudRevoke;
+    QJsonObject cfg;
+    cfg.insert(QStringLiteral("token"), QStringLiteral("{\"access_token\":\"AT\"}"));
+    Request r;
+    QVERIFY(buildIdentityRequest(QStringLiteral("onedrive"), cfg, &r));
+    QCOMPARE(r.url.host(), QStringLiteral("graph.microsoft.com"));
+    QCOMPARE(r.url.scheme(), QStringLiteral("https"));
+    QVERIFY(buildIdentityRequest(QStringLiteral("drive"), cfg, &r));
+    QCOMPARE(r.url.host(), QStringLiteral("www.googleapis.com"));
+    QVERIFY(buildIdentityRequest(QStringLiteral("dropbox"), cfg, &r));
+    QCOMPARE(r.body, QByteArray("null"));
+    cfg.insert(QStringLiteral("hostname"), QStringLiteral("evil.example"));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("pcloud"), cfg, &r));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("webdav"), cfg, &r));
+    QVERIFY(!buildIdentityRequest(QStringLiteral("drive"), QJsonObject(), &r));
+    QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","email":"t@example.com"}}})"),
+             QStringLiteral("Test User <t@example.com>"));
+    QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","id":"abc"}}})"),
+             QStringLiteral("Test User"));
+    QCOMPARE(parseIdentity(QStringLiteral("drive"), R"({"user":{"displayName":"A B","emailAddress":"a@gmail.com"}})"),
+             QStringLiteral("A B <a@gmail.com>"));
+    QCOMPARE(parseIdentity(QStringLiteral("dropbox"), R"({"name":{"display_name":"D"},"email":"d@x.org"})"), QStringLiteral("D <d@x.org>"));
+    QCOMPARE(parseIdentity(QStringLiteral("pcloud"), R"({"result":0,"email":"p@x.org"})"), QStringLiteral("p@x.org"));
+    QVERIFY(parseIdentity(QStringLiteral("pcloud"), R"({"result":2000})").isEmpty());
+    QVERIFY(parseIdentity(QStringLiteral("box"), "not json").isEmpty());
 }
 
 void PaneroCloudTest::callbackPort()

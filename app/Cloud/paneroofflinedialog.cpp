@@ -7,6 +7,7 @@
 #include "paneroofflinedialog.h"
 #include "panerocloud.h"
 #include "panerooffline.h"
+#include "panerocloudutils.h"
 #include "panerorclone.h"
 
 #include <QCheckBox>
@@ -63,8 +64,12 @@ PaneroOfflineDialog::PaneroOfflineDialog(const QString &remote, const QString &l
     m_openPin = new QPushButton(QIcon::fromTheme(QStringLiteral("document-open-folder")), i18n("Open"), this);
     m_sync = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), i18n("Synchronise Now"), this);
     m_free = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-clear")), i18n("Free Up Space"), this);
+    m_repair = new QPushButton(QIcon::fromTheme(QStringLiteral("tools-wizard")), i18n("Repair..."), this);
+    m_repair->setToolTip(i18n("After an interrupted synchronisation: compares both sides again; the newer version of a file wins and "
+                              "replaced local files are kept in a backup folder."));
     pinButtons->addWidget(m_openPin);
     pinButtons->addWidget(m_sync);
+    pinButtons->addWidget(m_repair);
     pinButtons->addWidget(m_free);
     pinButtons->addStretch();
     m_clearCache = new QPushButton(QIcon::fromTheme(QStringLiteral("edit-delete")), i18n("Delete Opened Files Now"), this);
@@ -101,6 +106,20 @@ PaneroOfflineDialog::PaneroOfflineDialog(const QString &remote, const QString &l
             PaneroOffline::instance()->unpin(this, m_remote, pin);
         reload();
     });
+    connect(m_repair, &QPushButton::clicked, this, [this]() {
+        const QString pin = selectedPin();
+        if (pin.isNull())
+            return;
+        const auto answer = KMessageBox::questionTwoActions(
+            this, i18n("<p>Repair <b>%1</b>?</p><p>Both sides are compared again. Where a file differs, the newer version wins; local "
+                       "files that are replaced are kept in %2.</p>",
+                       (pin.isEmpty() ? i18n("(whole drive)") : pin).toHtmlEscaped(),
+                       (QDir::homePath() + QLatin1String("/Cloud Offline/.panero-backup")).toHtmlEscaped()),
+            i18n("Repair"), KGuiItem(i18n("Repair"), QStringLiteral("tools-wizard")), KStandardGuiItem::cancel());
+        if (answer == KMessageBox::PrimaryAction)
+            PaneroOffline::instance()->repair(m_remote, pin);
+        reload();
+    });
     connect(m_openPin, &QPushButton::clicked, this, [this]() {
         const QString pin = selectedPin();
         if (pin.isNull())
@@ -111,6 +130,14 @@ PaneroOfflineDialog::PaneroOfflineDialog(const QString &remote, const QString &l
     connect(m_clearCache, &QPushButton::clicked, this, [this]() {
         if (PaneroCloud::instance()->mountDirs().contains(m_remote)) {
             KMessageBox::information(this, i18n("Disconnect the cloud drive first."), i18n("Offline Files"));
+            return;
+        }
+        const int dirty = PaneroCloudUtils::dirtyCacheEntries(PaneroRclone::cacheDir(m_remote));
+        if (dirty > 0) {
+            KMessageBox::information(this,
+                                     i18np("1 file has not been uploaded yet. Connect the drive and wait until it is uploaded.",
+                                           "%1 files have not been uploaded yet. Connect the drive and wait until they are uploaded.", dirty),
+                                     i18n("Offline Files"));
             return;
         }
         QDir(PaneroRclone::cacheDir(m_remote) + QLatin1String("/vfs")).removeRecursively();
@@ -160,6 +187,7 @@ void PaneroOfflineDialog::reload()
     }
     const bool have = !selectedPin().isNull();
     m_sync->setEnabled(have);
+    m_repair->setEnabled(have && PaneroOffline::instance()->status(m_remote, selectedPin()).needsRepair);
     m_free->setEnabled(have);
     m_openPin->setEnabled(have);
 }

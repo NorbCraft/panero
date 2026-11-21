@@ -317,6 +317,12 @@ bool importRemotes(const QStringList &names, bool deleteFromSource, QStringList 
     for (const QString &name : names) {
         if (!source.contains(name))
             continue;
+        const QJsonObject options = source.value(name).toObject();
+        if (options.value(QStringLiteral("type")).toString() == QLatin1String("pcloud")) {
+            const QString host = options.value(QStringLiteral("hostname")).toString();
+            if (!host.isEmpty() && !PaneroCloudUtils::isAllowedPcloudHost(host))
+                continue; // would send the token to a foreign server
+        }
         const QString newName = PaneroCloudUtils::uniqueRemoteName(name, target.keys());
         target.insert(newName, source.value(name));
         done << newName;

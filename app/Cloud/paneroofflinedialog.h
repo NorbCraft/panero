@@ -41,6 +41,7 @@ private:
     QTreeWidget *m_pins;
     QPushButton *m_sync;
     QPushButton *m_free;
+    QPushButton *m_repair;
     QPushButton *m_openPin;
     QPushButton *m_clearCache;
     QUrl m_open;

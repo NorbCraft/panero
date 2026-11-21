@@ -69,7 +69,9 @@ QString minimumVersion()
 
 QString program()
 {
-    const QString env = qEnvironmentVariable("PANERO_RCLONE");
+    // $PANERO_RCLONE is for development builds only: an installed Panero
+    // always uses its own copy
+    const QString env = libexecFile(QStringLiteral("rclone")).isEmpty() ? qEnvironmentVariable("PANERO_RCLONE") : QString();
     if (!env.isEmpty()) {
         const QFileInfo fi(env);
         return fi.isFile() && fi.isExecutable() ? fi.absoluteFilePath() : QString();
@@ -122,7 +124,7 @@ bool usable(QString *problem)
 QString keyHelper()
 {
     QString p = appDirFile(QStringLiteral("panero-cloud-key"));
-    if (p.isEmpty() && !qEnvironmentVariableIsEmpty("PANERO_RCLONE")) {
+    if (p.isEmpty() && !qEnvironmentVariableIsEmpty("PANERO_RCLONE") && libexecFile(QStringLiteral("panero-cloud-key")).isEmpty()) {
         // development runs from a staged install: next to the given rclone
         const QFileInfo fi(QFileInfo(qEnvironmentVariable("PANERO_RCLONE")).absolutePath() + QLatin1String("/panero-cloud-key"));
         if (fi.isFile() && fi.isExecutable())
@@ -164,7 +166,10 @@ QProcessEnvironment environment()
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     const QStringList keys = env.keys();
     for (const QString &k : keys) {
-        if (k.startsWith(QLatin1String("RCLONE_")) || k.startsWith(QLatin1String("_RCLONE_")))
+        // rclone's own settings, and variables that change how it verifies
+        // TLS or behaves at runtime
+        if (k.startsWith(QLatin1String("RCLONE_")) || k.startsWith(QLatin1String("_RCLONE_")) || k == QLatin1String("SSL_CERT_FILE")
+            || k == QLatin1String("SSL_CERT_DIR") || k == QLatin1String("GODEBUG") || k == QLatin1String("GOTRACEBACK"))
             env.remove(k);
     }
     return env;

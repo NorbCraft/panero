@@ -10,6 +10,8 @@
 #include "panerocloudrevoke.h"
 #include "panerooffline.h"
 #include "panerorclone.h"
+#include "panerocloudsetup.h"
+#include <QEventLoop>
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -277,8 +279,10 @@ void PaneroCloud::refresh()
                     refresh(); // outdated result: ask again
                     return;
                 }
-                if (status == QProcess::NormalExit && exitCode == 0)
+                if (status == QProcess::NormalExit && exitCode == 0) {
                     parseRemotes(QString::fromUtf8(p->readAllStandardOutput()));
+                    PaneroOffline::instance()->pruneRemotes(m_remoteNames);
+                }
                 rebuildEntries();
                 watchConfigFile();
             });
@@ -325,6 +329,7 @@ bool PaneroCloud::refreshNow(int timeoutMs)
         return false;
     }
     parseRemotes(QString::fromUtf8(p.readAllStandardOutput()));
+    PaneroOffline::instance()->pruneRemotes(m_remoteNames);
     rebuildEntries();
     watchConfigFile();
     return true;
@@ -429,7 +434,22 @@ static QString signOutRemote(QWidget *parent, PaneroCloud *cloud, const PaneroCl
     if (cloud->isMounted(e.id) || cloud->isMounting(e.id))
         cloud->unmount(e.id);
 
-    // 1. upload changes of the local copies (they are deleted or kept below)
+    // 1. files written to the drive but not uploaded yet live only in the cache
+    const int dirty = PaneroCloudUtils::dirtyCacheEntries(PaneroRclone::cacheDir(e.rcloneRemote));
+    if (dirty > 0) {
+        const auto answer = KMessageBox::warningTwoActions(
+            parent,
+            i18np("<p>1 file written to <b>%2</b> has not been uploaded yet. Connect the drive again and wait a moment, then "
+                  "remove it.</p><p>Remove anyway? The file is lost.</p>",
+                  "<p>%1 files written to <b>%2</b> have not been uploaded yet. Connect the drive again and wait a moment, then "
+                  "remove it.</p><p>Remove anyway? The files are lost.</p>",
+                  dirty, e.label.toHtmlEscaped()),
+            i18n("Remove Cloud Drive"), KGuiItem(i18n("Remove Anyway"), QStringLiteral("edit-delete")), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return i18n("<b>%1</b>: not removed (files waiting for upload).", e.label.toHtmlEscaped());
+    }
+
+    // 2. upload changes of the local copies (they are deleted or kept below)
     if (!offline->pins(e.rcloneRemote).isEmpty()) {
         QProgressDialog progress(i18n("Uploading changes of the offline files of %1...", e.label), QString(), 0, 0, parent);
         progress.setWindowModality(Qt::WindowModal);
@@ -455,13 +475,13 @@ static QString signOutRemote(QWidget *parent, PaneroCloud *cloud, const PaneroCl
         offline->forgetRemote(e.rcloneRemote, settings.removeOnSignOut);
     }
 
-    // 2. revoke the token at the provider
+    // 3. revoke the token at the provider
     QApplication::setOverrideCursor(Qt::WaitCursor);
     const PaneroCloudRevoke::Result revoked = PaneroCloudRevoke::revoke(e.rcloneRemote, e.rcloneType);
     QApplication::restoreOverrideCursor();
     *manage = revoked.manageUrl;
 
-    // 3. delete the remote and its cache
+    // 4. delete the remote and its cache
     QString error;
     if (!cloud->removeEntry(e, &error))
         return i18n("<b>%1</b>: could not be removed: %2", e.label.toHtmlEscaped(), error.toHtmlEscaped());
@@ -699,6 +719,15 @@ void PaneroCloud::mount(const Entry &e)
 
     m->process->setProcessChannelMode(QProcess::SeparateChannels);
     m->process->setStandardOutputFile(QProcess::nullDevice());
+    if (e.rcloneType == QLatin1String("pcloud")) {
+        // rclone checks the pCloud host only during sign-in; an imported or
+        // edited remote could name another server and receive the token
+        QString hostError;
+        if (!PaneroCloudSetup::checkPcloudHost(e.rcloneRemote, &hostError)) {
+            emit mountFailed(id, hostError);
+            return;
+        }
+    }
     if (e.rcloneType == QLatin1String("alias")) {
         QByteArray out;
         PaneroRclone::run({QStringLiteral("config"), QStringLiteral("redacted"), e.rcloneRemote}, &out, nullptr, 15000);
@@ -785,7 +814,8 @@ void PaneroCloud::finishMount(const QString &id)
     QDir().rmdir(m->dir); // only removes it when empty, i.e. not mounted
     // without "Keep opened files", downloaded contents do not outlive the connection
     const QString remote = id.startsWith(QLatin1String("rclone:")) ? id.mid(7) : QString();
-    if (!remote.isEmpty() && !PaneroOffline::instance()->settings(remote).keepOpened) {
+    if (!remote.isEmpty() && !PaneroOffline::instance()->settings(remote).keepOpened
+        && PaneroCloudUtils::dirtyCacheEntries(PaneroRclone::cacheDir(remote)) == 0) {
         QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/vfs")).removeRecursively();
         QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/vfsMeta")).removeRecursively();
     }
@@ -799,6 +829,19 @@ void PaneroCloud::unmount(const QString &id)
     if (!m)
         return;
     const bool wasMounted = m->mounted;
+    // let rclone finish uploading files written through the mount (they stay
+    // in the cache otherwise and are uploaded at the next connection)
+    if (wasMounted && id.startsWith(QLatin1String("rclone:"))) {
+        const QString cache = PaneroRclone::cacheDir(id.mid(7));
+        QEventLoop wait;
+        for (int i = 0; i < 60 && PaneroCloudUtils::dirtyCacheEntries(cache) > 0 && m->process->state() == QProcess::Running; ++i) {
+            QTimer::singleShot(500, &wait, &QEventLoop::quit);
+            wait.exec(QEventLoop::ExcludeUserInputEvents);
+        }
+        m = m_mounts.value(id);
+        if (!m)
+            return;
+    }
     m->stopping = true;
     m->poll->stop();
     if (isMountPoint(m->dir) && !runFusermountUnmount(m->dir, false))

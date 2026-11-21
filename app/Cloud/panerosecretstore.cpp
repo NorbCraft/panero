@@ -269,6 +269,19 @@ QByteArray lookup(const QString &key, QString *error, bool *notFound)
     if (!search(key, &unlocked, &locked, error))
         return QByteArray();
     if (unlocked.isEmpty() && locked.isEmpty()) {
+        // some keyrings hide the items of a locked collection: unlock the
+        // default collection and look again before calling the key missing
+        QDBusObjectPath collection;
+        QString unlockError;
+        if (!defaultCollection(&collection, &unlockError) || !unlock({collection}, &unlockError)) {
+            if (error)
+                *error = unlockError;
+            return QByteArray(); // not "not found": the keyring could not be opened
+        }
+        if (!search(key, &unlocked, &locked, error))
+            return QByteArray();
+    }
+    if (unlocked.isEmpty() && locked.isEmpty()) {
         if (notFound)
             *notFound = true;
         return QByteArray();

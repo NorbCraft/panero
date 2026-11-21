@@ -5,6 +5,7 @@
 */
 
 #include "panerocloudrevoke.h"
+#include "panerocloudsetup.h"
 #include "panerocloudutils.h"
 #include "panerorclone.h"
 #include "panerosecretstore.h"
@@ -124,6 +125,9 @@ bool buildRequest(const QString &type, const QJsonObject &remoteConfig, const QS
         r.url = QUrl(QStringLiteral("https://api.dropboxapi.com/2/auth/token/revoke"));
         r.method = "POST";
         r.headers << qMakePair(QByteArrayLiteral("Authorization"), QByteArray("Bearer " + access.toUtf8()));
+        // Dropbox RPC endpoints without arguments take a JSON null
+        r.headers << qMakePair(QByteArrayLiteral("Content-Type"), QByteArrayLiteral("application/json"));
+        r.body = "null";
     } else if (type == QLatin1String("box")) {
         const QString t = refresh.isEmpty() ? access : refresh;
         QString clientId = remoteConfig.value(QStringLiteral("client_id")).toString();
@@ -179,23 +183,156 @@ bool responseConfirmsRevocation(const QString &type, int httpStatus, const QByte
     return true;
 }
 
+/// Sends @p request (https only, no redirects); returns the HTTP status (0 on failure).
+static int send(Request &request, QByteArray *body, QString *networkError)
+{
+    if (request.url.scheme() != QLatin1String("https"))
+        return 0;
+    QNetworkAccessManager nam;
+    nam.setRedirectPolicy(QNetworkRequest::ManualRedirectPolicy); // a token never follows a redirect
+    QNetworkRequest req(request.url);
+    for (const auto &h : qAsConst(request.headers))
+        req.setRawHeader(h.first, h.second);
+    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    QNetworkReply *reply = request.method == "GET" ? nam.get(req) : nam.post(req, request.body);
+    request.headers.clear();
+    PaneroSecretStore::wipe(request.body);
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeout.start(NETWORK_TIMEOUT_MS);
+    loop.exec();
+    int status = 0;
+    if (!reply->isFinished()) {
+        reply->abort();
+        if (networkError)
+            *networkError = tr("the provider did not answer in time");
+    } else {
+        status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (body)
+            *body = reply->readAll();
+        if (status == 0 && networkError)
+            *networkError = reply->errorString();
+    }
+    reply->deleteLater();
+    return status;
+}
+
+static QJsonObject remoteConfigFromDump(const QString &remote)
+{
+    QByteArray dump;
+    QJsonObject remoteConfig;
+    if (PaneroRclone::run({QStringLiteral("config"), QStringLiteral("dump")}, &dump, nullptr, 20000) == 0)
+        remoteConfig = QJsonDocument::fromJson(dump).object().value(remote).toObject();
+    PaneroSecretStore::wipe(dump);
+    return remoteConfig;
+}
+
+bool buildIdentityRequest(const QString &type, const QJsonObject &remoteConfig, Request *request)
+{
+    const QString access = tokenOf(remoteConfig).value(QStringLiteral("access_token")).toString();
+    if (access.isEmpty())
+        return false;
+    Request r;
+    r.method = "GET";
+    r.headers << qMakePair(QByteArrayLiteral("Authorization"), QByteArray("Bearer " + access.toUtf8()));
+    if (type == QLatin1String("drive")) {
+        r.url = QUrl(QStringLiteral("https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)"));
+    } else if (type == QLatin1String("onedrive")) {
+        r.url = QUrl(QStringLiteral("https://graph.microsoft.com/v1.0/me/drive?$select=owner,driveType"));
+    } else if (type == QLatin1String("dropbox")) {
+        r.url = QUrl(QStringLiteral("https://api.dropboxapi.com/2/users/get_current_account"));
+        r.method = "POST";
+        r.headers << qMakePair(QByteArrayLiteral("Content-Type"), QByteArrayLiteral("application/json"));
+        r.body = "null";
+    } else if (type == QLatin1String("box")) {
+        r.url = QUrl(QStringLiteral("https://api.box.com/2.0/users/me?fields=name,login"));
+    } else if (type == QLatin1String("pcloud")) {
+        QString host = remoteConfig.value(QStringLiteral("hostname")).toString();
+        if (host.isEmpty())
+            host = QStringLiteral("api.pcloud.com");
+        if (!PaneroCloudUtils::isAllowedPcloudHost(host))
+            return false;
+        r.url = QUrl(QStringLiteral("https://") + host + QStringLiteral("/userinfo"));
+    } else {
+        return false;
+    }
+    *request = r;
+    return true;
+}
+
+QString parseIdentity(const QString &type, const QByteArray &body)
+{
+    const QJsonObject o = QJsonDocument::fromJson(body).object();
+    QString name, mail;
+    if (type == QLatin1String("drive")) {
+        const QJsonObject u = o.value(QStringLiteral("user")).toObject();
+        name = u.value(QStringLiteral("displayName")).toString();
+        mail = u.value(QStringLiteral("emailAddress")).toString();
+    } else if (type == QLatin1String("onedrive")) {
+        const QJsonObject u = o.value(QStringLiteral("owner")).toObject().value(QStringLiteral("user")).toObject();
+        name = u.value(QStringLiteral("displayName")).toString();
+        mail = u.value(QStringLiteral("email")).toString();
+    } else if (type == QLatin1String("dropbox")) {
+        name = o.value(QStringLiteral("name")).toObject().value(QStringLiteral("display_name")).toString();
+        mail = o.value(QStringLiteral("email")).toString();
+    } else if (type == QLatin1String("box")) {
+        name = o.value(QStringLiteral("name")).toString();
+        mail = o.value(QStringLiteral("login")).toString();
+    } else if (type == QLatin1String("pcloud")) {
+        if (o.value(QStringLiteral("result")).toInt(-1) == 0)
+            mail = o.value(QStringLiteral("email")).toString();
+    }
+    if (name.isEmpty())
+        return mail;
+    return mail.isEmpty() ? name : QStringLiteral("%1 <%2>").arg(name, mail);
+}
+
+QString accountIdentity(const QString &remote, const QString &type, QString *error)
+{
+    if (type == QLatin1String("pcloud") && !PaneroCloudSetup::checkPcloudHost(remote, error))
+        return QString();
+    QJsonObject remoteConfig = remoteConfigFromDump(remote);
+    Request request;
+    const bool built = buildIdentityRequest(type, remoteConfig, &request);
+    remoteConfig = QJsonObject();
+    if (!built) {
+        if (error)
+            *error = tr("no sign-in key stored");
+        return QString();
+    }
+    QByteArray body;
+    QString networkError;
+    const int status = send(request, &body, &networkError);
+    const QString identity = status == 200 ? parseIdentity(type, body) : QString();
+    if (identity.isEmpty() && error)
+        *error = status == 0 ? networkError : tr("the provider answered with status %1").arg(status);
+    return identity;
+}
+
 Result revoke(const QString &remote, const QString &type)
 {
     Result result;
     const bool oauth = type == QLatin1String("drive") || type == QLatin1String("dropbox") || type == QLatin1String("box")
         || type == QLatin1String("pcloud") || type == QLatin1String("onedrive");
 
+    // a pCloud remote naming a foreign server must never get its token sent anywhere
+    if (type == QLatin1String("pcloud")) {
+        QString hostError;
+        if (!PaneroCloudSetup::checkPcloudHost(remote, &hostError)) {
+            result.outcome = Outcome::Failed;
+            result.message = hostError;
+            result.manageUrl = manageUrl(type, QJsonObject());
+            return result;
+        }
+    }
     // refresh an expired access token first (Dropbox needs a valid one); errors do not matter here
     if (oauth && type != QLatin1String("onedrive"))
         PaneroRclone::run({QStringLiteral("about"), remote + QLatin1Char(':')}, nullptr, nullptr, 20000);
 
-    QByteArray dump;
-    QJsonObject remoteConfig;
-    if (PaneroRclone::run({QStringLiteral("config"), QStringLiteral("dump")}, &dump, nullptr, 20000) == 0) {
-        QJsonDocument doc = QJsonDocument::fromJson(dump);
-        remoteConfig = doc.object().value(remote).toObject();
-    }
-    PaneroSecretStore::wipe(dump);
+    QJsonObject remoteConfig = remoteConfigFromDump(remote);
     result.manageUrl = manageUrl(type, remoteConfig);
 
     if (!oauth) {
@@ -216,40 +353,15 @@ Result revoke(const QString &remote, const QString &type)
         return result;
     }
 
-    QNetworkAccessManager nam;
-    nam.setRedirectPolicy(QNetworkRequest::ManualRedirectPolicy); // a token never follows a redirect
-    QNetworkRequest req(request.url);
-    for (const auto &h : qAsConst(request.headers))
-        req.setRawHeader(h.first, h.second);
-    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
-    QNetworkReply *reply = request.method == "GET" ? nam.get(req) : nam.post(req, request.body);
-    request.headers.clear();
-    PaneroSecretStore::wipe(request.body);
-
-    QEventLoop loop;
-    QTimer timeout;
-    timeout.setSingleShot(true);
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timeout.start(NETWORK_TIMEOUT_MS);
-    loop.exec();
-    if (!reply->isFinished()) {
-        reply->abort();
-        result.outcome = Outcome::Failed;
-        result.message = tr("the provider did not answer in time");
-        reply->deleteLater();
-        return result;
-    }
-    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    const QByteArray body = reply->readAll();
+    QByteArray body;
+    QString networkError;
+    const int status = send(request, &body, &networkError);
     if (responseConfirmsRevocation(type, status, body)) {
         result.outcome = Outcome::Revoked;
     } else {
         result.outcome = Outcome::Failed;
-        result.message = reply->error() != QNetworkReply::NoError && status == 0 ? reply->errorString()
-                                                                                 : tr("the provider answered with status %1").arg(status);
+        result.message = status == 0 ? networkError : tr("the provider answered with status %1").arg(status);
     }
-    reply->deleteLater();
     return result;
 }
 } // namespace PaneroCloudRevoke

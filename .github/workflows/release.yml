@@ -187,11 +187,15 @@ jobs:
 
           # Licenses and notices from the tagged tree, plus the GPL-3.0 text
           # that the LGPL-3.0 (one embedded icon) incorporates.
+          # The bundled rclone (MIT) adds its license, its pin and the list of
+          # Go modules compiled into it (dev/rclone/README.md).
           cp /usr/share/common-licenses/GPL-3 extra/GPL-3.0-referenced-by-LGPL-3.0.txt
+          cp dist/rclone/rclone-dependencies.txt extra/rclone-dependencies.txt
           git archive --format=tar --prefix="panero-$VERSION-licenses/" \
-            --add-file=extra/GPL-3.0-referenced-by-LGPL-3.0.txt "$COMMIT" \
+            --add-file=extra/GPL-3.0-referenced-by-LGPL-3.0.txt \
+            --add-file=extra/rclone-dependencies.txt "$COMMIT" \
             LICENSING.md LICENSES debian/copyright AUTHORS CREDITS \
-            dev/PROVENANCE.md dev/ICON-PROVENANCE.md \
+            dev/PROVENANCE.md dev/ICON-PROVENANCE.md dev/rclone \
             | gzip -n -9 > "release/panero-$VERSION-licenses.tar.gz"
 
           (cd release && sha256sum -- * > SHA256SUMS && sha256sum -c SHA256SUMS)

@@ -11,6 +11,7 @@
 
 #include <QApplication>
 #include <QCryptographicHash>
+#include <QRandomGenerator>
 #include <QDir>
 #include <QDirIterator>
 #include <QEventLoop>
@@ -44,6 +45,21 @@ QString cleanRelative(const QString &path)
         rel.clear();
     return rel;
 }
+
+/// A pin path from the configuration: relative, without ".." components.
+bool validPin(const QString &pin)
+{
+    if (pin.startsWith(QLatin1Char('/')) || pin.contains(QChar(0)) || pin.contains(QLatin1Char('\n')))
+        return false;
+    const QStringList parts = pin.split(QLatin1Char('/'));
+    for (const QString &part : parts) {
+        if (part == QLatin1String("..") || part == QLatin1String("."))
+            return false;
+    }
+    return cleanRelative(pin) == pin;
+}
+
+const char ID_FILE[] = ".panero-cloud-id";
 
 bool isInside(const QString &rel, const QString &pin)
 {
@@ -152,7 +168,89 @@ QStringList PaneroOffline::mountCacheArgs(const QString &remote) const
 
 QStringList PaneroOffline::pins(const QString &remote) const
 {
-    return group(remote).readEntry("Pins", QStringList());
+    QStringList list = group(remote).readEntry("Pins", QStringList());
+    for (int i = list.count() - 1; i >= 0; --i) {
+        if (!validPin(list.at(i)))
+            list.removeAt(i);
+    }
+    return list;
+}
+
+QString PaneroOffline::remoteId(const QString &remote, bool create)
+{
+    KConfigGroup g = group(remote);
+    QString id = g.readEntry("Id", QString());
+    if (id.isEmpty() && create) {
+        id = QString::number(QRandomGenerator::system()->generate64(), 16) + QString::number(QRandomGenerator::system()->generate64(), 16);
+        g.writeEntry("Id", id);
+        g.sync();
+    }
+    return id;
+}
+
+bool PaneroOffline::mirrorBelongsTo(const QString &remote)
+{
+    const QString id = remoteId(remote, false);
+    if (id.isEmpty())
+        return false;
+    QFile f(mirrorRoot(remote) + QLatin1Char('/') + QLatin1String(ID_FILE));
+    return f.open(QIODevice::ReadOnly) && QString::fromLatin1(f.readAll()).trimmed() == id;
+}
+
+bool PaneroOffline::claimMirror(const QString &remote, QString *error)
+{
+    const QString root = mirrorRoot(remote);
+    const QString id = remoteId(remote, true);
+    QDir dir(root);
+    if (dir.exists() && !mirrorBelongsTo(remote) && !dir.isEmpty()) {
+        if (error)
+            *error = i18n("The folder %1 already exists from an earlier sign-in or another program. Move or delete it first, so its "
+                          "files are not mixed with this cloud drive.",
+                          root);
+        return false;
+    }
+    if (!QDir().mkpath(root)) {
+        if (error)
+            *error = i18n("Could not create the folder %1.", root);
+        return false;
+    }
+    QFile f(root + QLatin1Char('/') + QLatin1String(ID_FILE));
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        if (error)
+            *error = i18n("Could not write %1.", f.fileName());
+        return false;
+    }
+    f.write(id.toLatin1() + '\n');
+    return true;
+}
+
+QString PaneroOffline::backupDir(const QString &remote)
+{
+    return QDir::homePath() + QLatin1String("/Cloud Offline/.panero-backup/") + PaneroCloudUtils::safeFileName(remote) + QLatin1Char('/')
+        + QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd_HH-mm-ss"));
+}
+
+QString PaneroOffline::workdir(const Job &job) const
+{
+    return PaneroRclone::cacheDir(job.remote) + QLatin1String("/bisync/")
+        + QString::fromLatin1(QCryptographicHash::hash(job.pin.toUtf8(), QCryptographicHash::Sha1).toHex());
+}
+
+void PaneroOffline::pruneRemotes(const QStringList &existing)
+{
+    const QStringList groups = m_config->groupList();
+    for (const QString &g : groups) {
+        if (!g.startsWith(QLatin1String(GROUP_PREFIX)))
+            continue;
+        const QString remote = g.mid(int(qstrlen(GROUP_PREFIX)));
+        if (existing.contains(remote) || isBusy(remote))
+            continue;
+        // the remote was deleted (e.g. in a terminal): its pins and bisync
+        // state must not be reused by a new remote of the same name
+        m_config->deleteGroup(g);
+        QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/bisync")).removeRecursively();
+    }
+    m_config->sync();
 }
 
 void PaneroOffline::setPins(const QString &remote, const QStringList &pins)
@@ -211,7 +309,7 @@ bool PaneroOffline::cloudPath(const QString &localPath, QString *remote, QString
         const QString r = slash < 0 ? rest : rest.left(slash);
         const QStringList remotes = PaneroCloud::instance()->remoteNames();
         for (const QString &name : remotes) {
-            if (PaneroCloudUtils::safeFileName(name) == r) {
+            if (PaneroCloudUtils::safeFileName(name) == r && const_cast<PaneroOffline *>(this)->mirrorBelongsTo(name)) {
                 *remote = name;
                 *relativePath = slash < 0 ? QString() : cleanRelative(rest.mid(slash + 1));
                 if (inMirror)
@@ -308,6 +406,13 @@ void PaneroOffline::decorate(QPixmap &icon, State state)
 bool PaneroOffline::pin(const QString &remote, const QString &relativePath, QString *error)
 {
     const QString rel = cleanRelative(relativePath);
+    if (!validPin(rel)) {
+        if (error)
+            *error = i18n("This folder cannot be kept on this device.");
+        return false;
+    }
+    if (!claimMirror(remote, error))
+        return false;
     QStringList list = pins(remote);
     for (const QString &p : qAsConst(list)) {
         if (isInside(rel, p)) {
@@ -320,6 +425,13 @@ bool PaneroOffline::pin(const QString &remote, const QString &relativePath, QStr
     for (int i = list.count() - 1; i >= 0; --i) {
         if (isInside(list.at(i), rel))
             list.removeAt(i);
+    }
+    const QDir target(mirrorPath(remote, rel));
+    if (target.exists() && !target.isEmpty()) {
+        // the first synchronisation copies the cloud over the local folder
+        if (error)
+            *error = i18n("The folder %1 is not empty. Move its files away first.", target.absolutePath());
+        return false;
     }
     if (!QDir().mkpath(mirrorPath(remote, rel))) {
         if (error)
@@ -380,6 +492,7 @@ bool PaneroOffline::unpin(QWidget *parent, const QString &remote, const QString 
     progress.show();
     const bool synced = syncAllBlocking(remote, &error);
     progress.close();
+    m_blocked.insert(key(remote, rel));
     if (!synced) {
         const auto answer = KMessageBox::warningTwoActions(
             parent,
@@ -387,8 +500,26 @@ bool PaneroOffline::unpin(QWidget *parent, const QString &remote, const QString 
                  "yet. Delete the local copy anyway?</p>",
                  error.toHtmlEscaped()),
             i18n("Free Up Space"), KGuiItem(i18n("Delete Anyway"), QStringLiteral("edit-delete")), KStandardGuiItem::cancel());
-        if (answer != KMessageBox::PrimaryAction)
+        if (answer != KMessageBox::PrimaryAction) {
+            m_blocked.remove(key(remote, rel));
             return false;
+        }
+    }
+    // from here on, no synchronisation of this pin may start (also not from a
+    // timer or the file watcher while a message box is open)
+    const QString k = key(remote, rel);
+    m_blocked.insert(k);
+    for (int i = m_queue.count() - 1; i >= 0; --i) {
+        if (m_queue.at(i).remote == remote && m_queue.at(i).pin == rel)
+            m_queue.removeAt(i);
+    }
+    if (m_process && m_current.remote == remote && m_current.pin == rel) {
+        m_process->disconnect(this);
+        m_process->terminate();
+        if (!m_process->waitForFinished(10000))
+            m_process->kill();
+        m_process->deleteLater();
+        m_process = nullptr;
     }
     QStringList list = pins(remote);
     list.removeAll(rel);
@@ -399,10 +530,25 @@ bool PaneroOffline::unpin(QWidget *parent, const QString &remote, const QString 
     setPins(remote, list);
     m_status.remove(key(remote, rel));
     // forget bisync's listings, so a later pin starts with a fresh --resync
-    QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/bisync/")
-         + QString::fromLatin1(QCryptographicHash::hash(rel.toUtf8(), QCryptographicHash::Sha1).toHex()))
-        .removeRecursively();
-    if (!deleteMirror(remote, rel, &error)) {
+    Job gone;
+    gone.remote = remote;
+    gone.pin = rel;
+    QDir(workdir(gone)).removeRecursively();
+    const bool deleted = deleteMirror(remote, rel, &error);
+    if (deleted && pins(remote).isEmpty()) {
+        // nothing kept any more: remove the id marker and the empty folder
+        QDir mirrorDir(mirrorRoot(remote));
+        if (mirrorDir.entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot) == QStringList{QLatin1String(ID_FILE)}) {
+            mirrorDir.remove(QLatin1String(ID_FILE));
+            QDir().rmdir(mirrorRoot(remote));
+        }
+        const QString base = QDir::homePath() + QLatin1String("/Cloud Offline");
+        if (QDir(base).exists() && QDir(base).isEmpty())
+            QDir().rmdir(base);
+    }
+    m_blocked.remove(k);
+    startNext();
+    if (!deleted) {
         KMessageBox::error(parent, error, i18n("Free Up Space"));
         return false;
     }
@@ -413,7 +559,7 @@ void PaneroOffline::syncNow(const QString &remote, const QString &relativePath)
 {
     const QStringList list = relativePath.isNull() ? pins(remote) : QStringList{cleanRelative(relativePath)};
     for (const QString &p : list) {
-        if (!pins(remote).contains(p))
+        if (!pins(remote).contains(p) || m_blocked.contains(key(remote, p)))
             continue;
         bool queued = (m_process && m_current.remote == remote && m_current.pin == p);
         for (const Job &j : qAsConst(m_queue))
@@ -431,10 +577,27 @@ void PaneroOffline::syncNow(const QString &remote, const QString &relativePath)
     startNext();
 }
 
+void PaneroOffline::repair(const QString &remote, const QString &relativePath)
+{
+    const QString p = cleanRelative(relativePath);
+    if (!pins(remote).contains(p) || m_blocked.contains(key(remote, p)) || isBusy(remote))
+        return;
+    Job job;
+    job.remote = remote;
+    job.pin = p;
+    job.resync = true;
+    job.repair = true;
+    m_queue << job;
+    PinStatus &st = m_status[key(remote, p)];
+    st.syncing = true;
+    st.needsRepair = false;
+    emit changed(remote);
+    startNext();
+}
+
 QStringList PaneroOffline::bisyncArgs(const Job &job) const
 {
-    const QString workdir = PaneroRclone::cacheDir(job.remote) + QLatin1String("/bisync/")
-        + QString::fromLatin1(QCryptographicHash::hash(job.pin.toUtf8(), QCryptographicHash::Sha1).toHex());
+    const QString workdir = this->workdir(job);
     QStringList args{QStringLiteral("bisync"),
                      job.remote + QLatin1Char(':') + job.pin,
                      mirrorPath(job.remote, job.pin),
@@ -449,8 +612,15 @@ QStringList PaneroOffline::bisyncArgs(const Job &job) const
                      QStringLiteral("none"),
                      QStringLiteral("--conflict-loser"),
                      QStringLiteral("num")};
-    if (job.resync)
+    if (job.repair) {
+        // never let one side silently replace the other: the newer file wins,
+        // and local files that are replaced are kept in a backup folder
+        args << QStringLiteral("--resync") << QStringLiteral("--resync-mode") << QStringLiteral("newer") << QStringLiteral("--backup-dir2")
+             << backupDir(job.remote);
+    } else if (job.resync) {
+        // only the very first run of a new pin (into an empty folder)
         args << QStringLiteral("--resync");
+    }
     return args;
 }
 
@@ -459,6 +629,26 @@ void PaneroOffline::startNext()
     if (m_process || m_queue.isEmpty())
         return;
     m_current = m_queue.takeFirst();
+    if (!pins(m_current.remote).contains(m_current.pin) || m_blocked.contains(key(m_current.remote, m_current.pin))) {
+        m_status[key(m_current.remote, m_current.pin)].syncing = false;
+        QTimer::singleShot(0, this, &PaneroOffline::startNext);
+        return;
+    }
+    // the local copy must be inside the remote's folder below ~/Cloud Offline
+    {
+        QDir().mkpath(mirrorRoot(m_current.remote));
+        const QString root = QFileInfo(mirrorRoot(m_current.remote)).canonicalFilePath();
+        const QString target = QFileInfo(mirrorPath(m_current.remote, m_current.pin)).absoluteFilePath();
+        const QString canonical = QFileInfo(target).exists() ? QFileInfo(target).canonicalFilePath() : target;
+        if (root.isEmpty() || !mirrorBelongsTo(m_current.remote) || (canonical != root && !canonical.startsWith(root + QLatin1Char('/')))) {
+            PinStatus &st = m_status[key(m_current.remote, m_current.pin)];
+            st.syncing = false;
+            st.error = i18n("The local copy is not where Panero expects it; it was not synchronised.");
+            emit changed(m_current.remote);
+            QTimer::singleShot(0, this, &PaneroOffline::startNext);
+            return;
+        }
+    }
     // a missing local copy must never be synchronised as "everything deleted"
     if (!m_current.resync && !QFileInfo(mirrorPath(m_current.remote, m_current.pin)).isDir()) {
         PinStatus &st = m_status[key(m_current.remote, m_current.pin)];
@@ -497,6 +687,7 @@ void PaneroOffline::jobFinished(int exitCode, const QString &stderrText)
     if (exitCode == 0) {
         st.lastSync = QDateTime::currentDateTime();
         st.error.clear();
+        st.needsRepair = false;
         st.conflicts += countConflicts(stderrText);
         if (job.resync) {
             KConfigGroup g = group(job.remote);
@@ -506,12 +697,11 @@ void PaneroOffline::jobFinished(int exitCode, const QString &stderrText)
             g.writeEntry("Synced Pins", synced);
             g.sync();
         }
-    } else if (!job.resync && stderrText.contains(QLatin1String("--resync"))) {
-        // bisync lost its listings (e.g. after a crash): start again with --resync
-        Job again = job;
-        again.resync = true;
-        m_queue.prepend(again);
-        st.syncing = true;
+    } else if (stderrText.contains(QLatin1String("Must run --resync")) || stderrText.contains(QLatin1String("run --resync to recover"))
+               || stderrText.contains(QLatin1String("Bisync critical error"))) {
+        // never resync automatically: a resync can replace changed files of one side
+        st.needsRepair = true;
+        st.error = i18n("Synchronisation stopped and needs a repair (Offline Files > Repair). Nothing was overwritten.");
     } else {
         QString summary = PaneroCloudUtils::rcloneErrorSummary(stderrText, 2);
         st.error = summary.isEmpty() ? i18n("Synchronisation failed (exit code %1).", exitCode) : summary;

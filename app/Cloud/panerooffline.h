@@ -9,6 +9,7 @@
 
 #include <QDateTime>
 #include <QHash>
+#include <QSet>
 #include <QObject>
 #include <QPixmap>
 #include <QString>
@@ -51,6 +52,7 @@ public:
         QString error;
         bool syncing = false;
         int conflicts = 0;
+        bool needsRepair = false; ///< bisync lost its state: repair() must be chosen by the user
     };
 
     static PaneroOffline *instance();
@@ -84,6 +86,11 @@ public:
     bool unpin(QWidget *parent, const QString &remote, const QString &relativePath);
     /// Queues a synchronisation of one pin (or all pins of the remote).
     void syncNow(const QString &remote, const QString &relativePath = QString());
+    /// After bisync lost its state: a careful resync (newer file wins, local
+    /// files that would be replaced are kept in a backup folder).
+    void repair(const QString &remote, const QString &relativePath);
+    /// ~/Cloud Offline/.panero-backup/<remote>/<time> (repair backups).
+    static QString backupDir(const QString &remote);
     /// Synchronises all pins of the remote now and waits (sign-out).
     bool syncAllBlocking(const QString &remote, QString *error);
     /// Removes pins, settings and (per setting) the local copies of a remote.
@@ -93,6 +100,10 @@ public:
 
     /// The remote's folder inside its VFS cache (default: the remote name).
     void setCacheSubPath(const QString &remote, const QString &subPath);
+
+    /// Forgets settings and bisync state of remotes that no longer exist
+    /// (call only with the result of a successful listing).
+    void pruneRemotes(const QStringList &existing);
 
     /// Remote and path inside it for a local path in a mount or local copy.
     bool cloudPath(const QString &localPath, QString *remote, QString *relativePath, bool *inMirror = nullptr) const;
@@ -106,6 +117,7 @@ private:
         QString remote;
         QString pin;
         bool resync = false;
+        bool repair = false;
     };
     KConfigGroup group(const QString &remote) const;
     void setPins(const QString &remote, const QStringList &pins);
@@ -116,6 +128,13 @@ private:
     void watchMirrors();
     static QString key(const QString &remote, const QString &pin);
     bool deleteMirror(const QString &remote, const QString &relativePath, QString *error);
+    /// Random id of the remote (created on first use); the local copies carry
+    /// it in <mirror root>/.panero-cloud-id, so a later account with the same
+    /// name never synchronises with an earlier account's folder.
+    QString remoteId(const QString &remote, bool create);
+    bool mirrorBelongsTo(const QString &remote);
+    bool claimMirror(const QString &remote, QString *error);
+    QString workdir(const Job &job) const;
 
     KSharedConfigPtr m_config;
     QList<Job> m_queue;
@@ -127,6 +146,7 @@ private:
     QFileSystemWatcher *m_watcher = nullptr;
     QStringList m_changedKeys;
     QHash<QString, QString> m_cacheSub;
+    QSet<QString> m_blocked; ///< pins being freed: never synchronised
 };
 
 #endif // PANEROOFFLINE_H

@@ -7,6 +7,7 @@
 #include "panerocloudutils.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -301,14 +302,27 @@ bool isEncryptedRcloneConfig(const QByteArray &head)
 
 QString safeFileName(const QString &name)
 {
-    QString f = name;
-    f.replace(QLatin1Char('/'), QLatin1Char('_'));
-    f.replace(QChar(0), QLatin1Char('_'));
-    while (f.startsWith(QLatin1Char('.')))
-        f.replace(0, 1, QLatin1Char('_'));
-    if (f.isEmpty())
-        f = QStringLiteral("remote");
+    if (name.isEmpty())
+        return QStringLiteral("remote");
+    QString f = QString::fromLatin1(QUrl::toPercentEncoding(name));
+    if (f.startsWith(QLatin1Char('.')))
+        f.replace(0, 1, QLatin1String("%2E"));
     return f;
+}
+
+int dirtyCacheEntries(const QString &remoteCacheDir)
+{
+    int dirty = 0;
+    QDirIterator it(remoteCacheDir + QLatin1String("/vfsMeta"), QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QFile f(it.next());
+        if (f.size() > 1024 * 1024 || !f.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+        if (o.value(QStringLiteral("Dirty")).toBool(false))
+            ++dirty;
+    }
+    return dirty;
 }
 
 QString redactSecrets(const QString &text)
@@ -490,7 +504,8 @@ QString mountBaseDir()
         if (!runtime.isEmpty())
             return runtime + QLatin1String("/panero-cloud");
     }
-    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/panero/cloud");
+    // not the cache folder (PaneroRclone::cacheBase()): a mount point must be empty
+    return QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/panero/mounts");
 }
 
 QString userRcloneConfigPath()

@@ -53,7 +53,7 @@ override_dh_dwz:
 # KDE's help system (help:/panero, KHelpCenter) reads the handbook docbook
 # files uncompressed, as in the Ubuntu krusader package.
 override_dh_compress:
-	dh_compress -X.docbook
+	dh_compress -X.docbook -Xrclone/dependencies.txt
 
 # The autotests are headless QtTest programs; dh_auto_test already provides
 # an isolated HOME and XDG_RUNTIME_DIR.

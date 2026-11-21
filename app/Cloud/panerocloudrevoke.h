@@ -69,6 +69,16 @@ bool responseConfirmsRevocation(const QString &type, int httpStatus, const QByte
 /// Reads the remote's token through rclone, sends the request and wipes the
 /// token. Blocking (a few seconds at most).
 Result revoke(const QString &remote, const QString &type);
+
+/// The request that asks the provider which account a token belongs to
+/// (false when there is none for @p type).
+bool buildIdentityRequest(const QString &type, const QJsonObject &remoteConfig, Request *request);
+/// "Name <e-mail>" (or what the provider reports) from the identity answer.
+QString parseIdentity(const QString &type, const QByteArray &body);
+/// Asks the provider which account the remote is signed in to, so the user can
+/// confirm it is their own (an attacker's account slipped into a sign-in
+/// would receive the uploads). Empty with *error on failure.
+QString accountIdentity(const QString &remote, const QString &type, QString *error = nullptr);
 }
 
 #endif // PANEROCLOUDREVOKE_H
