@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.5" date="2026-11-21" type="development">
+      <description>
+        <p>Safe cloud sign-in: Panero's own up-to-date rclone, sign-ins stored encrypted and unlocked by the desktop keyring, real sign-out at the provider, and offline files for cloud drives.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.4" date="2026-11-20" type="development">
       <description>
         <p>Cloud drives and servers in the sidebar, Quick Settings with icon and folder colour options, progress in the panel, Copy Path and Open Terminal Here, and many fixes.</p>

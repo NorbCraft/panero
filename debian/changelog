@@ -1,3 +1,19 @@
+panero (0.1.0~preview.5-1) noble; urgency=medium
+
+  * Fifth preview (git tag v0.1.0-preview.5): safe cloud sign-in
+    (dev/CLOUD-SECURITY-AUDIT.md).
+  * Ships its own rclone 1.76.0 (pinned, checksum-verified upstream build)
+    instead of using Ubuntu's 1.60.1, which is affected by CVE-2026-116194.
+  * Cloud sign-ins are kept in Panero's own rclone configuration, encrypted;
+    the key is in the desktop keyring. No secret on command lines.
+  * Remove signs out at the provider where possible; Sign Out of All Clouds.
+  * Sign-in explains the access granted; read-only and narrower OneDrive
+    access; MEGA no longer in the guided list; import from rclone.
+  * Offline files: opened files stay available, Keep on This Device, Free Up
+    Space, badges in the panels.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sat, 21 Nov 2026 20:00:00 +0100
+
 panero (0.1.0~preview.4-1) noble; urgency=medium
 
   * Fourth preview (git tag v0.1.0-preview.4).
