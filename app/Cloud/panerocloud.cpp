@@ -7,9 +7,15 @@
 #include "panerocloud.h"
 #include "panerocloudutils.h"
 #include "../paneropackageinstaller.h"
+#include "panerocloudrevoke.h"
+#include "panerooffline.h"
+#include "panerorclone.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDesktopServices>
+#include <QApplication>
+#include <QProgressDialog>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -108,12 +114,12 @@ KConfigGroup PaneroCloud::group() const
 
 QString PaneroCloud::rcloneProgram()
 {
-    return QStandardPaths::findExecutable(QStringLiteral("rclone"));
+    return PaneroRclone::program();
 }
 
 bool PaneroCloud::rcloneAvailable()
 {
-    return !rcloneProgram().isEmpty();
+    return PaneroRclone::usable();
 }
 
 bool PaneroCloud::fuseAvailable()
@@ -144,28 +150,41 @@ static bool installPackage(QWidget *parent, const QString &package, const QStrin
 
 bool PaneroCloud::ensureRclone(QWidget *parent)
 {
-    const bool haveRclone = rcloneAvailable();
-    const bool haveFuse = fuseAvailable();
-    if (haveRclone && haveFuse)
-        return true;
-
-    QString text;
-    if (!haveRclone)
-        text = i18n("<p>Panero uses the free <b>rclone</b> tool for cloud drives. Install it now?</p>");
-    else
-        text = i18n("<p>Opening cloud drives needs the <b>FUSE</b> file system tools (package fuse3). Install them now?</p>");
-    text += i18n("<p>It is installed from your system's software sources; your system will ask you to authorize the installation.</p>");
-    const auto answer = KMessageBox::questionTwoActions(parent, text, haveRclone ? i18n("Install FUSE?") : i18n("Install rclone?"),
-                                                        KGuiItem(i18n("Install"), QStringLiteral("download")),
-                                                        KStandardGuiItem::cancel());
-    if (answer != KMessageBox::PrimaryAction)
+    QString problem;
+    if (!PaneroRclone::usable(&problem)) {
+        KMessageBox::error(parent, problem, i18n("Cloud Drives"));
         return false;
-
-    if (!haveRclone && !installPackage(parent, QStringLiteral("rclone"), QStringLiteral("rclone"), &PaneroCloud::rcloneAvailable))
+    }
+    if (!fuseAvailable()) {
+        const auto answer = KMessageBox::questionTwoActions(
+            parent,
+            i18n("<p>Opening cloud drives needs the <b>FUSE</b> file system tools (package fuse3). Install them now?</p>"
+                 "<p>They are installed from your system's software sources; your system will ask you to authorize the installation.</p>"),
+            i18n("Install FUSE?"), KGuiItem(i18n("Install"), QStringLiteral("download")), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return false;
+        if (!installPackage(parent, QStringLiteral("fuse3"), QStringLiteral("FUSE"), &PaneroCloud::fuseAvailable))
+            return false;
+    }
+    QString error;
+    const auto state = PaneroRclone::ensureStore(&error);
+    if (state == PaneroRclone::StoreState::KeyMissing) {
+        const auto answer = KMessageBox::warningTwoActions(
+            parent,
+            i18n("<p>%1</p><p>Start again with an empty cloud list? You then add your cloud drives again. Nothing in the clouds "
+                 "is changed; you can remove Panero's old access in each provider's account settings.</p>",
+                 error.toHtmlEscaped()),
+            i18n("Cloud Drives"), KGuiItem(i18n("Start Again"), QStringLiteral("edit-clear")), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return false;
+        PaneroRclone::resetStore();
+        refreshNow();
+        return ensureRclone(parent);
+    }
+    if (state != PaneroRclone::StoreState::Ready) {
+        KMessageBox::error(parent, error, i18n("Cloud Drives"));
         return false;
-    if (!fuseAvailable() && !installPackage(parent, QStringLiteral("fuse3"), QStringLiteral("FUSE"), &PaneroCloud::fuseAvailable))
-        return false;
-    refresh();
+    }
     return true;
 }
 
@@ -235,7 +254,7 @@ void PaneroCloud::parseRemotes(const QString &output)
 void PaneroCloud::refresh()
 {
     const QString rclone = rcloneProgram();
-    if (rclone.isEmpty()) {
+    if (rclone.isEmpty() || !PaneroRclone::configExists()) {
         if (!m_remoteNames.isEmpty()) {
             m_remoteNames.clear();
             m_remoteTypes.clear();
@@ -270,7 +289,8 @@ void PaneroCloud::refresh()
         m_listProcess = nullptr;
         rebuildEntries();
     });
-    m_listProcess->start(rclone, {QStringLiteral("listremotes"), QStringLiteral("--long")});
+    PaneroRclone::prepare(*m_listProcess, {QStringLiteral("listremotes"), QStringLiteral("--long")});
+    m_listProcess->start();
 }
 
 void PaneroCloud::cancelAsyncRefresh()
@@ -290,14 +310,15 @@ bool PaneroCloud::refreshNow(int timeoutMs)
 {
     cancelAsyncRefresh(); // its result could be older than this one
     const QString rclone = rcloneProgram();
-    if (rclone.isEmpty()) {
+    if (rclone.isEmpty() || !PaneroRclone::configExists()) {
         m_remoteNames.clear();
         m_remoteTypes.clear();
         rebuildEntries();
-        return false;
+        return !rclone.isEmpty();
     }
     QProcess p;
-    p.start(rclone, {QStringLiteral("listremotes"), QStringLiteral("--long")});
+    PaneroRclone::prepare(p, {QStringLiteral("listremotes"), QStringLiteral("--long")});
+    p.start();
     if (!p.waitForFinished(timeoutMs) || p.exitStatus() != QProcess::NormalExit || p.exitCode() != 0) {
         p.kill();
         p.waitForFinished(1000);
@@ -318,7 +339,7 @@ void PaneroCloud::watchConfigFile()
         connect(m_watcher, &QFileSystemWatcher::fileChanged, m_refreshTimer, QOverload<>::of(&QTimer::start));
         connect(m_watcher, &QFileSystemWatcher::directoryChanged, m_refreshTimer, QOverload<>::of(&QTimer::start));
     }
-    const QString file = PaneroCloudUtils::rcloneConfigPath();
+    const QString file = PaneroRclone::configPath();
     const QString dir = QFileInfo(file).absolutePath();
     if (QFileInfo::exists(dir) && !m_watcher->directories().contains(dir))
         m_watcher->addPath(dir);
@@ -384,15 +405,14 @@ bool PaneroCloud::removeEntry(const Entry &e, QString *error)
             *error = i18n("rclone is not installed.");
         return false;
     }
-    QProcess p;
-    p.start(rclone, {QStringLiteral("config"), QStringLiteral("delete"), e.rcloneRemote});
-    if (!p.waitForFinished(10000) || p.exitCode() != 0) {
+    QByteArray err;
+    if (PaneroRclone::run({QStringLiteral("config"), QStringLiteral("delete"), e.rcloneRemote}, nullptr, &err, 30000) != 0) {
         if (error)
-            *error = QString::fromUtf8(p.readAllStandardError()).trimmed();
-        p.kill();
-        p.waitForFinished(1000);
+            *error = PaneroCloudUtils::rcloneErrorSummary(QString::fromUtf8(err));
         return false;
     }
+    // the remote's cache (downloaded file contents, bisync listings)
+    QDir(PaneroRclone::cacheDir(e.rcloneRemote)).removeRecursively();
     PaneroCloudUtils::setRemoteLabel(g, e.rcloneRemote, QString());
     m_remoteNames.removeAll(e.rcloneRemote);
     m_remoteTypes.remove(e.rcloneRemote);
@@ -400,24 +420,158 @@ bool PaneroCloud::removeEntry(const Entry &e, QString *error)
     return true;
 }
 
+// Signs out of one rclone remote after the confirmation; returns the line for the summary.
+static QString signOutRemote(QWidget *parent, PaneroCloud *cloud, const PaneroCloud::Entry &e, bool *ok, QUrl *manage)
+{
+    *ok = false;
+    PaneroOffline *offline = PaneroOffline::instance();
+    const PaneroOffline::Settings settings = offline->settings(e.rcloneRemote);
+    if (cloud->isMounted(e.id) || cloud->isMounting(e.id))
+        cloud->unmount(e.id);
+
+    // 1. upload changes of the local copies (they are deleted or kept below)
+    if (!offline->pins(e.rcloneRemote).isEmpty()) {
+        QProgressDialog progress(i18n("Uploading changes of the offline files of %1...", e.label), QString(), 0, 0, parent);
+        progress.setWindowModality(Qt::WindowModal);
+        progress.setCancelButton(nullptr);
+        progress.setMinimumDuration(300);
+        progress.show();
+        QString syncError;
+        const bool synced = offline->syncAllBlocking(e.rcloneRemote, &syncError);
+        progress.close();
+        if (!synced && settings.removeOnSignOut) {
+            const auto answer = KMessageBox::warningTwoActions(
+                parent,
+                i18n("<p>The offline files of <b>%1</b> could not be synchronised:</p><p>%2</p><p>Changes made on this device may not "
+                     "be in the cloud yet. Keep the offline files on this device (in %3)?</p>",
+                     e.label.toHtmlEscaped(), syncError.toHtmlEscaped(), PaneroOffline::mirrorRoot(e.rcloneRemote).toHtmlEscaped()),
+                i18n("Remove Cloud Drive"), KGuiItem(i18n("Keep Them"), QStringLiteral("document-save")),
+                KGuiItem(i18n("Delete Them"), QStringLiteral("edit-delete")));
+            offline->forgetRemote(e.rcloneRemote, answer != KMessageBox::PrimaryAction);
+        } else {
+            offline->forgetRemote(e.rcloneRemote, settings.removeOnSignOut);
+        }
+    } else {
+        offline->forgetRemote(e.rcloneRemote, settings.removeOnSignOut);
+    }
+
+    // 2. revoke the token at the provider
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const PaneroCloudRevoke::Result revoked = PaneroCloudRevoke::revoke(e.rcloneRemote, e.rcloneType);
+    QApplication::restoreOverrideCursor();
+    *manage = revoked.manageUrl;
+
+    // 3. delete the remote and its cache
+    QString error;
+    if (!cloud->removeEntry(e, &error))
+        return i18n("<b>%1</b>: could not be removed: %2", e.label.toHtmlEscaped(), error.toHtmlEscaped());
+    *ok = true;
+
+    switch (revoked.outcome) {
+    case PaneroCloudRevoke::Outcome::Revoked:
+        return i18n("<b>%1</b>: signed out; the provider confirmed that Panero's access is revoked.", e.label.toHtmlEscaped());
+    case PaneroCloudRevoke::Outcome::Manual:
+        return i18n("<b>%1</b>: removed from Panero. %2 Please remove the access on the provider's page: <a href=\"%3\">%3</a>",
+                    e.label.toHtmlEscaped(), revoked.message.toHtmlEscaped(), revoked.manageUrl.toString().toHtmlEscaped());
+    case PaneroCloudRevoke::Outcome::NotNeeded:
+        return i18n("<b>%1</b>: removed.", e.label.toHtmlEscaped());
+    case PaneroCloudRevoke::Outcome::Failed:
+        break;
+    }
+    QString line = i18n("<b>%1</b>: removed from Panero, but the provider did not confirm the sign-out (%2).", e.label.toHtmlEscaped(),
+                        revoked.message.toHtmlEscaped());
+    if (revoked.manageUrl.isValid())
+        line += QLatin1Char(' ') + i18n("Please remove the access on the provider's page: <a href=\"%1\">%1</a>", revoked.manageUrl.toString().toHtmlEscaped());
+    return line;
+}
+
+static void showSignOutSummary(QWidget *parent, const QStringList &lines)
+{
+    KMessageBox::information(parent, QLatin1String("<p>") + lines.join(QLatin1String("</p><p>")) + QLatin1String("</p>"), i18n("Signed Out"),
+                             QString(), KMessageBox::Notify | KMessageBox::AllowLink);
+}
+
 bool PaneroCloud::confirmAndRemove(QWidget *parent, const Entry &e)
 {
-    const QString text = e.isRclone()
-        ? i18n("<p>Remove the cloud drive <b>%1</b>?</p><p>Panero signs out by deleting the rclone remote "
-               "<tt>%2</tt>. Your files in the cloud are not touched.</p>",
-               e.label.toHtmlEscaped(), e.rcloneRemote.toHtmlEscaped())
-        : i18n("<p>Remove the connection <b>%1</b>?</p><p>Files on the server are not touched.</p>", e.label.toHtmlEscaped());
-    const auto answer = KMessageBox::warningTwoActions(parent, text, i18n("Remove Connection"),
-                                                       KGuiItem(i18n("Remove"), QStringLiteral("list-remove")),
+    QString text;
+    if (e.isRclone()) {
+        const PaneroOffline::Settings settings = PaneroOffline::instance()->settings(e.rcloneRemote);
+        text = i18n("<p>Remove the cloud drive <b>%1</b> and sign out?</p>"
+                    "<p>Panero cancels its access at the provider where the provider allows this, then deletes the sign-in and "
+                    "the downloaded files from this computer. Your files in the cloud are not touched.</p>",
+                    e.label.toHtmlEscaped());
+        if (!PaneroOffline::instance()->pins(e.rcloneRemote).isEmpty())
+            text += settings.removeOnSignOut ? i18n("<p>The offline files in %1 are synchronised once more and then deleted.</p>",
+                                                    PaneroOffline::mirrorRoot(e.rcloneRemote).toHtmlEscaped())
+                                             : i18n("<p>The offline files in %1 are synchronised once more and stay on this computer.</p>",
+                                                    PaneroOffline::mirrorRoot(e.rcloneRemote).toHtmlEscaped());
+        if (e.rcloneType == QLatin1String("drive"))
+            text += i18n("<p>Google cancels the access of rclone for this Google account as a whole, so other rclone setups that "
+                         "use the same account and rclone's standard sign-in are signed out too.</p>");
+    } else {
+        text = i18n("<p>Remove the connection <b>%1</b>?</p><p>Files on the server are not touched.</p>", e.label.toHtmlEscaped());
+    }
+    const auto answer = KMessageBox::warningTwoActions(parent, text, e.isRclone() ? i18n("Remove Cloud Drive") : i18n("Remove Connection"),
+                                                       KGuiItem(e.isRclone() ? i18n("Sign Out and Remove") : i18n("Remove"),
+                                                                QStringLiteral("list-remove")),
                                                        KStandardGuiItem::cancel());
     if (answer != KMessageBox::PrimaryAction)
         return false;
-    QString error;
-    if (!removeEntry(e, &error)) {
-        KMessageBox::error(parent, i18n("The connection could not be removed.") + (error.isEmpty() ? QString() : QLatin1String("\n\n") + error));
-        return false;
+    if (e.isServer()) {
+        QString error;
+        if (!removeEntry(e, &error)) {
+            KMessageBox::error(parent, i18n("The connection could not be removed.") + (error.isEmpty() ? QString() : QLatin1String("\n\n") + error));
+            return false;
+        }
+        return true;
     }
-    return true;
+    if (!ensureRclone(parent))
+        return false;
+    bool ok = false;
+    QUrl manage;
+    const QString line = signOutRemote(parent, this, e, &ok, &manage);
+    showSignOutSummary(parent, {line});
+    return ok;
+}
+
+void PaneroCloud::signOutAll(QWidget *parent)
+{
+    QList<Entry> remotes;
+    for (const Entry &e : qAsConst(m_entries)) {
+        if (e.isRclone())
+            remotes << e;
+    }
+    if (remotes.isEmpty()) {
+        KMessageBox::information(parent, i18n("No cloud drives are set up."), i18n("Sign Out of All Clouds"));
+        return;
+    }
+    QStringList names;
+    for (const Entry &e : qAsConst(remotes))
+        names << e.label;
+    const auto answer = KMessageBox::warningTwoActionsList(
+        parent,
+        i18n("Sign out of all cloud drives? Panero cancels its access at each provider where possible and deletes the sign-ins and "
+             "downloaded files from this computer. Files in the clouds are not touched."),
+        names, i18n("Sign Out of All Clouds"), KGuiItem(i18n("Sign Out of All"), QStringLiteral("system-log-out")), KStandardGuiItem::cancel());
+    if (answer != KMessageBox::PrimaryAction || !ensureRclone(parent))
+        return;
+    QStringList lines;
+    for (const Entry &e : qAsConst(remotes)) {
+        bool ok = false;
+        QUrl manage;
+        lines << signOutRemote(parent, this, e, &ok, &manage);
+    }
+    showSignOutSummary(parent, lines);
+}
+
+QHash<QString, QString> PaneroCloud::mountDirs() const
+{
+    QHash<QString, QString> dirs;
+    for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+        if (it.value()->mounted && !it.value()->stopping && it.key().startsWith(QLatin1String("rclone:")))
+            dirs.insert(it.key().mid(7), it.value()->dir);
+    }
+    return dirs;
 }
 
 // ---- opening / mounting ------------------------------------------------------
@@ -545,9 +699,17 @@ void PaneroCloud::mount(const Entry &e)
 
     m->process->setProcessChannelMode(QProcess::SeparateChannels);
     m->process->setStandardOutputFile(QProcess::nullDevice());
-    m->process->start(rclone, {QStringLiteral("mount"), e.rcloneRemote + QLatin1Char(':'), dir,
-                               QStringLiteral("--vfs-cache-mode"), QStringLiteral("full"),
-                               QStringLiteral("--dir-cache-time"), QStringLiteral("30s")});
+    if (e.rcloneType == QLatin1String("alias")) {
+        QByteArray out;
+        PaneroRclone::run({QStringLiteral("config"), QStringLiteral("redacted"), e.rcloneRemote}, &out, nullptr, 15000);
+        PaneroOffline::instance()->setCacheSubPath(e.rcloneRemote,
+                                                   PaneroCloudUtils::aliasCacheSubPath(PaneroCloudUtils::iniValue(QString::fromUtf8(out), QStringLiteral("remote"))));
+    }
+    QStringList args{QStringLiteral("mount"), e.rcloneRemote + QLatin1Char(':'), dir};
+    args << PaneroOffline::instance()->mountCacheArgs(e.rcloneRemote);
+    args << QStringLiteral("--dir-cache-time") << QStringLiteral("30s");
+    PaneroRclone::prepare(*m->process, args);
+    m->process->start();
     m->poll->start();
 }
 
@@ -621,6 +783,12 @@ void PaneroCloud::finishMount(const QString &id)
     if (isMountPoint(m->dir))
         runFusermountUnmount(m->dir, true);
     QDir().rmdir(m->dir); // only removes it when empty, i.e. not mounted
+    // without "Keep opened files", downloaded contents do not outlive the connection
+    const QString remote = id.startsWith(QLatin1String("rclone:")) ? id.mid(7) : QString();
+    if (!remote.isEmpty() && !PaneroOffline::instance()->settings(remote).keepOpened) {
+        QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/vfs")).removeRecursively();
+        QDir(PaneroRclone::cacheDir(remote) + QLatin1String("/vfsMeta")).removeRecursively();
+    }
     delete m;
     rebuildEntries();
 }

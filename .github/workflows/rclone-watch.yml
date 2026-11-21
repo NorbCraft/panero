@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Weekly check of the rclone that Panero ships (dev/CLOUD-SECURITY-AUDIT.md R1):
+# opens an issue in this repository when a newer rclone release or a rclone
+# security advisory published after the pinned release exists. It never
+# changes code; updating the pin is a reviewed change (dev/rclone/README.md).
+name: rclone watch
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compare with the latest release and advisories
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pinned=$(awk '$1 == "version" {print $2}' dev/rclone/rclone.sha256)
+          pinned_date=$(gh api "repos/rclone/rclone/releases/tags/v$pinned" --jq .published_at)
+          latest=$(gh api repos/rclone/rclone/releases/latest --jq .tag_name)
+          advisories=$(gh api "repos/rclone/rclone/security-advisories?per_page=100&state=published" \
+            --jq "[.[] | select(.published_at > \"$pinned_date\") | \"- \(.ghsa_id) \(.cve_id // \"\") (\(.severity)): \(.summary)\"] | join(\"\n\")")
+          echo "pinned v$pinned ($pinned_date), latest $latest"
+          if [ "$latest" = "v$pinned" ] && [ -z "$advisories" ]; then
+            echo "up to date"; exit 0
+          fi
+          title="rclone update: $latest available (Panero ships v$pinned)"
+          [ -n "$advisories" ] && title="rclone security advisories after v$pinned ($latest available)"
+          if gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "issue already open"; exit 0
+          fi
+          body=$(printf 'Panero ships rclone v%s (dev/rclone/rclone.sha256).\n\nLatest release: %s\n\nAdvisories published after v%s:\n%s\n\nUpdate: verify the new SHA256SUMS signature (key FBF737ECE9F8AB18604BD2AC93935E02FF3B54FA), update dev/rclone/rclone.sha256, run dev/scripts/cloud-security-test.sh and the release checks.\n' \
+            "$pinned" "$latest" "$pinned" "${advisories:-(none)}")
+          gh issue create --title "$title" --body "$body"

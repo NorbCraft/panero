@@ -21,3 +21,13 @@ panero: package-contains-documentation-outside-usr-share-doc [usr/share/panero/t
 # reading existing and imported settings.
 panero: spelling-error-in-binary Differents Different [usr/bin/panero]
 panero: spelling-error-in-binary Entrys Entries [usr/bin/panero]
+
+# Panero's own rclone (dev/CLOUD-SECURITY-AUDIT.md R1): the official,
+# checksum-verified upstream build of rclone, a statically linked Go program,
+# kept byte for byte so its checksum can be checked after installation.
+panero: statically-linked-binary [usr/lib/x86_64-linux-gnu/libexec/panero/rclone]
+panero: embedded-library * [usr/lib/x86_64-linux-gnu/libexec/panero/rclone]
+panero: unstripped-binary-or-object [usr/lib/x86_64-linux-gnu/libexec/panero/rclone]
+panero: hardening-no-pie [usr/lib/x86_64-linux-gnu/libexec/panero/rclone]
+panero: hardening-no-relro [usr/lib/x86_64-linux-gnu/libexec/panero/rclone]
+panero: extra-license-file [usr/share/doc/panero/rclone/COPYING]

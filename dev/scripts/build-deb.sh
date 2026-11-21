@@ -72,6 +72,11 @@ else
     make_tar() { git archive --format=tar "$commit"; }
 fi
 
+# Panero's own rclone (R1): fetched and verified on the host, copied into
+# debian/rclone/ inside the container (debian/rules picks it up).
+rclone_dir="$out_abs/rclone"
+"$repo_root/dev/scripts/fetch-rclone.sh" "$rclone_dir" amd64
+
 echo "==> Building Panero .deb from $src_desc in $image"
 docker pull -q "$image" >/dev/null
 image_digest=$(docker image inspect --format '{{join .RepoDigests " "}}' "$image" 2>/dev/null || true)
@@ -94,6 +99,9 @@ apt-get install -y -qq --no-install-recommends dpkg-dev build-essential >/dev/nu
 mkdir -p /build/panero
 tar -x -C /build/panero
 cd /build/panero
+mkdir -p debian/rclone
+cp /rclone/rclone /rclone/COPYING /rclone/rclone-dependencies.txt debian/rclone/
+echo "==> Bundled $(debian/rclone/rclone version | head -n 1)"
 if [ -n "$DEB_VERSION_OVERRIDE" ]; then
     sed -i "1s/^panero ([^)]*)/panero ($DEB_VERSION_OVERRIDE)/" debian/changelog
 fi
@@ -126,6 +134,7 @@ make_tar | docker run --rm -i \
     -e RUN_LINTIAN="$run_lintian" \
     -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
     -v "$out_abs:/out" \
+    -v "$rclone_dir:/rclone:ro" \
     "${cache_args[@]}" \
     "$image" bash -c "$container_script" 2>&1 | tee "$out_abs/build.log"
 status=${PIPESTATUS[1]}

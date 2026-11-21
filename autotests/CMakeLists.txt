@@ -29,3 +29,11 @@ ecm_add_test(panerocloudtest.cpp ../app/paneropackageinstaller.cpp
     TEST_NAME panerocloudtest
     LINK_LIBRARIES Qt5::Test Qt5::DBus Cloud)
 target_include_directories(panerocloudtest PRIVATE ${CMAKE_SOURCE_DIR}/app/Cloud ${CMAKE_SOURCE_DIR}/app)
+
+# Security/integration tests of the cloud feature: skipped unless run through
+# dev/scripts/cloud-security-test.sh (private D-Bus session and keyring, temp HOME).
+ecm_add_test(panerocloudsecuritytest.cpp ../app/paneropackageinstaller.cpp
+    TEST_NAME panerocloudsecuritytest
+    LINK_LIBRARIES Qt5::Test Qt5::DBus Qt5::Network Cloud)
+target_include_directories(panerocloudsecuritytest PRIVATE ${CMAKE_SOURCE_DIR}/app/Cloud ${CMAKE_SOURCE_DIR}/app)
+add_dependencies(panerocloudsecuritytest panero-cloud-key)

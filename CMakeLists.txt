@@ -36,6 +36,7 @@ find_package(Qt5 ${MIN_QT_VERSION} CONFIG REQUIRED
   Core
   Gui
   DBus
+  Network
   Widgets
   PrintSupport
   Xml

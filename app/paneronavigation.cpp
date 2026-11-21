@@ -7,6 +7,8 @@
 #include "paneronavigation.h"
 #include "Cloud/panerocloud.h"
 #include "Cloud/paneroaddclouddialog.h"
+#include "Cloud/panerooffline.h"
+#include "Cloud/paneroofflinedialog.h"
 #include "Cloud/paneroconnectserverdialog.h"
 #include "Panel/paneroappearance.h"
 
@@ -181,10 +183,22 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     });
     connect(cloud, &PaneroCloud::mountFailed, this, [this](const QString &id, const QString &message) {
         loadCloud();
-        if (id == m_pendingCloud)
+        const bool wasPending = id == m_pendingCloud;
+        if (wasPending)
             m_pendingCloud.clear();
+        const QString remote = id.startsWith(QLatin1String("rclone:")) ? id.mid(7) : QString();
+        if (wasPending && !remote.isEmpty() && !PaneroOffline::instance()->pins(remote).isEmpty()
+            && QFileInfo(PaneroOffline::mirrorRoot(remote)).isDir()) {
+            const auto answer = KMessageBox::questionTwoActions(
+                this, message + QLatin1String("\n\n") + i18n("Open the folders kept on this device instead?"), i18n("Cloud Drive"),
+                KGuiItem(i18n("Open Offline Files"), QStringLiteral("folder-download")), KStandardGuiItem::close());
+            if (answer == KMessageBox::PrimaryAction)
+                openUrlInActivePanel(QUrl::fromLocalFile(PaneroOffline::mirrorRoot(remote)));
+            return;
+        }
         KMessageBox::error(this, message, i18n("Cloud Drive"));
     });
+    connect(PaneroOffline::instance(), &PaneroOffline::changed, this, &PaneroNavigationDock::loadCloud);
     connect(cloud, &PaneroCloud::unmounted, this, &PaneroNavigationDock::loadCloud);
 
     // folder tree
@@ -244,6 +258,20 @@ void PaneroNavigationDock::loadCloud()
         item->setData(UrlRole, e.id);
         item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
         QString tip = e.isServer() ? e.url.toDisplayString() : i18n("Cloud drive (rclone: %1)", e.rcloneRemote);
+        if (e.isRclone()) {
+            PaneroOffline *offline = PaneroOffline::instance();
+            const QStringList pins = offline->pins(e.rcloneRemote);
+            if (!pins.isEmpty()) {
+                int problems = 0;
+                for (const QString &p : pins)
+                    problems += offline->status(e.rcloneRemote, p).error.isEmpty() ? 0 : 1;
+                tip += QLatin1Char('\n') + i18np("1 folder kept on this device", "%1 folders kept on this device", pins.count());
+                if (offline->isBusy(e.rcloneRemote))
+                    tip += QLatin1Char('\n') + i18n("Synchronising...");
+                else if (problems)
+                    tip += QLatin1Char('\n') + i18np("1 folder could not be synchronised", "%1 folders could not be synchronised", problems);
+            }
+        }
         if (cloud->isMounted(e.id))
             tip += QLatin1Char('\n') + i18n("Connected");
         else if (cloud->isMounting(e.id))
@@ -284,17 +312,30 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
     auto *cloud = PaneroCloud::instance();
     const PaneroCloud::Entry entry = item ? cloud->entry(item->data(UrlRole).toString()) : PaneroCloud::Entry();
     QMenu menu(this);
-    QAction *open = nullptr, *disconnect = nullptr, *remove = nullptr;
+    QAction *open = nullptr, *disconnect = nullptr, *remove = nullptr, *offlineFiles = nullptr, *openOffline = nullptr;
     if (!entry.id.isEmpty()) {
         open = menu.addAction(Icon(QStringLiteral("document-open-folder")), i18n("Open in Active Panel"));
+        if (entry.isRclone()) {
+            if (!PaneroOffline::instance()->pins(entry.rcloneRemote).isEmpty())
+                openOffline = menu.addAction(Icon(QStringLiteral("folder-download")), i18n("Open Offline Files"));
+            offlineFiles = menu.addAction(Icon(QStringLiteral("configure")), i18n("Offline Files..."));
+        }
         if (entry.isRclone() && cloud->isMounted(entry.id))
             disconnect = menu.addAction(Icon(QStringLiteral("media-eject")), i18n("Disconnect"));
         menu.addSeparator();
-        remove = menu.addAction(Icon(QStringLiteral("list-remove")), i18n("Remove..."));
+        remove = menu.addAction(Icon(QStringLiteral("list-remove")), entry.isRclone() ? i18n("Sign Out and Remove...") : i18n("Remove..."));
         menu.addSeparator();
     }
     QAction *addCloud = menu.addAction(Icon(QStringLiteral("folder-cloud")), i18n("Add Cloud..."));
     QAction *addServer = menu.addAction(Icon(QStringLiteral("network-server")), i18n("Connect to Server..."));
+    QAction *signOutAll = nullptr;
+    for (const PaneroCloud::Entry &e : cloud->entries()) {
+        if (e.isRclone()) {
+            menu.addSeparator();
+            signOutAll = menu.addAction(Icon(QStringLiteral("system-log-out")), i18n("Sign Out of All Clouds..."));
+            break;
+        }
+    }
     QAction *chosen = menu.exec(m_cloud->viewport()->mapToGlobal(pos));
     if (!chosen)
         return;
@@ -302,6 +343,15 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
         openCloudEntry(entry);
     } else if (chosen == disconnect) {
         cloud->unmount(entry.id);
+    } else if (chosen && chosen == openOffline) {
+        openUrlInActivePanel(QUrl::fromLocalFile(PaneroOffline::mirrorRoot(entry.rcloneRemote)));
+    } else if (chosen && chosen == offlineFiles) {
+        PaneroOfflineDialog dialog(entry.rcloneRemote, entry.label, this);
+        dialog.exec();
+        if (dialog.urlToOpen().isValid())
+            openUrlInActivePanel(dialog.urlToOpen());
+    } else if (chosen && chosen == signOutAll) {
+        cloud->signOutAll(this);
     } else if (chosen == remove) {
         cloud->confirmAndRemove(this, entry);
     } else if (chosen == addCloud) {

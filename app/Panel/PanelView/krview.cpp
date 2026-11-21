@@ -21,6 +21,7 @@
 #include "../krglobal.h"
 #include "../krpreviews.h"
 #include "../viewactions.h"
+#include "../../Cloud/panerooffline.h"
 
 // QtCore
 #include <QDebug>
@@ -321,7 +322,14 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     if (iconName.isNull())
         iconName = "";
 
+    // Panero: cloud badge (online-only / available offline / always kept), R10
+    PaneroOffline::State cloudState = PaneroOffline::State::NotCloud;
+    if (fileitem->getUrl().isLocalFile())
+        cloudState = PaneroOffline::instance()->state(fileitem->getUrl().toLocalFile(), qint64(fileitem->getSize()), fileitem->isDir());
+
     cacheName.append(QString::number(size));
+    if (cloudState != PaneroOffline::State::NotCloud)
+        cacheName.append(QStringLiteral("CLOUD%1_").arg(int(cloudState)));
     if(fileitem->isSymLink())
         cacheName.append("LINK_");
     if(dim)
@@ -334,6 +342,7 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     if (!QPixmapCache::find(cacheName, &icon)) {
         icon = processIcon(Icon(iconName, Icon("unknown")).pixmap(size),
                            dim, dimColor, dimFactor, fileitem->isSymLink());
+        PaneroOffline::decorate(icon, cloudState);
         // insert it into the cache
         QPixmapCache::insert(cacheName, icon);
     }

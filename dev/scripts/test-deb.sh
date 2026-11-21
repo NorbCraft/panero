@@ -65,6 +65,13 @@ if [ -n "$old_deb" ]; then
 fi
 chmod -R a+rX "$stage"
 
+# The pinned rclone release (dev/rclone/rclone.sha256): version and the SHA-256
+# of the binary inside the verified zip, compared with the installed copy.
+rclone_cache="$repo_root/dist/rclone"
+"$repo_root/dev/scripts/fetch-rclone.sh" "$rclone_cache" amd64 >/dev/null
+RCLONE_PIN=$(awk '$1 == "version" {print $2}' "$repo_root/dev/rclone/rclone.sha256")
+RCLONE_SHA=$(sha256sum "$rclone_cache/rclone" | cut -d' ' -f1)
+
 docker pull -q "$image" >/dev/null
 image_digest=$(docker image inspect --format '{{join .RepoDigests " "}}' "$image" 2>/dev/null || true)
 
@@ -170,9 +177,18 @@ for f in /usr/bin/panero /usr/lib/x86_64-linux-gnu/panero/plugins/kf5/kio/*.so; 
     check "all shared libraries resolve for $(basename "$f")" bash -c "! ldd '$f' | grep -q 'not found'"
 done
 check "no file outside the expected Panero paths" bash -c "! dpkg -L panero | grep -v -E \
-'^/(\.|usr|usr/bin|usr/lib|usr/lib/x86_64-linux-gnu|usr/share|etc|etc/xdg)$|^/usr/share/lintian(/overrides(/panero)?)?$|^/usr/bin/panero$|/panero(/|$)|^/usr/share/(applications|metainfo|icons/hicolor/[^/]+/apps)/io\.github\.norbcraft\.panero\.|^/usr/share/locale/[^/]+/LC_MESSAGES/panero\.mo$|^/usr/share/man/man1/panero\.1\.gz$|^/etc/xdg/panero_kio_isorc$|^/usr/share/(applications|metainfo|icons|icons/hicolor|icons/hicolor/[^/]+|icons/hicolor/[^/]+/apps|locale|locale/[^/]+|locale/[^/]+/LC_MESSAGES|man|man/man1|doc|doc/HTML|doc/HTML/[^/]+|kxmlgui5)$'"
+'^/(\.|usr|usr/bin|usr/lib|usr/lib/x86_64-linux-gnu|usr/lib/x86_64-linux-gnu/libexec|usr/share|etc|etc/xdg)$|^/usr/share/lintian(/overrides(/panero)?)?$|^/usr/bin/panero$|/panero(/|$)|^/usr/share/(applications|metainfo|icons/hicolor/[^/]+/apps)/io\.github\.norbcraft\.panero\.|^/usr/share/locale/[^/]+/LC_MESSAGES/panero\.mo$|^/usr/share/man/man1/panero\.1\.gz$|^/etc/xdg/panero_kio_isorc$|^/usr/share/(applications|metainfo|icons|icons/hicolor|icons/hicolor/[^/]+|icons/hicolor/[^/]+/apps|locale|locale/[^/]+|locale/[^/]+/LC_MESSAGES|man|man/man1|doc|doc/HTML|doc/HTML/[^/]+|kxmlgui5)$'"
 
 apt_install desktop-file-utils appstream >/dev/null
+# Panero's own rclone and keyring helper (dev/CLOUD-SECURITY-AUDIT.md R1/R2)
+libexec=/usr/lib/x86_64-linux-gnu/libexec/panero
+check "bundled rclone installed" test -x "$libexec/rclone"
+check "bundled rclone is the pinned version ($RCLONE_PIN)" bash -c "$libexec/rclone version | head -n 1 | grep -qx 'rclone v$RCLONE_PIN'"
+check "bundled rclone is byte-identical to the pinned release" bash -c "echo '$RCLONE_SHA  $libexec/rclone' | sha256sum -c --quiet -"
+check "panero-cloud-key installed" test -x "$libexec/panero-cloud-key"
+check "panero-cloud-key fails cleanly without a keyring" bash -c "! $libexec/panero-cloud-key > /tmp/key.out 2>/tmp/key.err && test ! -s /tmp/key.out"
+check "rclone license and dependency list installed" test -s /usr/share/doc/panero/rclone/COPYING -a -s /usr/share/doc/panero/rclone/dependencies.txt
+check "the distribution's rclone is not pulled in" bash -c "! dpkg-query -W -f '\${Status}' rclone 2>/dev/null | grep -q 'ok installed'"
 check "desktop-file-validate" desktop-file-validate /usr/share/applications/io.github.norbcraft.panero.desktop
 appstreamcli validate --no-net /usr/share/metainfo/io.github.norbcraft.panero.metainfo.xml > /tmp/as.log 2>&1
 as_status=$?; sed 's/^/    /' /tmp/as.log
@@ -283,6 +299,7 @@ run_scenario() {
     echo "=== scenario: $name ($image) ==="
     docker run --rm -i \
         -e NEW_DEB="$new_name" -e OLD_DEB="$old_name" \
+        -e RCLONE_PIN="$RCLONE_PIN" -e RCLONE_SHA="$RCLONE_SHA" \
         -v "$stage:/debs:ro" \
         "$image" bash -c "$common"$'\n'"$script"
 }

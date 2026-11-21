@@ -66,6 +66,9 @@ private:
         EJECT_ID,
         COPY_PATH_ID,        // Panero: copy the full path(s) to the clipboard
         TERMINAL_HERE_ID,    // Panero: terminal in this folder / the panel's folder
+        CLOUD_KEEP_ID,       // Panero: keep a cloud folder on this device (R10)
+        CLOUD_FREE_ID,       // Panero: free up space (remove the local copy)
+        CLOUD_SYNC_ID,       // Panero: synchronise the local copy now
         SERVICE_LIST_ID // ALWAYS KEEP THIS ONE LAST!!!
     };
 
