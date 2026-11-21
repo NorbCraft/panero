@@ -373,3 +373,7 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   (app/Cloud/icons, Qt resource), used in Add Cloud and the sidebar.
 - Tests: new oauthSetupFinishesOrStops (fake OAuth server + fake browser:
   Drive completes, OneDrive loop detected); 42 unit / 16 security tests pass.
+- Owner: keep the icons of the other clouds; only Google Drive and OneDrive
+  change (sidebar keeps Panero's folder-cloud icon for the rest).
+- Released v0.1.0-preview.6: PR #11, tag on 3e1b45dd9; assets verified
+  (SHA256SUMS, bundled rclone unchanged 1.76.0); .deb copied to ~/Downloads.

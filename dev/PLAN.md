@@ -292,5 +292,6 @@ decisions before implementation.
 - [x] Independent security review; findings fixed and re-checked.
 - [x] Release v0.1.0-preview.5 (PR #10, run 44899039001).
 - [x] Preview 6: OneDrive sign-in hang fixed, OneDrive scopes as shown, provider icons.
+- [x] Release v0.1.0-preview.6.
 - [ ] Tests with disposable accounts (owner signs in in the browser).
 - [ ] Owner signs in with real accounts.
