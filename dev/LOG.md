@@ -350,3 +350,26 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   44899039001; assets verified (SHA256SUMS, rclone byte-identical to upstream
   1.76.0, licenses archive with rclone); .deb copied to ~/Downloads.
 - Re-audit summary: dev/CLOUD-SECURITY-AUDIT.md section 6.
+
+## 2026-11-21 (evening) — preview 6: OneDrive sign-in fix, provider icons
+
+- Owner report: OneDrive sign-in in preview 5 stays at "Waiting for the
+  sign-in to finish" after the browser showed rclone's "Success"; the sign-in
+  link then fails (helper closed). Asked for real Google Drive / OneDrive icons
+  if a fix is needed.
+- Cause (reproduced with rclone 1.76 and a fake OAuth server): after the token,
+  `config create` answers rclone's own questions with defaults; when OneDrive's
+  drive listing fails, the backend returns ConfigError("choose_type") and rclone
+  loops forever, printing the error to stdout, which Panero discarded. Likely
+  trigger for a real account: OneDrive not provisioned yet, or a Graph error.
+- Also found: `disable_site_permission=true` makes rclone replace access_scopes
+  by Files.*.All (onedrive.go makeOauthConfig), so preview 5 asked for more
+  than the dialog said. Removed.
+- Fix: SetupOutputWatcher reads rclone's stdout (failure lines only, buffer
+  wiped), stops after a repeated failure and shows the redacted message + a
+  OneDrive hint; 3-minute limit after "Got code"; status "Signed in. Finishing
+  the setup..."; ensureOneDriveMainDrive (/me/drive) after setup.
+- Icons: own SVG drawings of the Google Drive and OneDrive marks
+  (app/Cloud/icons, Qt resource), used in Add Cloud and the sidebar.
+- Tests: new oauthSetupFinishesOrStops (fake OAuth server + fake browser:
+  Drive completes, OneDrive loop detected); 42 unit / 16 security tests pass.

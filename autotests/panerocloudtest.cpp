@@ -56,6 +56,7 @@ private slots:
     void offlineCacheFiles();
     void revokeRequests();
     void identityRequests();
+    void oneDriveMainDrive();
     void callbackPort();
 
 private:
@@ -370,7 +371,8 @@ void PaneroCloudTest::oneDriveScopes()
     QCOMPARE(PaneroCloudSetup::oauthOptions(QStringLiteral("drive"), true, false), QStringList{QStringLiteral("scope=drive.readonly")});
     QCOMPARE(PaneroCloudSetup::oauthOptions(QStringLiteral("drive"), false, false), QStringList{QStringLiteral("scope=drive")});
     const QStringList od = PaneroCloudSetup::oauthOptions(QStringLiteral("onedrive"), false, false);
-    QVERIFY(od.contains(QStringLiteral("disable_site_permission=true")));
+    QVERIFY(!od.join(QLatin1Char(' ')).contains(QLatin1String("disable_site_permission"))); // it would widen the scopes
+    QCOMPARE(od.size(), 1);
     QVERIFY(od.contains(QStringLiteral("access_scopes=Files.Read Files.ReadWrite offline_access")));
     QVERIFY(PaneroCloudSetup::oauthOptions(QStringLiteral("dropbox"), true, true).isEmpty());
     QVERIFY(PaneroCloudSetup::accessDescription(QStringLiteral("drive"), false, false).contains(QLatin1String("e-mail")));
@@ -503,6 +505,28 @@ void PaneroCloudTest::identityRequests()
     QCOMPARE(parseIdentity(QStringLiteral("pcloud"), R"({"result":0,"email":"p@x.org"})"), QStringLiteral("p@x.org"));
     QVERIFY(parseIdentity(QStringLiteral("pcloud"), R"({"result":2000})").isEmpty());
     QVERIFY(parseIdentity(QStringLiteral("box"), "not json").isEmpty());
+}
+
+void PaneroCloudTest::oneDriveMainDrive()
+{
+    QString id, type;
+    QVERIFY(PaneroCloudRevoke::parseMainDrive(R"({"id":"b!AbC-12_x.y","driveType":"personal"})", &id, &type));
+    QCOMPARE(id, QStringLiteral("b!AbC-12_x.y"));
+    QCOMPARE(type, QStringLiteral("personal"));
+    QVERIFY(!PaneroCloudRevoke::parseMainDrive(R"({"id":"x y","driveType":"personal"})", &id, &type));
+    QVERIFY(!PaneroCloudRevoke::parseMainDrive(R"({"id":"abc","driveType":"a=b c"})", &id, &type));
+    QVERIFY(!PaneroCloudRevoke::parseMainDrive("{}", &id, &type));
+    // verbatim shape of rclone 1.76 stdout while OneDrive's drive listing fails
+    PaneroCloudSetup::SetupOutputWatcher w;
+    QVERIFY(!w.feed("Failed to query available drives: /me/drives: HTTP error 401 (401 Unauthorized) returned body: "
+                    "\"{\\\"error\\\":{\\\"code\\\":\\\"InvalidAuthenticationToken\\\"}}\"\nEnter the drive ID "));
+    QVERIFY(!w.stuck());
+    QVERIFY(!w.feed("manually instead\n\nFailed to query available drives: RootURL not"));
+    QVERIFY(w.feed(" set\n"));
+    QVERIFY(w.error().startsWith(QLatin1String("Failed to query available drives: /me/drives: HTTP error 401")));
+    PaneroCloudSetup::SetupOutputWatcher ok;
+    QVERIFY(!ok.feed("[od]\ntype = onedrive\ntoken = {\"access_token\":\"SECRET\"}\ndrive_type = personal\n"));
+    QVERIFY(ok.error().isEmpty());
 }
 
 void PaneroCloudTest::callbackPort()

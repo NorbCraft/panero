@@ -8,6 +8,7 @@
 #define PANEROCLOUD_H
 
 #include <QHash>
+#include <QIcon>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -51,6 +52,9 @@ public:
     };
 
     static PaneroCloud *instance();
+
+    /// Icon of a cloud service by rclone backend type ("drive", "onedrive", ...).
+    static QIcon iconForType(const QString &type);
 
     /// Use another config (tests). Default: KSharedConfig::openConfig() (= krConfig in the app).
     void setConfig(KSharedConfigPtr config);

@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/panero-cloud">
+    <file>google-drive.svg</file>
+    <file>onedrive.svg</file>
+  </qresource>
+</RCC>

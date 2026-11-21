@@ -97,3 +97,10 @@ Files: dev/rclone/COPYING
 Copyright: 2012 Nick Craig-Wood
 License: MIT
 Comment: rclone's license, shipped with Panero's bundled rclone (dev/rclone/README.md).
+
+Files: app/Cloud/icons/*
+Copyright: 2026 Panero contributors
+License: GPL-2.0-or-later
+Comment: Simplified drawings of the Google Drive and OneDrive marks, used only to
+ identify those services in the Add Cloud list and the sidebar. Google Drive is
+ a trademark of Google LLC; OneDrive is a trademark of Microsoft Corporation.

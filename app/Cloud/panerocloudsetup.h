@@ -31,6 +31,28 @@ bool callbackPortFree(QString *why = nullptr);
 /// files, no SharePoint) - never secrets.
 QStringList oauthOptions(const QString &type, bool readOnly, bool includeShared);
 
+/**
+ * Watches rclone's stdout during `config create`. After the browser sign-in
+ * rclone answers its own questions with the defaults; when a step fails (for
+ * example OneDrive cannot list the account's drives) it prints the error to
+ * stdout and starts over, endlessly. stuck() turns true when a step failed a
+ * second time; error() is the first failure (secrets redacted). Nothing else
+ * of the output is kept.
+ */
+class SetupOutputWatcher
+{
+public:
+    bool feed(const QByteArray &chunk);
+    bool stuck() const { return m_failures >= 2; }
+    QString error() const { return m_error; }
+    void clear();
+
+private:
+    QByteArray m_buffer;
+    int m_failures = 0;
+    QString m_error;
+};
+
 /// Plain-language description of the access the provider grants.
 QString accessDescription(const QString &type, bool readOnly, bool includeShared);
 

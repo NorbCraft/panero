@@ -74,6 +74,27 @@ QString entryIdForServer(const QUrl &url)
 }
 } // namespace
 
+// static libraries need an explicit resource initialisation (outside namespaces)
+static void initCloudIcons()
+{
+    static bool done = false;
+    if (!done) {
+        Q_INIT_RESOURCE(cloudicons);
+        done = true;
+    }
+}
+
+QIcon PaneroCloud::iconForType(const QString &type)
+{
+    initCloudIcons();
+    if (type == QLatin1String("drive"))
+        return QIcon(QStringLiteral(":/panero-cloud/google-drive.svg"));
+    if (type == QLatin1String("onedrive"))
+        return QIcon(QStringLiteral(":/panero-cloud/onedrive.svg"));
+    // every other service keeps the folder-cloud icon used so far
+    return QIcon::fromTheme(QStringLiteral("folder-cloud"), QIcon::fromTheme(QStringLiteral("folder-remote")));
+}
+
 PaneroCloud *PaneroCloud::instance()
 {
     static PaneroCloud *s_instance = nullptr;

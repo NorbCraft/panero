@@ -36,6 +36,8 @@
 #include <QPushButton>
 #include <QDir>
 #include <QDirIterator>
+#include <QElapsedTimer>
+#include <QStandardPaths>
 #include <KConfigCore/KConfigGroup>
 #include <QFile>
 #include <QJsonDocument>
@@ -162,6 +164,7 @@ private slots:
     void keyHelper();
     void webDavPasswordNeverExposed();
     void pcloudCallbackCsrfRejected();
+    void oauthSetupFinishesOrStops();
     void mountAndOfflineFiles();
     void removeDeletesCache();
     void importFromPlainConfig();
@@ -237,8 +240,9 @@ QStringList PaneroCloudSecurityTest::filesContaining(const QByteArray &secret) c
     QDirIterator it(root(), QDir::Files | QDir::Hidden | QDir::System, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         const QString path = it.next();
-        if (path.startsWith(root() + QStringLiteral("/srv")) || path.contains(QLatin1String("/run/panero-cloud/")))
-            continue; // test server data, live mounts
+        if (path.startsWith(root() + QStringLiteral("/srv")) || path.startsWith(root() + QStringLiteral("/bin/"))
+            || path.contains(QLatin1String("/run/panero-cloud/")))
+            continue; // test server data and helper scripts (fake tokens by design), live mounts
         QFile f(path);
         if (f.size() > 64 * 1024 * 1024 || !f.open(QIODevice::ReadOnly))
             continue;
@@ -452,6 +456,100 @@ void PaneroCloudSecurityTest::pcloudCallbackCsrfRejected()
                 QVERIFY2(l.startsWith("http://127.0.0.1:53682/auth?state="), l.constData());
         }
     }
+}
+
+void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
+{
+    // A fake OAuth server and a fake browser complete rclone's browser sign-in
+    // locally. Google Drive must finish; for OneDrive the drive listing then
+    // fails (fake token) and rclone retries forever - Panero must notice.
+    QString why;
+    if (!PaneroCloudSetup::callbackPortFree(&why))
+        QSKIP("port 53682 is in use");
+    if (QStandardPaths::findExecutable(QStringLiteral("python3")).isEmpty() || QStandardPaths::findExecutable(QStringLiteral("curl")).isEmpty())
+        QSKIP("needs python3 and curl");
+    const QByteArray fakeToken = "fake-refresh-token-91c2";
+    m_scanner.addSecret(fakeToken);
+    const QString script = root() + QStringLiteral("/bin/fakeoauth.py");
+    QFile py(script);
+    QVERIFY(py.open(QIODevice::WriteOnly));
+    py.write("import http.server, json, sys, urllib.parse\n"
+             "class H(http.server.BaseHTTPRequestHandler):\n"
+             "    def log_message(self, *a): pass\n"
+             "    def do_GET(self):\n"
+             "        u = urllib.parse.urlparse(self.path); q = urllib.parse.parse_qs(u.query)\n"
+             "        loc = q['redirect_uri'][0] + '?code=fakecode&state=' + urllib.parse.quote(q['state'][0])\n"
+             "        self.send_response(302); self.send_header('Location', loc); self.end_headers()\n"
+             "    def do_POST(self):\n"
+             "        self.rfile.read(int(self.headers.get('Content-Length', 0)))\n"
+             "        b = json.dumps({'access_token': 'fake-access', 'refresh_token': '" + fakeToken + "', 'token_type': 'Bearer', 'expires_in': 3600}).encode()\n"
+             "        self.send_response(200); self.send_header('Content-Type', 'application/json')\n"
+             "        self.send_header('Content-Length', str(len(b))); self.end_headers(); self.wfile.write(b)\n"
+             "s = http.server.HTTPServer(('127.0.0.1', 0), H)\n"
+             "print(s.server_address[1], flush=True)\n"
+             "s.serve_forever()\n");
+    py.close();
+    QProcess server;
+    server.start(QStringLiteral("python3"), {QStringLiteral("-I"), script});
+    QVERIFY(server.waitForReadyRead(10000));
+    const QString port = QString::fromLatin1(server.readLine()).trimmed();
+    QVERIFY(port.toInt() > 0);
+    const QString base = QStringLiteral("http://127.0.0.1:") + port;
+    QFile opener(root() + QStringLiteral("/bin/xdg-open"));
+    QVERIFY(opener.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    opener.write("#!/bin/sh\ncurl -s -L -o /dev/null \"$1\"\n");
+    opener.close();
+    opener.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+
+    const auto runSetup = [&](const QStringList &args, PaneroCloudSetup::SetupOutputWatcher &watcher, int timeoutMs) {
+        QProcess p;
+        PaneroRclone::prepare(p, args);
+        QProcessEnvironment env = p.processEnvironment();
+        env.insert(QStringLiteral("PATH"), root() + QStringLiteral("/bin:") + env.value(QStringLiteral("PATH")));
+        p.setProcessEnvironment(env);
+        p.start();
+        p.closeWriteChannel();
+        QElapsedTimer t;
+        t.start();
+        while (p.state() != QProcess::NotRunning && !watcher.stuck() && t.elapsed() < timeoutMs) {
+            p.waitForReadyRead(200);
+            watcher.feed(p.readAllStandardOutput());
+        }
+        const bool finished = p.state() == QProcess::NotRunning;
+        if (!finished) {
+            p.kill();
+            p.waitForFinished(3000);
+        }
+        return finished ? p.exitCode() : -1;
+    };
+
+    // Google Drive: completes, token stored encrypted only
+    PaneroCloudSetup::SetupOutputWatcher drive;
+    const int rc = runSetup({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("gfake"), QStringLiteral("drive"),
+                             QStringLiteral("auth_url=") + base + QStringLiteral("/auth"), QStringLiteral("token_url=") + base + QStringLiteral("/token"),
+                             QStringLiteral("scope=drive")},
+                            drive, 60000);
+    QCOMPARE(rc, 0);
+    QVERIFY(!drive.stuck());
+    QVERIFY(PaneroCloud::instance()->refreshNow());
+    QVERIFY(PaneroCloud::instance()->remoteNames().contains(QStringLiteral("gfake")));
+    const QStringList withToken = filesContaining(fakeToken);
+    QVERIFY2(withToken.isEmpty(), qPrintable(withToken.join(QLatin1Char(' '))));
+    PaneroCloudSetup::deleteRemote(QStringLiteral("gfake"));
+
+    // OneDrive: the failing drive listing loops; the watcher stops it
+    PaneroCloudSetup::SetupOutputWatcher onedrive;
+    runSetup({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("odfake"), QStringLiteral("onedrive"),
+              QStringLiteral("auth_url=") + base + QStringLiteral("/auth"), QStringLiteral("token_url=") + base + QStringLiteral("/token"),
+              QStringLiteral("access_scopes=") + PaneroCloudUtils::oneDriveScopes(false, false), QStringLiteral("--contimeout"), QStringLiteral("3s"),
+              QStringLiteral("--timeout"), QStringLiteral("5s"), QStringLiteral("--low-level-retries"), QStringLiteral("1")},
+             onedrive, 90000);
+    QVERIFY2(onedrive.stuck(), "rclone's endless retry was not detected");
+    QVERIFY(onedrive.error().startsWith(QLatin1String("Failed to query available drives")));
+    QVERIFY(!onedrive.error().contains(QString::fromLatin1(fakeToken)));
+    PaneroCloudSetup::deleteRemote(QStringLiteral("odfake"));
+    server.kill();
+    server.waitForFinished(3000);
 }
 
 void PaneroCloudSecurityTest::mountAndOfflineFiles()

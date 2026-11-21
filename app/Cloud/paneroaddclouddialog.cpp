@@ -26,6 +26,7 @@
 #include <QPushButton>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <KI18n/KLocalizedString>
@@ -145,7 +146,22 @@ public:
             return;
         }
         PaneroRclone::prepare(m_process, args);
-        m_process.setStandardOutputFile(QProcess::nullDevice()); // never read: may contain the new config
+        // stdout carries rclone's progress messages and, at the end, the new
+        // configuration: only failure lines are looked at, nothing is kept
+        connect(&m_process, &QProcess::readyReadStandardOutput, this, [this, service]() {
+            QByteArray chunk = m_process.readAllStandardOutput();
+            const bool stuck = m_watcher.feed(chunk);
+            PaneroSecretStore::wipe(chunk);
+            if (stuck && !m_finished) {
+                m_error = i18n("The sign-in worked, but rclone could not set up the drive:\n\n%1", m_watcher.error());
+                if (service == QLatin1String("OneDrive"))
+                    m_error += QLatin1String("\n\n")
+                        + i18n("If this Microsoft account has never used OneDrive, open https://onedrive.live.com once in the browser "
+                               "and try again. For a work or school account, ask whether OneDrive is enabled.");
+                stop();
+                QDialog::reject();
+            }
+        });
         connect(&m_process, &QProcess::readyReadStandardError, this, [this]() {
             m_stderr += QString::fromUtf8(m_process.readAllStandardError());
             if (m_authUrl.isEmpty()) {
@@ -154,6 +170,13 @@ public:
                     m_open->setEnabled(true);
                     m_status->setText(i18n("Waiting for the sign-in to finish..."));
                 }
+            }
+            if (!m_gotCode && m_stderr.contains(QLatin1String("Got code"))) {
+                // the browser part is done; rclone's helper has closed
+                m_gotCode = true;
+                m_open->setEnabled(false);
+                m_status->setText(i18n("Signed in. Finishing the setup..."));
+                m_finishTimer.start();
             }
         });
         connect(&m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, [this](int code, QProcess::ExitStatus status) {
@@ -183,12 +206,25 @@ public:
             QDialog::reject();
         });
         m_process.start();
+        m_process.closeWriteChannel(); // rclone never needs input here
+
+        // after the browser step rclone must finish within a few minutes
+        m_finishTimer.setSingleShot(true);
+        m_finishTimer.setInterval(3 * 60 * 1000);
+        connect(&m_finishTimer, &QTimer::timeout, this, [this]() {
+            m_error = i18n("The sign-in worked, but rclone did not finish the setup in time.");
+            if (!m_watcher.error().isEmpty())
+                m_error += QLatin1String("\n\n") + m_watcher.error();
+            stop();
+            QDialog::reject();
+        });
     }
 
     ~SignInDialog() override
     {
         stop();
         PaneroSecretStore::wipe(m_stderr);
+        m_watcher.clear();
     }
 
     QString error() const { return m_error; }
@@ -225,6 +261,9 @@ private:
     QString m_error;
     bool m_finished = false;
     bool m_cancelled = false;
+    bool m_gotCode = false;
+    PaneroCloudSetup::SetupOutputWatcher m_watcher;
+    QTimer m_finishTimer;
 };
 } // namespace
 
@@ -256,7 +295,8 @@ PaneroAddCloudDialog::PaneroAddCloudDialog(QWidget *parent)
     m_list->setSpacing(2);
     m_providers = providers();
     for (const Provider &p : qAsConst(m_providers)) {
-        auto *item = new QListWidgetItem(iconFor(p.icons), p.title, m_list);
+        const QIcon icon = p.type == QLatin1String("drive") || p.type == QLatin1String("onedrive") ? PaneroCloud::iconForType(p.type) : iconFor(p.icons);
+        auto *item = new QListWidgetItem(icon, p.title, m_list);
         item->setData(Qt::UserRole, p.type);
     }
     main->addWidget(m_list);
@@ -603,6 +643,12 @@ void PaneroAddCloudDialog::connectClicked()
         m_error->setText(error);
         m_error->animatedShow();
         return;
+    }
+
+    if (p.type == QLatin1String("onedrive")) {
+        QString driveError;
+        if (!PaneroCloudRevoke::ensureOneDriveMainDrive(remote, &driveError))
+            qWarning("OneDrive: could not check the main drive: %s", qPrintable(driveError));
     }
 
     QString verifyError;

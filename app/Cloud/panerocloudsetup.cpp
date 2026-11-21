@@ -122,9 +122,37 @@ QStringList oauthOptions(const QString &type, bool readOnly, bool includeShared)
     if (type == QLatin1String("drive"))
         return {QStringLiteral("scope=") + (readOnly ? QStringLiteral("drive.readonly") : QStringLiteral("drive"))};
     if (type == QLatin1String("onedrive"))
-        return {QStringLiteral("access_scopes=") + PaneroCloudUtils::oneDriveScopes(readOnly, includeShared),
-                QStringLiteral("disable_site_permission=true")};
+        // not disable_site_permission: rclone then replaces access_scopes by
+        // its broad Files.*.All list; without Sites.* SharePoint stays out anyway
+        return {QStringLiteral("access_scopes=") + PaneroCloudUtils::oneDriveScopes(readOnly, includeShared)};
     return {};
+}
+
+bool SetupOutputWatcher::feed(const QByteArray &chunk)
+{
+    m_buffer += chunk;
+    int nl;
+    while ((nl = m_buffer.indexOf('\n')) >= 0) {
+        QByteArray line = m_buffer.left(nl).trimmed();
+        // overwrite the consumed part: rclone's stdout ends with the new configuration
+        for (int i = 0; i <= nl; ++i)
+            m_buffer[i] = '\0';
+        m_buffer.remove(0, nl + 1);
+        if (line.startsWith("Failed to ")) {
+            ++m_failures;
+            if (m_error.isEmpty())
+                m_error = PaneroCloudUtils::redactSecrets(QString::fromUtf8(line)).left(400);
+        }
+        PaneroSecretStore::wipe(line);
+    }
+    return stuck();
+}
+
+void SetupOutputWatcher::clear()
+{
+    PaneroSecretStore::wipe(m_buffer);
+    m_failures = 0;
+    m_error.clear();
 }
 
 QString accessDescription(const QString &type, bool readOnly, bool includeShared)
