@@ -460,12 +460,22 @@ before_wins = {w.handle for w in windows_of(proc.pid)}
 keys('{F3}', 2.5)
 shot('f3-viewer')
 viewer = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
-record('F3 opens the file in a viewer', bool(viewer), ', '.join(w.window_text() for w in viewer))
-for w in viewer:
+names = [w.window_text() for w in viewer]
+record('F3 opens the file in a viewer', bool(viewer) and not any(n.startswith('Error') for n in names),
+       ', '.join(names))
+for w in viewer:                         # close the viewer (or an error box) so nothing blocks
     try:
         w.close()
     except Exception:  # noqa: BLE001
         pass
+time.sleep(1)
+for w in windows_of(proc.pid):
+    if not is_main(w):
+        try:
+            w.set_focus()
+            keys('{ESC}', 0.5)
+        except Exception:  # noqa: BLE001
+            pass
 time.sleep(1)
 win.set_focus()
 before = {p.pid for p in psutil.process_iter()}

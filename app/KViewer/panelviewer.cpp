@@ -104,8 +104,8 @@ void PanelViewerBase::openUrl(const QUrl& url)
     emit urlChanged(this, url);
 
     if (url.isLocalFile()) {
-        if (!QFile::exists(url.path())) {
-            KMessageBox::error(krMainWindow, i18n("Error at opening %1.", url.path()));
+        if (!QFile::exists(url.toLocalFile())) {
+            KMessageBox::error(krMainWindow, i18n("Error at opening %1.", url.toDisplayString(QUrl::PreferLocalFile)));
             emit openUrlFinished(this, false);
             return;
         }

@@ -1326,7 +1326,7 @@ bool Lister::openUrl(const QUrl &listerUrl)
     _fileSize = 0;
 
     if (listerUrl.isLocalFile()) {
-        _filePath = listerUrl.path();
+        _filePath = listerUrl.toLocalFile();
         if (!QFile::exists(_filePath))
             return false;
         _fileSize = getFileSize();
