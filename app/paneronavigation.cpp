@@ -251,7 +251,10 @@ void PaneroNavigationDock::loadCloud()
     auto *cloud = PaneroCloud::instance();
     m_cloud->clear();
     for (const PaneroCloud::Entry &e : cloud->entries()) {
-        const QIcon icon = e.isServer() ? Icon(QStringLiteral("network-server")) : PaneroCloud::iconForType(e.rcloneType);
+        // Google Drive and OneDrive show their own icon, everything else as before
+        const bool ownIcon = e.rcloneType == QLatin1String("drive") || e.rcloneType == QLatin1String("onedrive");
+        const QIcon icon = e.isServer() ? Icon(QStringLiteral("network-server"))
+                                        : ownIcon ? PaneroCloud::iconForType(e.rcloneType) : Icon(QStringLiteral("folder-cloud"));
         auto *item = new QListWidgetItem(icon, e.label, m_cloud);
         item->setData(UrlRole, e.id);
         item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
