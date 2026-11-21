@@ -280,3 +280,14 @@ owner decisions D-014:
 - v0.1.0-preview.4 published: https://github.com/NorbCraft/panero/releases/tag/v0.1.0-preview.4
 - Open: owner host install + real cloud sign-in test (no accounts available to
   the agent); owner-decision backports (dev/BACKPORTS.md).
+
+## Phase 12 — Safe cloud sign-in (owner request 2026-11-21)
+
+Audit and recommendations: dev/CLOUD-SECURITY-AUDIT.md. Waiting for owner
+decisions before implementation.
+
+- [x] Audit preview 4 cloud code, rclone 1.60.1/1.76.0, CVE-2026-116194.
+- [ ] Owner decisions on R1–R10.
+- [ ] Implement agreed items; automated security tests in CI.
+- [ ] Tests with disposable accounts (owner signs in in the browser).
+- [ ] Owner signs in with real accounts.

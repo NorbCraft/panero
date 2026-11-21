@@ -288,3 +288,28 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Tests: ctest 6/6, GUI file-ops 17/17 (context menu navigation updated for
   Copy Path), interactive checks listed in the release notes.
 - Released v0.1.0-preview.4 (PR #9, tag on b0e89cc95, run 44802311531); assets verified; .deb copied to ~/Downloads.
+
+## 2026-11-21 — main back at preview 4; cloud security audit
+
+- Owner was not happy with another agent's work on main. main/origin/main are
+  at 62d024dd9 ("dev: preview 4 released and verified"); that agent's commit
+  467b264f5 ("Use read-only desktop cloud mounts on Linux") is kept on the
+  local branch experiment/linux-desktop-cloud (not pushed, not merged).
+  experiment/windows (Windows preview) stays in its worktree, not merged.
+- Owner request: audit the rclone cloud sign-in before signing in with real
+  accounts (rclone version and distro patches, OAuth permissions/callbacks,
+  credential storage, logs/argv exposure, provider-side revocation, encrypted
+  config + keyring, pCloud CVE-2026-116194); recommendations first.
+- Audit: dev/CLOUD-SECURITY-AUDIT.md. Main points: noble's rclone 1.60.1 is
+  affected by CVE-2026-116194 (pCloud OAuth CSRF, fixed upstream in 1.75.2;
+  confirmed on cve.org and in the 1.60.1 source) and other 2026 advisories;
+  tokens/passwords are plain text in ~/.config/rclone/rclone.conf; MEGA/WebDAV
+  obscured passwords appear in world-readable /proc/<pid>/cmdline; "Remove"
+  does not revoke the token; the VFS cache keeps file contents after removal;
+  Ubuntu disables rclone's mega backend.
+- Recommendations R1–R9 (pinned rclone 1.76.0 in the .deb, Panero-owned
+  encrypted config unlocked through the keyring via --password-command, no
+  secrets in argv, hardened sign-in, real revocation, cache/log hygiene, drop
+  guided MEGA) plus R10 offline files ("Files On-Demand"-style, owner request).
+- Next: owner decisions on the recommendations, then implementation and tests
+  with disposable accounts created by the owner.
