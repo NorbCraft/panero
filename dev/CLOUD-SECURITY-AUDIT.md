@@ -149,3 +149,28 @@ Disposable accounts: the owner creates throwaway accounts (Google, Microsoft, Dr
 - Remove, then confirm the provider no longer accepts the token and the app has disappeared from the provider's connected-apps page.
 
 Only after this does the owner sign in with real accounts.
+
+## 6. Re-audit after preview 5 (2026-11-21)
+
+Two rounds of independent review of the preview 5 code (fresh reviewer, code
+and threat model only); all high and medium findings fixed and covered by
+tests. Released as v0.1.0-preview.5; the shipped rclone is byte-identical to
+the official 1.76.0 binary.
+
+Fixed by preview 5: F1–F10 above, plus the review findings (automatic resync
+could overwrite local edits; cache with pending uploads deleted; offline folder
+reused by a new account of the same name; late pCloud host check for imported
+remotes; unvalidated pin paths; folder name collisions; a use-after-free while
+waiting for uploads).
+
+Remaining risks (accepted or outside Panero's reach):
+
+| Risk | Status |
+|---|---|
+| Malware running as the same user in an unlocked session can ask the keyring for the key (GNOME Keyring has no per-application access control) and so read the sign-in keys. | Outside the threat model; recommended: screen lock, full-disk encryption, no untrusted programs. A token never gives access to e-mail or the password. |
+| On multi-user computers another local account can read the OAuth `state` from the browser's command line during the sign-in and slip its own account in. | Mitigated: after sign-in Panero shows the account (e-mail; for personal Microsoft accounts the name and account id) and removes it unless the user confirms. |
+| rclone uses shared OAuth apps ("rclone"); removing its access at a provider removes it for every rclone setup of that account. | Explained in the Remove dialog. |
+| Microsoft has no revocation API for these tokens. | Panero opens https://account.live.com/consent/Manage; the user removes "rclone" there. |
+| Offline copies and opened files are plain files on disk. | Recommend full-disk encryption; deleted on sign-out by default. |
+| Live sign-ins (Google, Microsoft, Dropbox, pCloud, Box) not yet tested with real accounts; pCloud `logout` for OAuth tokens unconfirmed. | Test with disposable accounts (section 5). |
+| The bundled rclone must be kept current by Panero releases. | Weekly rclone-watch workflow opens an issue. |

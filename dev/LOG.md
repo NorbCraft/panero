@@ -342,3 +342,11 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   sign-in against a leaked OAuth state on multi-user machines.
 - Package: 27.5 MB .deb (rclone 85 MB uncompressed), lintian clean (no E/W),
   test-deb checks the installed rclone is byte-identical to the pinned release.
+- Re-review: 2 new medium issues (use-after-free in the upload wait, deletion
+  of a folder kept from an earlier account) and 1 gap (plain resync after a
+  broken first download) fixed; OneDrive account check shows the account id.
+- CI fix: cloud-security-test.sh returned 1 from its cleanup trap.
+- Released v0.1.0-preview.5: PR #10, tag on 9efc0eb7f, release run
+  44899039001; assets verified (SHA256SUMS, rclone byte-identical to upstream
+  1.76.0, licenses archive with rclone); .deb copied to ~/Downloads.
+- Re-audit summary: dev/CLOUD-SECURITY-AUDIT.md section 6.

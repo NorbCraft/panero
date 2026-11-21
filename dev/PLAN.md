@@ -290,6 +290,6 @@ decisions before implementation.
 - [x] Owner decisions on R1–R10 (owner: implement all; D-016).
 - [x] Implement agreed items; automated security tests in CI.
 - [x] Independent security review; findings fixed and re-checked.
-- [ ] Release v0.1.0-preview.5.
+- [x] Release v0.1.0-preview.5 (PR #10, run 44899039001).
 - [ ] Tests with disposable accounts (owner signs in in the browser).
 - [ ] Owner signs in with real accounts.
