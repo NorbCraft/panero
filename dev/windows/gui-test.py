@@ -370,7 +370,11 @@ record('Del key deletes to the Recycle Bin (TC habit)', ok and 'beta.txt' in rec
 
 # --- mouse selection: Ctrl+click two rows, then F5 ----------------------------------------
 try:
-    rows = [w for w in win.descendants() if w.window_text() in ('alpha.txt', 'renamed.txt')]
+    # the Name column shows "alpha" (the extension has its own column, as in TC)
+    rows = [w for w in win.descendants() if w.window_text() in ('alpha', 'renamed')]
+    with open(OUT / 'uia-rows.txt', 'w', encoding='utf-8') as f:
+        for w in rows:
+            f.write(f'{w.element_info.control_type}\t{w.window_text()}\t{w.rectangle()}\n')
     if len(rows) >= 2:
         r = rows[0].rectangle()
         mouse.click(button='left', coords=(r.left + 10, (r.top + r.bottom) // 2))
@@ -394,11 +398,36 @@ except Exception as e:  # noqa: BLE001
 
 # --- drives -------------------------------------------------------------------------------
 keys('{ESC}', 0.3)
+def drive_menu_items():
+    items = []
+    for w in Desktop(backend='uia').windows(process=proc.pid):
+        try:
+            items += [i.window_text() for i in w.descendants(control_type='MenuItem')
+                      if '(' in i.window_text() and ':)' in i.window_text()]
+        except Exception:  # noqa: BLE001
+            pass
+    return items
+
+
 keys('%{F1}', 1.2)                     # Total Commander: Alt+F1 = left drive list
 shot('alt-f1')
-menus = [w.window_text() for w in app.windows() if w.element_info.control_type == 'Menu']
-record('Alt+F1 opens a drive list (TC habit)', bool(menus), ', '.join(menus))
+items = drive_menu_items()
+record('Alt+F1 opens the drive list with Explorer names (TC habit)', bool(items), ', '.join(items))
 keys('{ESC}', 0.5)
+# Alt+F2: right drive list; pick the second drive and check the right panel follows
+keys('%{F2}', 1.2)
+items = drive_menu_items()
+if len(items) > 1:
+    keys('{DOWN}{DOWN}{ENTER}', 1.5)
+    shot('alt-f2-second-drive')
+    t = title()
+    letter = items[1][items[1].rfind('(') + 1:items[1].rfind(')')]
+    record('Alt+F2 + Enter switches the right panel to another drive', letter.rstrip(':') in t or t.endswith(':/')
+           or t.endswith(':\\') or len(t) <= 3, f'chose "{items[1]}", title "{t}"')
+else:
+    keys('{ESC}', 0.5)
+    record('Alt+F2 + Enter switches the right panel to another drive', False, f'menu items: {items}')
+keys('{TAB}', 0.8)                      # back to the left panel
 
 # --- Shift+F6, TC's rename in place ----------------------------------------------------------
 ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'renamed.txt']
