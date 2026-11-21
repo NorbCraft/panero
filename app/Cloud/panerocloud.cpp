@@ -91,15 +91,7 @@ QIcon PaneroCloud::iconForType(const QString &type)
         return QIcon(QStringLiteral(":/panero-cloud/google-drive.svg"));
     if (type == QLatin1String("onedrive"))
         return QIcon(QStringLiteral(":/panero-cloud/onedrive.svg"));
-    const QStringList names = type == QLatin1String("dropbox") ? QStringList{QStringLiteral("dropbox"), QStringLiteral("folder-dropbox")}
-        : type == QLatin1String("pcloud")                     ? QStringList{QStringLiteral("pcloud")}
-        : type == QLatin1String("box")                        ? QStringList{QStringLiteral("box")}
-        : type == QLatin1String("webdav")                     ? QStringList{QStringLiteral("nextcloud"), QStringLiteral("goa-account-owncloud")}
-                                                              : QStringList();
-    for (const QString &n : names) {
-        if (QIcon::hasThemeIcon(n))
-            return QIcon::fromTheme(n);
-    }
+    // every other service keeps the folder-cloud icon used so far
     return QIcon::fromTheme(QStringLiteral("folder-cloud"), QIcon::fromTheme(QStringLiteral("folder-remote")));
 }
 
