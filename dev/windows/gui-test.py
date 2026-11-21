@@ -498,6 +498,14 @@ for p in terms:
     except psutil.Error:
         pass
 time.sleep(1)
+for w in windows_of(proc.pid):          # an error box would block closing
+    if not is_main(w):
+        record('No dialog left open after F9', False, w.window_text())
+        try:
+            w.set_focus()
+            keys('{ESC}', 0.5)
+        except Exception:  # noqa: BLE001
+            pass
 
 # --- wrap up -------------------------------------------------------------------------------
 try:

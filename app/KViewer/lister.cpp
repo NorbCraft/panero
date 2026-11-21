@@ -1366,7 +1366,7 @@ bool Lister::openUrl(const QUrl &listerUrl)
 
     _textArea->reset();
     emit started(nullptr);
-    emit setWindowCaption(listerUrl.toDisplayString());
+    emit setWindowCaption(listerUrl.toDisplayString(QUrl::PreferLocalFile));
     emit completed();
     return true;
 }

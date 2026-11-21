@@ -759,7 +759,7 @@ void ListPanel::start(const QUrl &url)
     if (!startUrl.isValid())
         startUrl = QUrl::fromLocalFile(ROOT_DIR);
 
-    _lastLocalPath = startUrl.isLocalFile() ? startUrl.path() : ROOT_DIR;
+    _lastLocalPath = startUrl.isLocalFile() ? startUrl.toLocalFile() : ROOT_DIR;
 
 
     func->openUrl(startUrl);
@@ -782,7 +782,7 @@ void ListPanel::slotStartUpdate(bool directoryChange)
         }
 
         if (currentUrl.isLocalFile())
-            _lastLocalPath = currentUrl.path();
+            _lastLocalPath = currentUrl.toLocalFile();
 
         setNavigatorUrl(currentUrl);
 

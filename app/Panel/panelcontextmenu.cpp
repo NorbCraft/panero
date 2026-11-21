@@ -443,7 +443,7 @@ void PanelContextMenu::performAction(int id)
     break;
 #endif
     case OPEN_TERM_ID :
-        SLOTS->runTerminal(singleURL.path());
+        SLOTS->runTerminal(singleURL.toLocalFile());
         break;
     case COPY_PATH_ID : {
         QStringList paths;
