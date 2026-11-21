@@ -10,6 +10,7 @@
 #include <QIcon>
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 /**
  * Windows build only: drive names and the icons Explorer shows for drives,
@@ -46,6 +47,9 @@ void reset();
 bool createSymlink(const QString &target, const QString &linkPath);
 /// Create a hard link (files on the same NTFS volume).
 bool createHardLink(const QString &target, const QString &linkPath);
+/// Start a console program (terminal) detached in its own console window, without
+/// inheriting Panero's standard handles.
+bool startInNewConsole(const QStringList &command, const QString &workingDirectory);
 }
 
 #endif

@@ -75,6 +75,9 @@
 #include "Splitter/combiner.h"
 #include "Splitter/splitter.h"
 #include "Splitter/splittergui.h"
+#ifdef Q_OS_WIN
+#include "Panel/panerowinshell.h"
+#endif
 
 #ifdef SYNCHRONIZER_ENABLED
     #include "Synchronizer/synchronizergui.h"
@@ -516,6 +519,12 @@ void KrSlots::runTerminal(const QString & dir)
             sepdArgs[i] = dir;
         }
     }
+#ifdef Q_OS_WIN
+    // its own console window, even when Panero's output is redirected
+    if (!PaneroWinShell::startInNewConsole(sepdArgs, dir))
+        KMessageBox::error(krApp, i18n("Error executing %1.", term));
+    return;
+#endif
     proc << sepdArgs;
     if (!proc.startDetached())
         KMessageBox::error(krApp, i18n("Error executing %1.", term));

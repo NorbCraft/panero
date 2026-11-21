@@ -13,6 +13,7 @@
 #include <QFile>
 #include <QFileIconProvider>
 #include <QFileInfo>
+#include <QProcess>
 #include <QHash>
 #include <QSet>
 #include <QStandardPaths>
@@ -175,6 +176,25 @@ bool createSymlink(const QString &target, const QString &linkPath)
 #else
     return QFile::link(target, linkPath);
 #endif
+}
+
+bool startInNewConsole(const QStringList &command, const QString &workingDirectory)
+{
+    if (command.isEmpty())
+        return false;
+    QProcess process;
+    process.setProgram(command.first());
+    process.setArguments(command.mid(1));
+    process.setWorkingDirectory(QDir::toNativeSeparators(workingDirectory));
+#ifdef Q_OS_WIN
+    process.setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) {
+        args->flags |= CREATE_NEW_CONSOLE;
+        args->flags &= ~DWORD(DETACHED_PROCESS | CREATE_NO_WINDOW);
+        args->startupInfo->dwFlags &= ~DWORD(STARTF_USESTDHANDLES);
+        args->inheritHandles = false;
+    });
+#endif
+    return process.startDetached();
 }
 
 bool createHardLink(const QString &target, const QString &linkPath)
