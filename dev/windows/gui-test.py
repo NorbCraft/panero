@@ -366,12 +366,17 @@ keys('{DELETE}', 1.5)
 shot('del-confirm')
 press_button(proc.pid, 'Trash')
 ok = wait_for(lambda: not (LEFT / 'beta.txt').exists())
-record('Del key deletes to the Recycle Bin (TC habit)', ok and 'beta.txt' in recycle_bin_names())
+binned = any(n.startswith('beta') for n in recycle_bin_names())
+record('Del key deletes to the Recycle Bin (TC habit)', ok and binned,
+       f'removed: {ok}, in Recycle Bin: {binned}')
 
 # --- mouse selection: Ctrl+click two rows, then F5 ----------------------------------------
 try:
     # the Name column shows "alpha" (the extension has its own column, as in TC)
-    rows = [w for w in win.descendants() if w.window_text() in ('alpha', 'renamed')]
+    mid = win.rectangle().mid_point().x
+    rows = [w for w in win.descendants() if w.window_text() in ('alpha', 'renamed')
+            and w.rectangle().right < mid + 120]           # left panel only
+    rows.sort(key=lambda w: w.rectangle().top)
     with open(OUT / 'uia-rows.txt', 'w', encoding='utf-8') as f:
         for w in rows:
             f.write(f'{w.element_info.control_type}\t{w.window_text()}\t{w.rectangle()}\n')
@@ -389,7 +394,10 @@ try:
         keys('{F5}', 1.5)
         keys('{ENTER}', 0.5)
         ok = wait_for(lambda: (RIGHT / 'alpha.txt').exists() and (RIGHT / 'renamed.txt').exists())
-        record('Mouse: Ctrl+click selects two files, F5 copies both', ok)
+        time.sleep(1)
+        got = sorted(p.name for p in RIGHT.iterdir())
+        record('Mouse: click + Ctrl+click selects two files, F5 copies exactly those', ok and got == [
+            'alpha.txt', 'renamed.txt'], f'right panel now has {got}')
     else:
         record('Mouse: Ctrl+click selection', False,
                'file rows are not exposed to UI Automation; needs an interactive session')
@@ -434,10 +442,52 @@ ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'renamed.txt']
 go_to('alpha.txt')
 keys('+{F6}', 1.2)
 shot('shift-f6')
-dlg = app.top_window().window_text()
+dlg = [w.window_text() for w in windows_of(proc.pid) if not is_main(w)]
 record('Shift+F6 renames in place (TC habit)', False,
-       f'Panero opens "{dlg}" (Move delayed) instead')
+       f'Panero opens the "Move ... to" dialog with a Queue option (Move delayed) instead: {dlg}')
 keys('{ESC}', 0.5)
+
+# --- F3 view, F4 edit, F9 terminal (TC habits) ------------------------------------------------
+def new_processes(before, names):
+    return [p for p in psutil.process_iter(['name', 'pid']) if p.info['name'] in names and p.info['pid'] not in before]
+
+
+keys('{ESC}', 0.5)
+keys('%-', 0.4)                         # clear the marks from the mouse test
+ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'renamed.txt']
+go_to('alpha.txt')
+before_wins = {w.handle for w in windows_of(proc.pid)}
+keys('{F3}', 2.5)
+shot('f3-viewer')
+viewer = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+record('F3 opens the file in a viewer', bool(viewer), ', '.join(w.window_text() for w in viewer))
+for w in viewer:
+    try:
+        w.close()
+    except Exception:  # noqa: BLE001
+        pass
+time.sleep(1)
+win.set_focus()
+before = {p.pid for p in psutil.process_iter()}
+keys('{F4}', 3.0)
+shot('f4-editor')
+eds = new_processes(before, ('notepad.exe', 'Notepad.exe'))
+record('F4 opens the file in Notepad (Windows default)', bool(eds), ', '.join(p.info['name'] for p in eds))
+for p in eds:
+    p.kill()
+time.sleep(1)
+win.set_focus()
+before = {p.pid for p in psutil.process_iter()}
+keys('{F9}', 3.0)
+shot('f9-terminal')
+terms = new_processes(before, ('WindowsTerminal.exe', 'wt.exe', 'powershell.exe', 'cmd.exe', 'OpenConsole.exe'))
+record('F9 opens a terminal in the current folder', bool(terms), ', '.join(p.info['name'] for p in terms))
+for p in terms:
+    try:
+        p.kill()
+    except psutil.Error:
+        pass
+time.sleep(1)
 
 # --- wrap up -------------------------------------------------------------------------------
 try:
