@@ -834,7 +834,11 @@ void PaneroCloud::unmount(const QString &id)
     if (wasMounted && id.startsWith(QLatin1String("rclone:"))) {
         const QString cache = PaneroRclone::cacheDir(id.mid(7));
         QEventLoop wait;
-        for (int i = 0; i < 60 && PaneroCloudUtils::dirtyCacheEntries(cache) > 0 && m->process->state() == QProcess::Running; ++i) {
+        for (int i = 0; i < 60; ++i) {
+            // rclone may end while we wait (finishMount() then deletes the Mount)
+            m = m_mounts.value(id);
+            if (!m || m->process->state() != QProcess::Running || PaneroCloudUtils::dirtyCacheEntries(cache) == 0)
+                break;
             QTimer::singleShot(500, &wait, &QEventLoop::quit);
             wait.exec(QEventLoop::ExcludeUserInputEvents);
         }

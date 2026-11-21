@@ -287,7 +287,9 @@ Audit and recommendations: dev/CLOUD-SECURITY-AUDIT.md. Waiting for owner
 decisions before implementation.
 
 - [x] Audit preview 4 cloud code, rclone 1.60.1/1.76.0, CVE-2026-116194.
-- [ ] Owner decisions on R1–R10.
-- [ ] Implement agreed items; automated security tests in CI.
+- [x] Owner decisions on R1–R10 (owner: implement all; D-016).
+- [x] Implement agreed items; automated security tests in CI.
+- [x] Independent security review; findings fixed and re-checked.
+- [ ] Release v0.1.0-preview.5.
 - [ ] Tests with disposable accounts (owner signs in in the browser).
 - [ ] Owner signs in with real accounts.

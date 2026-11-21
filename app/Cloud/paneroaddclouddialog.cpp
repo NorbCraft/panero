@@ -631,7 +631,11 @@ void PaneroAddCloudDialog::connectClicked()
                    "in with your own account in the browser.</p>",
                    p.title.toHtmlEscaped(), idError.toHtmlEscaped())
             : i18n("<p>Signed in to %1 as:</p><p><b>%2</b></p><p>Is this your account?</p>", p.title.toHtmlEscaped(),
-                   identity.toHtmlEscaped());
+                   identity.toHtmlEscaped())
+                + (identity.contains(QLatin1Char('@')) ? QString()
+                                                       : i18n("<p>%1 did not report an e-mail address. Answer Yes only if you just "
+                                                              "signed in yourself in the browser.</p>",
+                                                              p.title.toHtmlEscaped()));
         const auto answer = KMessageBox::questionTwoActions(this, text, i18n("Check the Account"),
                                                             KGuiItem(i18n("Yes, Keep It"), QStringLiteral("dialog-ok")),
                                                             KGuiItem(i18n("No, Remove It"), QStringLiteral("edit-delete")));

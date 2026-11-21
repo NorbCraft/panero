@@ -313,3 +313,32 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   guided MEGA) plus R10 offline files ("Files On-Demand"-style, owner request).
 - Next: owner decisions on the recommendations, then implementation and tests
   with disposable accounts created by the owner.
+
+## 2026-11-21 (afternoon) — preview 5: safe cloud sign-in (R1–R10)
+
+- Owner: "implement all the requirements, from R1 to R10 and create a new
+  preview", then re-inspect and say whether signing in to OneDrive is safe.
+  Unanswered choices taken as recommended: rclone bundled in the .deb, MEGA
+  removed from the guided list, offline copies deleted on sign-out by default
+  (setting per cloud). D-016.
+- rclone 1.76.0 pinned: SHA256SUMS signature checked (key FBF737EC…54FA, as on
+  rclone.org/release_signing and keyserver.ubuntu.com), equal to GitHub's asset
+  digests. Verified against 1.76.0: CVE-2026-116194 fixed (stateless callback ->
+  400 and sign-in aborted; foreign pCloud host -> "invalid hostname").
+- New code in app/Cloud: panerosecretstore (Secret Service over QtDBus, no new
+  library, works without sudo), panerorclone (runner, encrypted store),
+  panerocloudkey (helper), panerocloudrevoke (revocation + account identity),
+  panerocloudsetup (WebDAV via stdin, import, port checks), panerooffline +
+  dialog (offline files). Panel integration: badges, redirect, context menu.
+- Tests: panerocloudtest 41 unit tests; panerocloudsecuritytest 15 tests via
+  dev/scripts/cloud-security-test.sh (private dbus-run-session + gnome-keyring,
+  temp HOME; never the owner's keyring), incl. a /proc scanner with positive
+  control, at-rest scan, local WebDAV server, pCloud CSRF regression, mount,
+  offline sync, repair, import. CI runs it on every push.
+- Independent review (subagent, fresh eyes): no account-takeover path; fixed
+  1 high (automatic --resync could overwrite local edits), 2 medium (cache with
+  pending uploads deleted; offline folder/settings reused by a new account of
+  the same name) and 5 low items; added account-identity confirmation after
+  sign-in against a leaked OAuth state on multi-user machines.
+- Package: 27.5 MB .deb (rclone 85 MB uncompressed), lintian clean (no E/W),
+  test-deb checks the installed rclone is byte-identical to the pinned release.

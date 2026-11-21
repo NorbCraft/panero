@@ -496,7 +496,7 @@ void PaneroCloudTest::identityRequests()
     QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","email":"t@example.com"}}})"),
              QStringLiteral("Test User <t@example.com>"));
     QCOMPARE(parseIdentity(QStringLiteral("onedrive"), R"({"owner":{"user":{"displayName":"Test User","id":"abc"}}})"),
-             QStringLiteral("Test User"));
+             QStringLiteral("Test User (ID abc)"));
     QCOMPARE(parseIdentity(QStringLiteral("drive"), R"({"user":{"displayName":"A B","emailAddress":"a@gmail.com"}})"),
              QStringLiteral("A B <a@gmail.com>"));
     QCOMPARE(parseIdentity(QStringLiteral("dropbox"), R"({"name":{"display_name":"D"},"email":"d@x.org"})"), QStringLiteral("D <d@x.org>"));

@@ -275,6 +275,11 @@ QString parseIdentity(const QString &type, const QByteArray &body)
         const QJsonObject u = o.value(QStringLiteral("owner")).toObject().value(QStringLiteral("user")).toObject();
         name = u.value(QStringLiteral("displayName")).toString();
         mail = u.value(QStringLiteral("email")).toString();
+        // personal accounts report no e-mail; the display name alone can be
+        // copied by anyone, so add the account id Microsoft shows in its settings
+        const QString id = u.value(QStringLiteral("id")).toString();
+        if (mail.isEmpty() && !id.isEmpty())
+            name = name.isEmpty() ? QStringLiteral("ID %1").arg(id) : QStringLiteral("%1 (ID %2)").arg(name, id);
     } else if (type == QLatin1String("dropbox")) {
         name = o.value(QStringLiteral("name")).toObject().value(QStringLiteral("display_name")).toString();
         mail = o.value(QStringLiteral("email")).toString();

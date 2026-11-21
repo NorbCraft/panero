@@ -358,8 +358,9 @@ QString PaneroOffline::redirect(const QString &localPath)
         return localPath;
     const QString mirror = mirrorPath(remote, rel);
     const PinStatus st = status(remote, pin);
-    if (!QFileInfo(mirror).isDir() || (!st.lastSync.isValid() && st.syncing))
-        return localPath; // first download still running
+    // the local copy is opened only once its first download has completed
+    if (!QFileInfo(mirror).isDir() || !group(remote).readEntry("Synced Pins", QStringList()).contains(pin))
+        return localPath;
     if (!st.lastSync.isValid() || st.lastSync.msecsTo(QDateTime::currentDateTime()) > OPEN_RESYNC_AFTER_MS)
         syncNow(remote, pin);
     return mirror;
@@ -534,7 +535,10 @@ bool PaneroOffline::unpin(QWidget *parent, const QString &remote, const QString 
     gone.remote = remote;
     gone.pin = rel;
     QDir(workdir(gone)).removeRecursively();
-    const bool deleted = deleteMirror(remote, rel, &error);
+    const bool owned = mirrorBelongsTo(remote);
+    if (!owned)
+        error = i18n("The local copy does not belong to this cloud drive; it was not deleted.");
+    const bool deleted = owned && deleteMirror(remote, rel, &error);
     if (deleted && pins(remote).isEmpty()) {
         // nothing kept any more: remove the id marker and the empty folder
         QDir mirrorDir(mirrorRoot(remote));
@@ -658,6 +662,14 @@ void PaneroOffline::startNext()
         QTimer::singleShot(0, this, &PaneroOffline::startNext);
         return;
     }
+    // the first run copies the cloud over the local folder: only while that
+    // folder is still empty (e.g. not after a first download that broke off and
+    // was then edited); otherwise use the careful repair mode
+    if (m_current.resync && !m_current.repair) {
+        const QDir target(mirrorPath(m_current.remote, m_current.pin));
+        if (target.exists() && !target.isEmpty())
+            m_current.repair = true;
+    }
     QDir().mkpath(mirrorPath(m_current.remote, m_current.pin));
     QDir().mkpath(PaneroRclone::cacheDir(m_current.remote) + QLatin1String("/bisync"));
     m_process = new QProcess(this);
@@ -759,7 +771,9 @@ void PaneroOffline::forgetRemote(const QString &remote, bool deleteLocalCopies)
         m_process->deleteLater();
         m_process = nullptr;
     }
-    if (deleteLocalCopies) {
+    // only a folder that carries this remote's id (never one kept from an
+    // earlier account of the same name)
+    if (deleteLocalCopies && mirrorBelongsTo(remote)) {
         QString error;
         deleteMirror(remote, QString(), &error);
     }
