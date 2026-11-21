@@ -1,3 +1,15 @@
+panero (0.1.0~preview.6-1) noble; urgency=medium
+
+  * Sixth preview (git tag v0.1.0-preview.6).
+  * Cloud sign-in no longer waits forever when rclone cannot finish the setup
+    after the browser step (e.g. OneDrive cannot list the account's drives):
+    Panero shows rclone's error and a hint, with a time limit.
+  * OneDrive asks only for the access shown in the dialog (preview 5 asked
+    for all files incl. shared ones); the main drive of the account is used.
+  * Google Drive and OneDrive icons in Add Cloud and in the sidebar.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sat, 21 Nov 2026 21:30:00 +0100
+
 panero (0.1.0~preview.5-1) noble; urgency=medium
 
   * Fifth preview (git tag v0.1.0-preview.5): safe cloud sign-in

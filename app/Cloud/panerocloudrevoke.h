@@ -79,6 +79,13 @@ QString parseIdentity(const QString &type, const QByteArray &body);
 /// confirm it is their own (an attacker's account slipped into a sign-in
 /// would receive the uploads). Empty with *error on failure.
 QString accountIdentity(const QString &remote, const QString &type, QString *error = nullptr);
+
+/// OneDrive: rclone's setup takes the first drive Microsoft lists; make sure
+/// the remote uses the account's own main drive (/me/drive) and correct it if
+/// not. True when the remote is (now) on the main drive.
+bool ensureOneDriveMainDrive(const QString &remote, QString *error = nullptr);
+/// Main drive id and type from the answer of GET /me/drive.
+bool parseMainDrive(const QByteArray &body, QString *driveId, QString *driveType);
 }
 
 #endif // PANEROCLOUDREVOKE_H

@@ -19,6 +19,9 @@ set(Cloud_SRCS
     paneroconnectserverdialog.cpp
 )
 
+# provider icons (Google Drive, OneDrive): own simple drawings, compiled in
+qt5_add_resources(Cloud_SRCS icons/cloudicons.qrc)
+
 add_library(Cloud STATIC ${Cloud_SRCS})
 target_compile_definitions(Cloud PRIVATE PANERO_LIBEXEC_DIR="${PANERO_LIBEXEC_DIR}")
 

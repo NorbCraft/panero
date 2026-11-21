@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.6" date="2026-11-21" type="development">
+      <description>
+        <p>Fixes the OneDrive sign-in that stayed at "Waiting for the sign-in to finish", asks OneDrive only for the access shown, and shows the Google Drive and OneDrive icons.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.5" date="2026-11-21" type="development">
       <description>
         <p>Safe cloud sign-in: Panero's own up-to-date rclone, sign-ins stored encrypted and unlocked by the desktop keyring, real sign-out at the provider, and offline files for cloud drives.</p>

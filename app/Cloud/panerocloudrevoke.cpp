@@ -17,6 +17,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QUrlQuery>
 
@@ -315,6 +316,54 @@ QString accountIdentity(const QString &remote, const QString &type, QString *err
     if (identity.isEmpty() && error)
         *error = status == 0 ? networkError : tr("the provider answered with status %1").arg(status);
     return identity;
+}
+
+bool parseMainDrive(const QByteArray &body, QString *driveId, QString *driveType)
+{
+    const QJsonObject o = QJsonDocument::fromJson(body).object();
+    *driveId = o.value(QStringLiteral("id")).toString();
+    *driveType = o.value(QStringLiteral("driveType")).toString();
+    // drive ids are short tokens; never pass anything else to rclone
+    static const QRegularExpression safe(QStringLiteral("^[A-Za-z0-9!_.\\-]{1,200}$"));
+    return safe.match(*driveId).hasMatch() && (driveType->isEmpty() || safe.match(*driveType).hasMatch());
+}
+
+bool ensureOneDriveMainDrive(const QString &remote, QString *error)
+{
+    QJsonObject remoteConfig = remoteConfigFromDump(remote);
+    const QString stored = remoteConfig.value(QStringLiteral("drive_id")).toString();
+    const QString access = tokenOf(remoteConfig).value(QStringLiteral("access_token")).toString();
+    remoteConfig = QJsonObject();
+    if (access.isEmpty()) {
+        if (error)
+            *error = tr("no sign-in key stored");
+        return false;
+    }
+    Request r;
+    r.method = "GET";
+    r.url = QUrl(QStringLiteral("https://graph.microsoft.com/v1.0/me/drive?$select=id,driveType"));
+    r.headers << qMakePair(QByteArrayLiteral("Authorization"), QByteArray("Bearer " + access.toUtf8()));
+    QByteArray body;
+    QString networkError;
+    const int status = send(r, &body, &networkError);
+    QString id, type;
+    if (status != 200 || !parseMainDrive(body, &id, &type)) {
+        if (error)
+            *error = status == 0 ? networkError : tr("the provider answered with status %1").arg(status);
+        return false;
+    }
+    if (id.compare(stored, Qt::CaseInsensitive) == 0)
+        return true;
+    QStringList args{QStringLiteral("config"), QStringLiteral("update"), remote, QStringLiteral("drive_id=") + id};
+    if (!type.isEmpty())
+        args << QStringLiteral("drive_type=") + type;
+    QByteArray err;
+    if (PaneroRclone::run(args, nullptr, &err, 30000) != 0) {
+        if (error)
+            *error = PaneroCloudUtils::rcloneErrorSummary(QString::fromUtf8(err));
+        return false;
+    }
+    return true;
 }
 
 Result revoke(const QString &remote, const QString &type)
