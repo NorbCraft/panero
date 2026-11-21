@@ -302,3 +302,20 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - CI round 1: 5 files failed (QT_OPENDIR/readdir, lstat, readlink, kill) ->
   QDir/QFileInfo on Windows. Round 2: symlink/link, QT_MKDIR -> WinAPI
   helpers. The Linux job stays green on the branch.
+- Rounds 3-11: build green; tests: paths test uses the real profile folder on
+  Windows (QDir::homePath ignores HOME there), cloud test not built on Windows.
+- ZIP: ECM installs data to bin/data on Windows (paneroui.rc was missing).
+- Launch on a clean runner (MSYS2 renamed, PATH = Windows folders only):
+  main window up, 187 modules all from the ZIP folder or C:\Windows.
+- First run shows Krusader's Welcome box, a Linux tool search (kdiff3, kmail,
+  md5sum, "$PATH (e.g. /usr/bin)") and the Konfigurator; a "Missing Plugin:
+  install Kate" error came from the internal-editor default.
+- Fixes from the GUI test: first-run window size (also Linux), drive from
+  QStorageInfo (drive chip "Windows (C:)"), shell icons in the tree (sized),
+  no rwx column, Windows defaults (Notepad F4, wt/PowerShell/cmd F9, hidden
+  files hidden, F2 selects the name without extension), Explorer-style pins,
+  native separators in the copy/move dialog, failed jobs are reported.
+- Recycle Bin: KIO 5.116's Windows trash worker builds the SHFileOperation
+  path from QUrl::path() ("\C:\...") and treats the DE_* error code as
+  success -> nothing recycled, no error. Panero now uses QFile::moveToTrash
+  (IFileOperation) for local files on Windows.
