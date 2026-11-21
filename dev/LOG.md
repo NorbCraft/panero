@@ -319,3 +319,10 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   path from QUrl::path() ("\C:\...") and treats the DE_* error code as
   success -> nothing recycled, no error. Panero now uses QFile::moveToTrash
   (IFileOperation) for local files on Windows.
+- Rounds 12-15: viewer/lister/terminal used QUrl::path() as a local path
+  (F3 "Error at opening /C:/..."), fixed with toLocalFile(). F9 starts the
+  terminal in its own console (CREATE_NEW_CONSOLE, no inherited handles).
+- Final run 44848195056: Linux build-test, windows-build and windows-launch
+  all green. GUI checks 25 PASS, 1 NOTE (Shift+F6 is "Move delayed", not
+  rename). Report: dev/windows/FIRST-RUN-REPORT.md, screenshots in
+  dev/windows/screenshots/.

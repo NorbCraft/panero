@@ -6,7 +6,8 @@ Test machine: a fresh GitHub runner, Windows Server 2025 Datacenter, 1024×768
 screen. `C:\msys64` was renamed and Panero's `PATH` limited to the Windows
 folders. Automated with `dev/windows/gui-test.py` (pywinauto) on disposable
 files in `C:\pt\work`; every result was checked on disk. Screenshots and logs
-are in the CI artifact `panero-windows-test-results`.
+are in the CI artifact `panero-windows-test-results`; a selection is in
+`dev/windows/screenshots/`.
 
 ## Works as a TC user expects
 
@@ -19,7 +20,7 @@ are in the CI artifact `panero-windows-test-results`.
 | Mouse selection | Click + Ctrl+click marks two files; F5 copies exactly those. |
 | F5 copy / F6 move | The dialog proposes the other panel (`C:\pt\work\right\`); Enter starts. |
 | F2 rename | In place, with the name selected without the extension (Windows default). |
-| F3 view / F4 edit | F3 opens the built-in viewer; F4 opens Notepad (Windows default). |
+| F3 view / F4 edit / F9 terminal | F3 opens the built-in viewer. F4 opens Notepad, and F9 opens PowerShell in the panel's folder (Windows defaults; Windows Terminal is used when it is installed). |
 | F7 new folder | Created; the cursor stays in the folder. |
 | F8 and Del | A confirmation, then the file is in the Recycle Bin. |
 | Icons | Windows shell icons for drives, folders (Desktop, Documents, ... with their own icons) and files (by file association) in the list, the folder tree and the pins. |
@@ -41,7 +42,8 @@ are in the CI artifact `panero-windows-test-results`.
   mode); marking needs Ctrl+click or Insert.
 - **Path bar** is a breadcrumb ("Windows (C:) › pt › work"), not a text field.
 - **Words**: "Konfigurator", "Trash" on the delete button (Windows says
-  Recycle Bin), the Linux tool names on the first run.
+  Recycle Bin), the Linux tool names on the first run. The viewer's title
+  shows `file:///C:/...`.
 
 ## Missing on Windows
 

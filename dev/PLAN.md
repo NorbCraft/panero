@@ -293,7 +293,13 @@ Not merged into main. Details: `dev/windows/README.md`, decision D-015.
       and files, Explorer drive names, Alt+F1/Alt+F2 drive lists
 - [x] CI: windows-build (build, ctest, ZIP artifact), windows-launch (clean
       runner, module audit, GUI test); Linux CI also runs on experiment/**
-- [ ] Windows build green in CI
-- [ ] Launch on a clean runner (no MSYS2 on PATH): window up, all modules
-      from ZIP/Windows
-- [ ] Total Commander first-run checks (gui-test.py) and report to the owner
+- [x] Windows build green in CI (build, ctest 5/5, ZIP artifact)
+- [x] Launch on a clean runner (no MSYS2 on PATH): window up, all 187 modules
+      from the ZIP folder or C:\Windows (only in-box Windows DLLs)
+- [x] Total Commander first-run checks (gui-test.py): F2-F9, Insert, Del,
+      Tab, Enter/Backspace, Alt+F1/F2, Ctrl+click, Recycle Bin; report in
+      dev/windows/FIRST-RUN-REPORT.md
+- [ ] Owner decisions: Windows first run (skip the Linux tool search and the
+      Konfigurator?), Shift+F6 as rename on Windows, installer/signing, Qt 6
+      port if Windows becomes a target
+- [ ] Interactive checks on a real Windows 10/11 PC (list in the report)
