@@ -635,14 +635,17 @@ void PaneroNavigationDock::loadPins()
         addPin(home);
 #ifdef Q_OS_WIN
         // Windows: what Explorer's Quick access and "This PC" offer first
-        for (auto loc : {QStandardPaths::DesktopLocation, QStandardPaths::DocumentsLocation,
-                         QStandardPaths::DownloadLocation}) {
-            const QString path = QStandardPaths::writableLocation(loc);
+        const QList<QPair<QStandardPaths::StandardLocation, QString>> places = {
+            {QStandardPaths::DesktopLocation, i18n("Desktop")},
+            {QStandardPaths::DocumentsLocation, i18n("Documents")},
+            {QStandardPaths::DownloadLocation, i18n("Downloads")}};
+        for (const auto &place : places) {
+            const QString path = QStandardPaths::writableLocation(place.first);
             if (path.isEmpty() || !QFileInfo::exists(path))
                 continue;
             Pin pin;
             pin.url = QUrl::fromLocalFile(path);
-            pin.label = QStandardPaths::displayName(loc);
+            pin.label = place.second;
             addPin(pin);
         }
         for (const PaneroWinShell::Drive &drive : PaneroWinShell::drives()) {

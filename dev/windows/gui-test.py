@@ -237,7 +237,10 @@ time.sleep(3)
 win.set_focus()
 shot('panels')
 title = lambda: app.top_window().window_text()
-record('Window title shows the active folder', 'left' in title(), f'title "{title()}"')
+record('Window title shows the active folder', title() in ('left', 'right'), f'title "{title()}"')
+if title() != 'left':                    # Panero restores the panel that was active last time
+    keys('{TAB}', 0.8)
+    record('Tab switches to the other panel', title() == 'left', f'title "{title()}"')
 
 # UI Automation dump for later calibration (what Qt exposes to screen readers)
 try:
@@ -265,7 +268,7 @@ record('Enter opens a folder', title().startswith('docs'), f'title "{title()}"')
 keys('{BACKSPACE}', 1.5)
 record('Backspace goes to the parent folder', title().startswith('left'), f'title "{title()}"')
 keys('{TAB}', 0.8)
-record('Tab switches to the other panel', title().startswith('right'), f'title "{title()}"')
+record('Tab switches back', title().startswith('right'), f'title "{title()}"')
 keys('{TAB}', 0.8)
 
 # --- copy with F5 (keyboard selection with Insert) --------------------------------
