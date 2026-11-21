@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 """First-run GUI checks of the Windows build from a Total Commander user's view.
 

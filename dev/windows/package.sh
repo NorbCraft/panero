@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Panero contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Build the portable Windows ZIP from an MSYS2 UCRT64 build tree.
 #   dev/windows/package.sh <build-dir> <install-prefix> <dist-dir>

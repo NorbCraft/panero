@@ -1,4 +1,5 @@
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
 # Final KDE Frameworks 5 (5.116) builds for MSYS2 UCRT64. They are no longer in
 # the MSYS2 package database, but repo.msys2.org still serves the files. CI
 # downloads these exact files, checks the SHA-256 sums and installs them with

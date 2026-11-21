@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Panero contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Install the pinned KDE Frameworks 5 packages into an MSYS2 UCRT64 environment.
 # Every file is checked against dev/windows/kf5-packages.sha256 before pacman

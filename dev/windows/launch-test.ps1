@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Launch check for the portable Windows ZIP, run on a fresh GitHub runner.
 #  1. Unzip, hide MSYS2 (C:\msys64) and give Panero a PATH with Windows folders

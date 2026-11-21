@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+"""Dependency closure of the pinned KF5 packages against the live MSYS2 UCRT64 database.
+
+Usage: python3 kf5-closure.py <package-names...>  (needs ucrt64.html = the repo index,
+and db/ = the extracted ucrt64.db next to the script)."""
 import re, os, sys, subprocess, urllib.request, urllib.parse
 W = os.path.dirname(os.path.abspath(__file__))
 html = open(f'{W}/ucrt64.html').read()
