@@ -24,9 +24,11 @@ done
 
 tmp=$(mktemp -d)
 cleanup() {
+    local status=$?
     # the test unmounts on exit; make sure nothing stays mounted below $tmp
-    grep -o " $tmp[^ ]*" /proc/self/mountinfo 2>/dev/null | while read -r m; do fusermount3 -uz "$m" 2>/dev/null || true; done
-    rm -rf "$tmp"
+    { grep -o " $tmp[^ ]*" /proc/self/mountinfo 2>/dev/null || true; } | while read -r m; do fusermount3 -uz "$m" 2>/dev/null || true; done
+    rm -rf "$tmp" || true
+    exit "$status"
 }
 trap cleanup EXIT
 mkdir -p "$tmp/home" "$tmp/run"
