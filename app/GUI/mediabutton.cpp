@@ -6,6 +6,7 @@
 */
 
 #include "mediabutton.h"
+#include "panerodrivefilter.h"
 #include "../FileSystem/paneroslowpaths.h"
 
 #include <QFileInfo>
@@ -25,6 +26,7 @@
 #include <KI18n/KLocalizedString>
 #include <KIO/Global>
 #include <KIOCore/KMountPoint>
+#include <Solid/Block>
 #include <KWidgetsAddons/KMessageBox>
 
 #include <Solid/DeviceInterface>
@@ -181,6 +183,19 @@ bool MediaButton::getNameAndIcon(Solid::Device & device, QString &name, QIcon &i
         label = vol->label();
         fstype = vol->fsType();
         size = KIO::convertSize(vol->size());
+    }
+
+    // Panero: the same rules as the drive buttons (D-019): no snap images,
+    // loop devices, /boot, memory file systems, AppImage mounts ...
+    if (vol && (vol->isIgnored() || PaneroDriveFilter::isSystemFsType(fstype)))
+        return false;
+    {
+        const auto *block = device.as<Solid::Block>();
+        const QString devicePath = block ? block->device() : QString();
+        if (devicePath.startsWith(QLatin1String("/dev/loop")))
+            return false;
+        if (mounted && PaneroDriveFilter::classify(path, fstype, devicePath, QString(), false) == PaneroDriveFilter::Kind::Hidden)
+            return false;
     }
 
     bool printSize = false;

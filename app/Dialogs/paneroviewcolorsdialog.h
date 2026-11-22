@@ -55,6 +55,7 @@ private:
     QColor m_customFolderColor;
     QComboBox *m_menuMode = nullptr;
     QCheckBox *m_showCloud = nullptr;
+    QCheckBox *m_showDrives = nullptr;
     QComboBox *m_holdFeedback = nullptr;
     QHash<QString, QCheckBox *> m_transparentFill;
     QCheckBox *m_showHidden;

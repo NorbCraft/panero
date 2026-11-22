@@ -81,10 +81,21 @@ QLabel *sectionLabel(const QString &text, QWidget *parent)
 }
 } // namespace
 
+namespace
+{
+QPointer<PaneroNavigationDock> s_navigationDock;
+}
+
+PaneroNavigationDock *PaneroNavigationDock::instance()
+{
+    return s_navigationDock.data();
+}
+
 PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     : QDockWidget(i18n("Navigation"), parent)
 {
     setObjectName(QStringLiteral("panero_navigation_dock"));
+    s_navigationDock = this;
     setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 

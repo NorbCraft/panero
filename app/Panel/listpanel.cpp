@@ -51,6 +51,7 @@
 #include "listpanelactions.h"
 #include "panelfunc.h"
 #include "sidebar.h"
+#include "panerodrivebar.h"
 #include "viewactions.h"
 
 #include "PanelView/krview.h"
@@ -387,7 +388,15 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
         layout = v;
     }
 
-    setLayout(layout);
+    // Panero: drive buttons above the panel (D-019; off unless enabled)
+    auto *driveBar = new PaneroDriveBar(this);
+    connect(this, &ListPanel::pathChanged, driveBar, &PaneroDriveBar::setCurrentUrl);
+    auto *outer = new QVBoxLayout;
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+    outer->addWidget(driveBar);
+    outer->addLayout(layout);
+    setLayout(outer);
 
     connect(&KrColorCache::getColorCache(), &KrColorCache::colorsRefreshed, this, &ListPanel::slotRefreshColors);
     connect(krApp, &Krusader::shutdown, this, &ListPanel::cancelProgress);

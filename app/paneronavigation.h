@@ -40,6 +40,11 @@ class PaneroNavigationDock : public QDockWidget
     Q_OBJECT
 public:
     explicit PaneroNavigationDock(QWidget *parent);
+    /// The main window's sidebar (null before it exists).
+    static PaneroNavigationDock *instance();
+    /// Opens a cloud drive or server in the active panel, connecting it
+    /// first when needed (progress window, offline fallback).
+    void openCloudEntry(const PaneroCloud::Entry &entry);
 
     /// Pin the active panel's current folder.
     void pinCurrentFolder();
@@ -66,7 +71,6 @@ private:
     /// Highlights the cloud drive or server the active panel is in, else none.
     void updateCloudHighlight();
     void loadCloud();
-    void openCloudEntry(const PaneroCloud::Entry &entry);
     void cloudContextMenu(const QPoint &pos);
     QWidget *m_cloudSection = nullptr;
     QListWidget *m_cloud = nullptr;
