@@ -12,6 +12,7 @@
 #include "filesystem.h"
 
 #include <QFileSystemWatcher>
+#include <QTimer>
 
 #include <KCoreAddons/KDirWatch>
 
@@ -78,6 +79,16 @@ protected slots:
 
 private:
     bool refreshLocal(const QUrl &directory, bool onlyScan); // NOTE: this is very fast
+    /// Panero: cloud/network folders are read in a worker thread; the panel
+    /// stays usable and a new navigation cancels the listing.
+    bool refreshSlow(const QUrl &directory, const QString &path, bool onlyScan);
+    /// Panero: asks the cloud drive to read the shown folder again from the
+    /// provider (at most every 20 s), then checks it for changes.
+    void revalidateSlowFolder();
+    /// Panero: reads the shown cloud folder again in the background and
+    /// refreshes the panel when it changed.
+    void checkSlowFolder();
+    void startWatching();
     FileItem *createLocalFileItem(const QString &name);
     /// Returns the current path with symbolic links resolved
     QString realPath();
@@ -86,6 +97,12 @@ private:
     QPointer<KDirWatch> _watcher; // dir watcher used to detect changes in the current dir
     bool _listError;              // for async operation, return list job result
     QString _mountPoint;          // the mount point of the current dir
+    // Panero: shown cloud folder
+    quint64 _slowSignature = 0;   // names, sizes and times of its entries
+    bool _slowChecking = false;   // revalidation or check running
+    QString _revalidatedPath;
+    qint64 _revalidatedAt = 0;
+    QTimer *_slowTimer = nullptr; // periodic check while it is shown
 };
 
 #endif

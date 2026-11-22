@@ -53,6 +53,10 @@ public:
     };
     static QList<Provider> providers();
 
+    /// Switches an existing Google Drive to the user's own OAuth client
+    /// (asks for the client ID and secret, then a new sign-in). True when done.
+    static bool useOwnGoogleClient(QWidget *parent, const PaneroCloud::Entry &entry);
+
 private slots:
     void providerChanged();
     void nameEdited();
@@ -79,6 +83,10 @@ private:
     QLineEdit *m_password;
     QCheckBox *m_readOnly;
     QCheckBox *m_shared;
+    QCheckBox *m_ownClient;
+    QLineEdit *m_clientId;
+    QLineEdit *m_clientSecret;
+    QLabel *m_ownClientHelp;
     QListWidget *m_importList;
     QCheckBox *m_importDelete;
     QPushButton *m_terminal;

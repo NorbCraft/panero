@@ -367,9 +367,13 @@ int main(int argc, char *argv[])
         splash->finish(krusader);
         delete splash;
     }
+    // Panero: connected cloud drives appear as places (path bar starts with
+    // the drive's name)
+    PaneroCloud::instance()->setPlacesEnabled(true);
     // let's go.
     const int result = app.exec();
     // Panero: unmount connected cloud drives (rclone) before leaving
     PaneroCloud::instance()->unmountAll();
+    PaneroCloud::instance()->setPlacesEnabled(false);
     return result;
 }

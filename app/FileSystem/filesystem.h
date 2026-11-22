@@ -10,6 +10,9 @@
 #define FILESYSTEM_H
 
 #include "dirlisterinterface.h"
+#include "paneroslowpaths.h"
+
+#include <sys/types.h>
 
 // QtCore
 #include <QHash>
@@ -58,7 +61,9 @@ public:
     inline unsigned long numFileItems() const override { return _fileItems.count(); }
     inline bool isRoot() const override {
         const QString path = _currentDirectory.path();
-        return path.isEmpty() || path == "/";
+        // Panero: the top folder of a cloud drive is the root while browsing it
+        return path.isEmpty() || path == "/"
+            || (_currentDirectory.isLocalFile() && PaneroSlowPaths::isCloudRoot(path));
     }
 
     /// Copy (copy, move or link) files in this filesystem.
@@ -144,6 +149,25 @@ public:
     /// Return a file item for a local file inside a directory
     static FileItem *createLocalFileItem(const QString &name, const QString &directory,
                                    bool virt = false);
+    /// Status of a local file, read without creating a file item. Thread-safe
+    /// (Panero: cloud folders are read in a worker thread).
+    struct LocalStat {
+        QString name;
+        bool ok = false;
+        bool isDir = false;
+        bool isLink = false;
+        bool brokenLink = false;
+        KIO::filesize_t size = 0;
+        mode_t mode = 0;
+        time_t mtime = 0, ctime = 0, atime = 0;
+        uid_t uid = 0;
+        gid_t gid = 0;
+        QString linkDestination;
+    };
+    static LocalStat statLocalFile(const QString &name, const QString &directory);
+    /// The file item for a status from statLocalFile() (GUI thread only).
+    static FileItem *createFileItemFromStat(const LocalStat &stat, const QString &directory,
+                                            bool virt = false);
     /// Return a file item for a KIO result. Returns 0 if entry is not needed
     static FileItem *createFileItemFromKIO(const KIO::UDSEntry &entry, const QUrl &directory,
                                      bool virt = false);

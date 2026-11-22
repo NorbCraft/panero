@@ -25,6 +25,8 @@
 #include "panerocloudutils.h"
 #include "panerooffline.h"
 #include "panerorclone.h"
+#include "panerorcclient.h"
+#include "FileSystem/paneroslowpaths.h"
 #include "panerosecretstore.h"
 
 #include <QApplication>
@@ -481,7 +483,8 @@ void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
              "        loc = q['redirect_uri'][0] + '?code=fakecode&state=' + urllib.parse.quote(q['state'][0])\n"
              "        self.send_response(302); self.send_header('Location', loc); self.end_headers()\n"
              "    def do_POST(self):\n"
-             "        self.rfile.read(int(self.headers.get('Content-Length', 0)))\n"
+             "        body = self.rfile.read(int(self.headers.get('Content-Length', 0)))\n"
+             "        open(sys.argv[1], 'ab').write((self.headers.get('Authorization', '') + ' ').encode() + body + b'\\n')\n"
              "        b = json.dumps({'access_token': 'fake-access', 'refresh_token': '" + fakeToken + "', 'token_type': 'Bearer', 'expires_in': 3600}).encode()\n"
              "        self.send_response(200); self.send_header('Content-Type', 'application/json')\n"
              "        self.send_header('Content-Length', str(len(b))); self.end_headers(); self.wfile.write(b)\n"
@@ -490,7 +493,8 @@ void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
              "s.serve_forever()\n");
     py.close();
     QProcess server;
-    server.start(QStringLiteral("python3"), {QStringLiteral("-I"), script});
+    const QString tokenLog = root() + QStringLiteral("/bin/token-requests.txt");
+    server.start(QStringLiteral("python3"), {QStringLiteral("-I"), script, tokenLog});
     QVERIFY(server.waitForReadyRead(10000));
     const QString port = QString::fromLatin1(server.readLine()).trimmed();
     QVERIFY(port.toInt() > 0);
@@ -501,10 +505,13 @@ void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
     opener.close();
     opener.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
 
-    const auto runSetup = [&](const QStringList &args, PaneroCloudSetup::SetupOutputWatcher &watcher, int timeoutMs) {
+    const auto runSetup = [&](const QStringList &args, PaneroCloudSetup::SetupOutputWatcher &watcher, int timeoutMs,
+                              const QHash<QString, QString> &extra = {}) {
         QProcess p;
         PaneroRclone::prepare(p, args);
         QProcessEnvironment env = p.processEnvironment();
+        for (auto it = extra.constBegin(); it != extra.constEnd(); ++it)
+            env.insert(it.key(), it.value());
         env.insert(QStringLiteral("PATH"), root() + QStringLiteral("/bin:") + env.value(QStringLiteral("PATH")));
         p.setProcessEnvironment(env);
         p.start();
@@ -536,6 +543,61 @@ void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
     const QStringList withToken = filesContaining(fakeToken);
     QVERIFY2(withToken.isEmpty(), qPrintable(withToken.join(QLatin1Char(' '))));
     PaneroCloudSetup::deleteRemote(QStringLiteral("gfake"));
+
+    // Google Drive with the user's own client: the secret reaches the token
+    // exchange through the environment and is stored through rclone's private
+    // socket - never on a command line, never in a readable file
+    const QString clientId = QStringLiteral("123456789012-abcdefghijkl.apps.googleusercontent.com");
+    const QByteArray clientSecret = "GOCSPX-test-secret-7f3a";
+    QVERIFY(PaneroCloudSetup::validGoogleClientId(clientId));
+    QVERIFY(PaneroCloudSetup::validGoogleClientSecret(QString::fromLatin1(clientSecret)));
+    QVERIFY(!PaneroCloudSetup::validGoogleClientId(QStringLiteral("x.apps.googleusercontent.com")));
+    QVERIFY(!PaneroCloudSetup::validGoogleClientId(clientId + QStringLiteral(" --config=/tmp/x")));
+    QVERIFY(!PaneroCloudSetup::validGoogleClientSecret(QStringLiteral("short")));
+    QVERIFY(!PaneroCloudSetup::validGoogleClientSecret(QStringLiteral("GOCSPX-has space-123")));
+    m_scanner.addSecret(clientSecret);
+    QFile::remove(tokenLog);
+    // 1. the drive without a sign-in, only the public client ID as argument
+    PaneroRclone::run({QStringLiteral("config"), QStringLiteral("create"), QStringLiteral("gown"), QStringLiteral("drive"),
+                       QStringLiteral("auth_url=") + base + QStringLiteral("/auth"), QStringLiteral("token_url=") + base + QStringLiteral("/token"),
+                       QStringLiteral("scope=drive"), QStringLiteral("client_id=") + clientId, QStringLiteral("config_refresh_token=false"),
+                       QStringLiteral("--non-interactive")},
+                      nullptr, nullptr, 30000);
+    QCOMPARE(dumpValue(QStringLiteral("gown"), QStringLiteral("client_id")), clientId.toLatin1());
+    QVERIFY(dumpValue(QStringLiteral("gown"), QStringLiteral("token")).isEmpty());
+    // 2. the secret through rclone's private socket
+    QString secretError;
+    QVERIFY2(PaneroCloudSetup::setRemoteOptionsPrivately(QStringLiteral("gown"), QJsonObject{{QStringLiteral("client_secret"), QString::fromLatin1(clientSecret)}},
+                                                          &secretError),
+             qPrintable(secretError));
+    QCOMPARE(dumpValue(QStringLiteral("gown"), QStringLiteral("client_secret")), clientSecret);
+    QVERIFY(QDir(runtimeDir() + QStringLiteral("/panero-cloud/.control")).entryList({QStringLiteral("setup-*")}, QDir::System | QDir::Files).isEmpty());
+    // 3. the sign-in uses them from the encrypted configuration
+    PaneroCloudSetup::SetupOutputWatcher own;
+    QCOMPARE(runSetup({QStringLiteral("config"), QStringLiteral("update"), QStringLiteral("gown"), QStringLiteral("client_id=") + clientId}, own, 60000), 0);
+    {
+        QFile log(tokenLog);
+        QVERIFY(log.open(QIODevice::ReadOnly));
+        const QByteArray requests = log.readAll();
+        const QByteArray basic = "Basic " + (QUrl::toPercentEncoding(clientId) + ':' + QUrl::toPercentEncoding(QString::fromLatin1(clientSecret))).toBase64();
+        QVERIFY2(requests.contains(basic) || requests.contains("client_secret=" + clientSecret), requests.constData());
+    }
+    QVERIFY(dumpValue(QStringLiteral("gown"), QStringLiteral("token")).contains(fakeToken));
+    QCOMPARE(dumpValue(QStringLiteral("gown"), QStringLiteral("client_secret")), clientSecret);
+    QVERIFY2(filesContaining(clientSecret).isEmpty(), qPrintable(filesContaining(clientSecret).join(QLatin1Char(' '))));
+    // an existing drive switches client: stored privately, then a new sign-in
+    QFile::remove(tokenLog);
+    const QString otherId = QStringLiteral("987654321098-zyxwvutsrqpo.apps.googleusercontent.com");
+    QVERIFY(PaneroCloudSetup::setRemoteOptionsPrivately(QStringLiteral("gown"),
+                                                        QJsonObject{{QStringLiteral("client_id"), otherId}, {QStringLiteral("client_secret"), QString::fromLatin1(clientSecret)}},
+                                                        nullptr));
+    QVERIFY(dumpValue(QStringLiteral("gown"), QStringLiteral("token")).contains(fakeToken)); // kept until the new sign-in
+    PaneroCloudSetup::SetupOutputWatcher update;
+    QCOMPARE(runSetup({QStringLiteral("config"), QStringLiteral("update"), QStringLiteral("gown"), QStringLiteral("client_id=") + otherId}, update, 60000), 0);
+    QVERIFY(QFileInfo::exists(tokenLog)); // signed in again
+    QCOMPARE(dumpValue(QStringLiteral("gown"), QStringLiteral("client_id")), otherId.toLatin1());
+    QCOMPARE(dumpValue(QStringLiteral("gown"), QStringLiteral("client_secret")), clientSecret);
+    PaneroCloudSetup::deleteRemote(QStringLiteral("gown"));
 
     // OneDrive: the failing drive listing loops; the watcher stops it
     PaneroCloudSetup::SetupOutputWatcher onedrive;
@@ -594,6 +656,73 @@ void PaneroCloudSecurityTest::mountAndOfflineFiles()
         QFAIL(qPrintable(failed.first().at(1).toString()));
     const QString dir = mounted.first().at(1).toUrl().toLocalFile();
     QCOMPARE(dir, runtimeDir() + QStringLiteral("/panero-cloud/lc"));
+    // the top folder of the drive is the root while browsing it
+    QVERIFY(PaneroSlowPaths::isCloudRoot(dir));
+    QVERIFY(PaneroSlowPaths::isCloudRoot(dir + QLatin1Char('/')));
+    QVERIFY(!PaneroSlowPaths::isCloudRoot(dir + QStringLiteral("/docs")));
+
+    // remote control: only a unix socket in the private folder, random
+    // credentials that are not on rclone's command line
+    const QString control = runtimeDir() + QStringLiteral("/panero-cloud/.control");
+    const QString socket = control + QStringLiteral("/lc.sock");
+    QTRY_VERIFY_WITH_TIMEOUT(QFileInfo::exists(socket), 5000);
+    QCOMPARE(QFileInfo(control).permissions() & (QFileDevice::ReadGroup | QFileDevice::WriteGroup | QFileDevice::ExeGroup | QFileDevice::ReadOther
+                                                 | QFileDevice::WriteOther | QFileDevice::ExeOther),
+             QFileDevice::Permissions());
+    const qint64 pid = cloud->mountPid(QStringLiteral("lc"));
+    QVERIFY(pid > 0);
+    QFile cmdline(QStringLiteral("/proc/%1/cmdline").arg(pid));
+    QVERIFY(cmdline.open(QIODevice::ReadOnly));
+    const QByteArray args = cmdline.readAll();
+    QVERIFY(args.contains("unix://" + QFile::encodeName(socket)));
+    QVERIFY(!args.contains("rc-pass") && !args.contains("rc-user") && !args.contains("rc-no-auth"));
+    QFile environ(QStringLiteral("/proc/%1/environ").arg(pid));
+    QVERIFY(environ.open(QIODevice::ReadOnly));
+    QVERIFY(!environ.readAll().contains("RCLONE_RC_"));
+    // rclone checks against a hash in a private file
+    const QString htpasswd = control + QStringLiteral("/lc.htpasswd");
+    QVERIFY(args.contains("--rc-htpasswd"));
+    QCOMPARE(QFileInfo(htpasswd).permissions() & ~(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ReadUser | QFileDevice::WriteUser),
+             QFileDevice::Permissions());
+    {
+        QFile h(htpasswd);
+        QVERIFY(h.open(QIODevice::ReadOnly));
+        QVERIFY(h.readAll().contains(":{SHA}"));
+    }
+    {
+        PaneroRc::Credentials wrong = PaneroRc::newCredentials(socket);
+        int status = -1;
+        PaneroRc::call(wrong, QStringLiteral("vfs/refresh"), QJsonObject(), this, [&status](int st, const QJsonObject &) {
+            status = st;
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(status != -1, 10000);
+        QCOMPARE(status, 401);
+    }
+    // the whole tree is read after mounting
+    QTRY_VERIFY_WITH_TIMEOUT(!cloud->isReadingTree(e.id), 30000);
+    QVERIFY(cloud->hasTree(e.id));
+
+    // listings stay in memory; refreshFolder() reads one folder again
+    QVERIFY(!QDir(dir + QStringLiteral("/docs")).entryList().contains(QStringLiteral("late.txt")));
+    {
+        QFile late(data + QStringLiteral("/docs/late.txt"));
+        QVERIFY(late.open(QIODevice::WriteOnly));
+        late.write("late\n");
+    }
+    QVERIFY(!QDir(dir + QStringLiteral("/docs")).entryList().contains(QStringLiteral("late.txt")));
+    bool refreshed = false;
+    QVERIFY(cloud->refreshFolder(dir + QStringLiteral("/docs"), this, [&refreshed]() {
+        refreshed = true;
+    }));
+    QTRY_VERIFY_WITH_TIMEOUT(refreshed, 10000);
+    QVERIFY(QDir(dir + QStringLiteral("/docs")).entryList().contains(QStringLiteral("late.txt")));
+    QVERIFY(QFile::remove(data + QStringLiteral("/docs/late.txt")));
+    refreshed = false;
+    QVERIFY(cloud->refreshFolder(dir + QStringLiteral("/docs"), this, [&refreshed]() {
+        refreshed = true;
+    }));
+    QTRY_VERIFY_WITH_TIMEOUT(refreshed, 10000);
+    QVERIFY(!cloud->refreshFolder(root(), this, nullptr));
 
     // online-only until opened, then available on this device
     const QString photo = dir + QStringLiteral("/photos/p.jpg");
@@ -624,6 +753,13 @@ void PaneroCloudSecurityTest::mountAndOfflineFiles()
     QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(photo, size, false)), int(PaneroOffline::State::Available), 20000);
     const QString aTxt = dir + QStringLiteral("/docs/sub/b.txt");
     QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(aTxt, QFileInfo(aTxt).size(), false)), int(PaneroOffline::State::Available), 20000);
+    // folders: green once everything inside is on this device (background)
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(dir + QStringLiteral("/docs"), 0, true)), int(PaneroOffline::State::Available), 20000);
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(dir + QStringLiteral("/photos"), 0, true)), int(PaneroOffline::State::Available), 20000);
+    offline->freeUpCache({photo});
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(dir + QStringLiteral("/photos"), 0, true)), int(PaneroOffline::State::OnlineOnly), 20000);
+    offline->makeAvailableOffline(nullptr, {dir + QStringLiteral("/photos")});
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(dir + QStringLiteral("/photos"), 0, true)), int(PaneroOffline::State::Available), 20000);
 
     // a file with a pending upload is never removed
     const QString cacheRoot = PaneroRclone::cacheDir(QStringLiteral("lc"));
@@ -862,7 +998,8 @@ void PaneroCloudSecurityTest::addCloudDialog()
     QVERIFY(!titles.join(QLatin1Char(' ')).contains(QLatin1String("MEGA"))); // R7
     const auto visibleCheck = [&dialog](const QString &text) {
         for (QCheckBox *c : dialog.findChildren<QCheckBox *>()) {
-            if (c->text().startsWith(text))
+            // KDE may add keyboard accelerators ("&Read-only ...")
+            if (QString(c->text()).remove(QLatin1Char('&')).startsWith(text))
                 return c->isVisible();
         }
         return false;
@@ -879,8 +1016,8 @@ void PaneroCloudSecurityTest::addCloudDialog()
         QTest::qWait(50);
         const QString title = list->item(row)->text();
         const bool scoped = title == QLatin1String("Google Drive") || title == QLatin1String("OneDrive");
-        QCOMPARE(visibleCheck(QStringLiteral("Read-only access")), scoped);
-        QCOMPARE(visibleCheck(QStringLiteral("Also files others shared")), title == QLatin1String("OneDrive"));
+        QTRY_COMPARE_WITH_TIMEOUT(visibleCheck(QStringLiteral("Read-only access")), scoped, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(visibleCheck(QStringLiteral("Also files others shared")), title == QLatin1String("OneDrive"), 3000);
         if (row < 5) // OAuth providers: access is explained before signing in
             QVERIFY2(description().contains(QLatin1String("Panero never sees your password")), qPrintable(title));
         if (title == QLatin1String("OneDrive"))

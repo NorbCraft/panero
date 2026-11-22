@@ -21,6 +21,7 @@
 #include <QPainterPath>
 #include <QProcess>
 #include <QProgressDialog>
+#include <QThreadPool>
 #include <QTimer>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QLocale>
@@ -96,6 +97,10 @@ PaneroOffline::PaneroOffline(QObject *parent)
     : QObject(parent), m_config(KSharedConfig::openConfig())
 {
     connect(this, &PaneroOffline::changed, this, &PaneroOffline::invalidateStates);
+    m_repaintTimer = new QTimer(this);
+    m_repaintTimer->setSingleShot(true);
+    m_repaintTimer->setInterval(150);
+    connect(m_repaintTimer, &QTimer::timeout, this, &PaneroOffline::statesUpdated);
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &PaneroOffline::periodicSync);
     m_timer->start(PERIODIC_MS);
@@ -331,6 +336,50 @@ bool PaneroOffline::cloudPath(const QString &localPath, QString *remote, QString
 void PaneroOffline::invalidateStates()
 {
     m_stateCache.clear();
+    // folder badges stay visible until they are recomputed (no flicker)
+    for (auto it = m_folderStates.begin(); it != m_folderStates.end(); ++it)
+        it->second = 0;
+    if (m_repaintTimer && !m_repaintTimer->isActive())
+        m_repaintTimer->start(); // repaint: badges are asked for again
+}
+
+PaneroOffline::State PaneroOffline::folderState(const QString &localPath, const QString &remote, const QString &rel) const
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const auto known = m_folderStates.constFind(localPath);
+    // files opened in other programs are cached without a signal: recheck
+    // now and then (stops at the first file that is not cached)
+    const bool fresh = known != m_folderStates.constEnd() && now - known->second < 20000;
+    if (!fresh && !m_folderPending.contains(localPath)) {
+        static QThreadPool *pool = nullptr;
+        if (!pool) {
+            pool = new QThreadPool;
+            pool->setMaxThreadCount(2);
+        }
+        if (m_folderPending.size() < 200) {
+            m_folderPending.insert(localPath);
+            const QString cacheFolder = PaneroCloudUtils::vfsCacheFile(PaneroRclone::cacheDir(remote), cacheSub(remote), rel);
+            auto *self = const_cast<PaneroOffline *>(this);
+            QtConcurrent::run(pool, [self, localPath, cacheFolder]() {
+                const PaneroCloudUtils::FolderCache c = PaneroCloudUtils::folderCacheState(localPath, cacheFolder);
+                const State s = c == PaneroCloudUtils::FolderCache::Complete ? State::Available : State::OnlineOnly;
+                QMetaObject::invokeMethod(self, [self, localPath, s]() {
+                    self->m_folderPending.remove(localPath);
+                    const auto old = self->m_folderStates.constFind(localPath);
+                    const bool changedState = old == self->m_folderStates.constEnd() ? s != State::OnlineOnly : old->first != s;
+                    if (self->m_folderStates.size() > 5000)
+                        self->m_folderStates.clear();
+                    self->m_folderStates.insert(localPath, qMakePair(s, QDateTime::currentMSecsSinceEpoch()));
+                    if (changedState) {
+                        self->m_stateCache.remove(localPath);
+                        if (!self->m_repaintTimer->isActive())
+                            self->m_repaintTimer->start();
+                    }
+                }, Qt::QueuedConnection);
+            });
+        }
+    }
+    return known != m_folderStates.constEnd() ? known->first : State::OnlineOnly;
 }
 
 PaneroOffline::State PaneroOffline::state(const QString &localPath, qint64 size, bool isDir) const
@@ -359,7 +408,7 @@ PaneroOffline::State PaneroOffline::computeState(const QString &localPath, qint6
     if (isPinned(remote, rel))
         return State::Pinned;
     if (isDir)
-        return State::OnlineOnly;
+        return folderState(localPath, remote, rel);
     const QString cacheFile = PaneroCloudUtils::vfsCacheFile(PaneroRclone::cacheDir(remote), m_cacheSub.value(remote, remote), rel);
     return PaneroCloudUtils::isFullyCached(cacheFile, size) ? State::Available : State::OnlineOnly;
 }

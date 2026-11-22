@@ -10,6 +10,7 @@ set(Cloud_SRCS
     panerocloudutils.cpp
     panerosecretstore.cpp
     panerorclone.cpp
+    panerorcclient.cpp
     panerocloudrevoke.cpp
     panerocloudsetup.cpp
     panerooffline.cpp
@@ -26,6 +27,7 @@ add_library(Cloud STATIC ${Cloud_SRCS})
 target_compile_definitions(Cloud PRIVATE PANERO_LIBEXEC_DIR="${PANERO_LIBEXEC_DIR}")
 
 target_link_libraries(Cloud
+    PaneroSlowPaths
     Qt5::Widgets
     Qt5::DBus
     Qt5::Network
@@ -35,6 +37,7 @@ target_link_libraries(Cloud
     KF5::I18n
     KF5::KIOCore
     KF5::KIOWidgets
+    KF5::KIOFileWidgets
     KF5::WidgetsAddons
 )
 

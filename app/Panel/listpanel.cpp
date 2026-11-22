@@ -81,6 +81,9 @@
 #include "../GUI/terminaldock.h"
 #include "../MountMan/kmountman.h"
 #include "../UserAction/useractionpopupmenu.h"
+#include "../Cloud/panerooffline.h"
+
+#include <QAbstractScrollArea>
 
 class ActionButton : public QToolButton
 {
@@ -385,6 +388,15 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
 
     connect(&KrColorCache::getColorCache(), &KrColorCache::colorsRefreshed, this, &ListPanel::slotRefreshColors);
     connect(krApp, &Krusader::shutdown, this, &ListPanel::cancelProgress);
+    // Panero: folder badges of cloud drives are computed in the background
+    connect(PaneroOffline::instance(), &PaneroOffline::statesUpdated, this, [this]() {
+        if (view && view->widget()) {
+            if (auto *area = qobject_cast<QAbstractScrollArea *>(view->widget()))
+                area->viewport()->update();
+            else
+                view->widget()->update();
+        }
+    });
 }
 
 ListPanel::~ListPanel()

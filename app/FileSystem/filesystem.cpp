@@ -185,48 +185,67 @@ void FileSystem::addFileItem(FileItem *item)
 
 FileItem *FileSystem::createLocalFileItem(const QString &name, const QString &directory, bool virt)
 {
+    return createFileItemFromStat(statLocalFile(name, directory), directory, virt);
+}
+
+FileSystem::LocalStat FileSystem::statLocalFile(const QString &name, const QString &directory)
+{
     const QDir dir = QDir(directory);
     const QString path = dir.filePath(name);
     const QByteArray pathByteArray = path.toLocal8Bit();
-    const QString fileItemName = virt ? path : name;
-    const QUrl fileItemUrl = QUrl::fromLocalFile(path);
+    LocalStat s;
+    s.name = name;
 
     // read file status; in case of error create a "broken" file item
     QT_STATBUF stat_p;
     memset(&stat_p, 0, sizeof(stat_p));
     if (QT_LSTAT(pathByteArray.data(), &stat_p) < 0)
-        return FileItem::createBroken(fileItemName, fileItemUrl);
-
-    const KIO::filesize_t size = stat_p.st_size;
-    bool isDir = S_ISDIR(stat_p.st_mode);
-    const bool isLink = S_ISLNK(stat_p.st_mode);
+        return s;
+    s.ok = true;
+    s.size = stat_p.st_size;
+    s.isDir = S_ISDIR(stat_p.st_mode);
+    s.isLink = S_ISLNK(stat_p.st_mode);
+    s.mode = stat_p.st_mode;
+    s.mtime = stat_p.st_mtime;
+    s.ctime = stat_p.st_ctime;
+    s.atime = stat_p.st_atime;
+    s.uid = stat_p.st_uid;
+    s.gid = stat_p.st_gid;
 
     // for links, read link destination and determine whether it's broken or not
-    QString linkDestination;
-    bool brokenLink = false;
-    if (isLink) {
-        linkDestination = readLinkSafely(pathByteArray.data());
+    if (s.isLink) {
+        s.linkDestination = readLinkSafely(pathByteArray.data());
 
-        if (linkDestination.isNull()) {
-            brokenLink = true;
+        if (s.linkDestination.isNull()) {
+            s.brokenLink = true;
         }
         else {
-            const QFileInfo linkFile(dir, linkDestination);
+            const QFileInfo linkFile(dir, s.linkDestination);
             if (!linkFile.exists())
-                brokenLink = true;
+                s.brokenLink = true;
             else if (linkFile.isDir())
-                isDir = true;
+                s.isDir = true;
         }
     }
+    return s;
+}
+
+FileItem *FileSystem::createFileItemFromStat(const LocalStat &s, const QString &directory, bool virt)
+{
+    const QString path = QDir(directory).filePath(s.name);
+    const QString fileItemName = virt ? path : s.name;
+    const QUrl fileItemUrl = QUrl::fromLocalFile(path);
+    if (!s.ok)
+        return FileItem::createBroken(fileItemName, fileItemUrl);
 
     // TODO use statx available in glibc >= 2.28 supporting creation time (btime) and more
 
     // create normal file item
-    return new FileItem(fileItemName, fileItemUrl, isDir,
-                        size, stat_p.st_mode,
-                        stat_p.st_mtime, stat_p.st_ctime, stat_p.st_atime, -1,
-                        stat_p.st_uid, stat_p.st_gid, QString(), QString(),
-                        isLink, linkDestination, brokenLink);
+    return new FileItem(fileItemName, fileItemUrl, s.isDir,
+                        s.size, s.mode,
+                        s.mtime, s.ctime, s.atime, -1,
+                        s.uid, s.gid, QString(), QString(),
+                        s.isLink, s.linkDestination, s.brokenLink);
 }
 
 QString FileSystem::readLinkSafely(const char *path)

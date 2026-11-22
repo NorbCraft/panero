@@ -9,12 +9,17 @@ set(FileSystem_SRCS
     krtrashhandler.cpp
     sizecalculator.cpp
     virtualfilesystem.cpp
-    paneroslowpaths.cpp
 )
+
+# Panero: cloud/network mount helpers, shared with the Cloud library (one
+# copy of their state: the revalidation hook is set by PaneroCloud)
+add_library(PaneroSlowPaths STATIC paneroslowpaths.cpp)
+target_link_libraries(PaneroSlowPaths Qt5::Core Qt5::Concurrent)
 
 add_library(FileSystem STATIC ${FileSystem_SRCS})
 
 target_link_libraries(FileSystem
+    PaneroSlowPaths
     Qt5::Concurrent
     KF5::I18n
     KF5::KIOCore

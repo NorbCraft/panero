@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QStandardPaths>
+#include <QThreadPool>
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <atomic>
@@ -32,7 +33,46 @@ QStringList bases()
     return b;
 }
 
-std::atomic<bool> s_prefetching{false};
+/// own folders below the mount bases (not gvfs: those are not Panero's)
+QStringList cloudBases()
+{
+    static QStringList b;
+    if (b.isEmpty()) {
+        if (!qEnvironmentVariableIsEmpty("XDG_RUNTIME_DIR")) {
+            const QString runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+            if (!runtime.isEmpty())
+                b << runtime + QLatin1String("/panero-cloud/");
+        }
+        b << QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/panero/mounts/");
+    }
+    return b;
+}
+
+std::atomic<int> s_generation{0};
+
+QThreadPool *prefetchPool()
+{
+    static QThreadPool *pool = nullptr;
+    if (!pool) {
+        pool = new QThreadPool;
+        // a few listings at a time: faster than one by one, gentle on the provider
+        pool->setMaxThreadCount(4);
+        pool->setExpiryTimeout(30000);
+    }
+    return pool;
+}
+
+PaneroSlowPaths::Revalidator &revalidator()
+{
+    static PaneroSlowPaths::Revalidator r;
+    return r;
+}
+
+PaneroSlowPaths::NameProvider &nameProvider()
+{
+    static PaneroSlowPaths::NameProvider n;
+    return n;
+}
 } // namespace
 
 namespace PaneroSlowPaths
@@ -57,22 +97,56 @@ QString mountRoot(const QString &path)
     return QString();
 }
 
+bool isCloudRoot(const QString &path)
+{
+    QString p = path;
+    while (p.length() > 1 && p.endsWith(QLatin1Char('/')))
+        p.chop(1);
+    for (const QString &b : cloudBases()) {
+        if (p.startsWith(b) && p.length() > b.length() && p.indexOf(QLatin1Char('/'), b.length()) < 0)
+            return true;
+    }
+    return false;
+}
+
 void prefetchListings(const QStringList &dirs, int max)
 {
-    if (dirs.isEmpty() || s_prefetching.exchange(true))
+    const int generation = ++s_generation;
+    if (dirs.isEmpty())
         return;
-    const QStringList batch = dirs.mid(0, max);
-    QtConcurrent::run([batch]() {
-        for (const QString &d : batch) {
+    QThreadPool *pool = prefetchPool();
+    pool->clear(); // folders of the previous folder that did not start yet
+    for (const QString &d : dirs.mid(0, max)) {
+        QtConcurrent::run(pool, [d, generation]() {
+            if (generation != s_generation)
+                return; // the user went somewhere else
             // opendir/readdir only: no stat, no file opens
             DIR *dir = ::opendir(QFile::encodeName(d).constData());
             if (!dir)
-                continue;
+                return;
             while (::readdir(dir) != nullptr) {
             }
             ::closedir(dir);
-        }
-        s_prefetching = false;
-    });
+        });
+    }
+}
+
+void setRevalidator(const Revalidator &r)
+{
+    revalidator() = r;
+}
+
+bool revalidate(const QString &dir, QObject *context, const std::function<void()> &done)
+{
+    return revalidator() && revalidator()(dir, context, done);
+}
+void setNameProvider(const NameProvider &provider)
+{
+    nameProvider() = provider;
+}
+
+QString displayName(const QString &mountRoot)
+{
+    return nameProvider() ? nameProvider()(mountRoot) : QString();
 }
 } // namespace PaneroSlowPaths

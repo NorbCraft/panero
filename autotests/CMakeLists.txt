@@ -20,12 +20,12 @@ target_include_directories(panerothemetest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel
 
 ecm_add_test(paneropathstest.cpp ../app/Panel/paneropaths.cpp
     TEST_NAME paneropathstest
-    LINK_LIBRARIES Qt5::Test Qt5::Core)
+    LINK_LIBRARIES Qt5::Test Qt5::Core PaneroSlowPaths)
 target_include_directories(paneropathstest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel)
 
 # Cloud backend (rclone / KIO servers). The mount test needs rclone in PATH and
 # /dev/fuse; it skips otherwise. All state lives in temporary HOME/XDG dirs.
-ecm_add_test(panerocloudtest.cpp ../app/paneropackageinstaller.cpp ../app/FileSystem/paneroslowpaths.cpp
+ecm_add_test(panerocloudtest.cpp ../app/paneropackageinstaller.cpp
     TEST_NAME panerocloudtest
     LINK_LIBRARIES Qt5::Test Qt5::DBus Qt5::Concurrent Cloud)
 target_include_directories(panerocloudtest PRIVATE ${CMAKE_SOURCE_DIR}/app/Cloud ${CMAKE_SOURCE_DIR}/app ${CMAKE_SOURCE_DIR}/app/FileSystem)

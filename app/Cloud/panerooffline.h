@@ -120,6 +120,8 @@ public:
 
 signals:
     void changed(const QString &remote);
+    /// Badges of folders were computed in the background: repaint.
+    void statesUpdated();
 
 private:
     explicit PaneroOffline(QObject *parent = nullptr);
@@ -147,6 +149,8 @@ private:
     QString workdir(const Job &job) const;
     QString cacheSub(const QString &remote) const { return m_cacheSub.value(remote, remote); }
     State computeState(const QString &localPath, qint64 size, bool isDir) const;
+    /// Folder badge: last known state; (re)computed in the background.
+    State folderState(const QString &localPath, const QString &remote, const QString &rel) const;
 
     KSharedConfigPtr m_config;
     QList<Job> m_queue;
@@ -162,6 +166,10 @@ private:
     /// badge states of recently painted items (path -> state, time): the
     /// panel asks on every repaint
     mutable QHash<QString, QPair<State, qint64>> m_stateCache;
+    /// folder badges (path -> state, time computed); computed in a worker
+    mutable QHash<QString, QPair<State, qint64>> m_folderStates;
+    mutable QSet<QString> m_folderPending;
+    QTimer *m_repaintTimer = nullptr;
 };
 
 #endif // PANEROOFFLINE_H

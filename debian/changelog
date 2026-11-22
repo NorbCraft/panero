@@ -1,3 +1,18 @@
+panero (0.1.0~preview.9-1) noble; urgency=medium
+
+  * Ninth preview (git tag v0.1.0-preview.9).
+  * Cloud drives: the whole folder list is read in the background after
+    connecting; folders are read in a worker thread (no freezes) and checked
+    for changes in the background; Ctrl+R re-reads one folder.
+  * Google Drive: optional own client ID (rclone's shared one is rate
+    limited); the secret is stored through rclone's private socket.
+  * Folder badge when everything inside is offline; Rename for cloud drives;
+    browsing stops at the drive's top folder.
+  * rclone remote control only on a private unix socket with hashed
+    per-mount credentials.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sun, 22 Nov 2026 18:00:00 +0100
+
 panero (0.1.0~preview.8-1) noble; urgency=medium
 
   * Eighth preview (git tag v0.1.0-preview.8).

@@ -17,6 +17,11 @@
 
 #include <KConfigCore/KSharedConfig>
 
+#include "panerorcclient.h"
+
+#include <functional>
+
+class KFilePlacesModel;
 class QFileSystemWatcher;
 class QProcess;
 class QTimer;
@@ -112,6 +117,19 @@ public:
 
     /// Makes the rclone mount holding @p localPath forget its folder listings.
     void flushDirectoryCache(const QString &localPath);
+    /// Reads the folder @p localPath of a mounted drive again from the
+    /// provider (in the background); @p done runs afterwards in the GUI thread
+    /// unless @p context was deleted. False when no mount holds the folder.
+    bool refreshFolder(const QString &localPath, QObject *context, const std::function<void()> &done);
+    /// True while a mounted drive is still reading its whole folder tree.
+    bool isReadingTree(const QString &id) const;
+    /// True when a mounted drive read its whole folder tree successfully.
+    bool hasTree(const QString &id) const;
+
+    /// Shows mounted drives as places (OnlyInApp=Panero) so the path bar
+    /// starts with the drive's name and not with the mount folder. Places of
+    /// an earlier session are removed. Off by default (tests).
+    void setPlacesEnabled(bool enabled);
 
     /// Mount folders of the mounted remotes (remote name -> folder).
     QHash<QString, QString> mountDirs() const;
@@ -150,7 +168,10 @@ private:
         qint64 started = 0;
         bool mounted = false;
         bool stopping = false;
+        bool readingTree = false;
+        bool treeRead = false;
         QStringList stderrTail;
+        PaneroRc::Credentials rc;
     };
 
     void rebuildEntries();
@@ -163,6 +184,11 @@ private:
     static bool isMountPoint(const QString &dir);
     static bool runFusermountUnmount(const QString &dir, bool lazy);
     KConfigGroup group() const;
+    /// Reads the whole folder tree of a new mount in the background.
+    void readTree(const QString &id);
+    void addPlace(const QString &id);
+    void removePlace(const QString &dir);
+    void updatePlaces();
 
     KSharedConfigPtr m_config;
     QList<Entry> m_entries;
@@ -174,6 +200,7 @@ private:
     QTimer *m_refreshTimer = nullptr;
     QHash<QString, Mount *> m_mounts;
     int m_mountTimeoutMs = 15000;
+    KFilePlacesModel *m_places = nullptr;
 };
 
 Q_DECLARE_METATYPE(PaneroCloud::Entry)

@@ -232,3 +232,36 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
 - R10: offline files (VFS cache with 30-day age and size limit; Keep on This
   Device = bisync to `~/Cloud Offline/<remote>/`; Free Up Space). Offline
   copies are deleted on sign-out by default (setting per cloud).
+
+## D-017 — Smooth cloud browsing (2026-11-22, preview 9, owner: "never freeze", "smooth like OneDrive on Windows")
+
+- Whole folder tree read after mounting through rclone's remote control
+  (`vfs/refresh recursive=true`, one call per top folder so one unlistable
+  folder such as OneDrive's Personal Vault cannot stop it), listings kept
+  (`--dir-cache-time` 168h with polling backends, 24h others); the shown
+  folder is revalidated in the background (`vfs/refresh dir=`) on open and
+  every 30 s; Ctrl+R re-reads one folder (SIGHUP only as fallback).
+- rc security: unix socket only, in `$XDG_RUNTIME_DIR/panero-cloud/.control`
+  (0700), random 128-bit user and password per mount, rclone gets only an
+  htpasswd `{SHA}` hash in a 0600 file. Not `--rc-no-auth` (would expose
+  config/operations methods to any same-user process without a secret), not
+  RCLONE_RC_USER/PASS (D-016 R3: no secret in an environment).
+- Cloud/network folders are listed in a worker thread with a nested event
+  loop, as Krusader already does for KIO listings; a new navigation kills the
+  listing job (`PaneroListJob`, a KIO::Job so the panel's existing progress and
+  cancel handling apply).
+- Browsing root: the top folder of Panero's own mounts is `isRoot()` (no "..",
+  Up stops). The path bar starts with the drive name through a place
+  (KFilePlacesModel, `OnlyInApp=panero`) added while the drive is mounted and
+  removed on unmount and at the next start (stale ones). This writes
+  `~/.local/share/user-places.xbel`, the desktop-wide places file; the entries
+  are hidden from other applications. Alternative (own breadcrumb widget) was
+  far more work.
+- Google Drive own client ID: supersedes D-016 R7's "no own-client-ID field".
+  Measured: rclone's shared client gets 403 rateLimitExceeded and needs
+  17–35 s per listing. Client ID on the command line (public); client secret
+  only through a short-lived `rclone rcd` on a private socket (`config/update`
+  with `config_refresh_token=false`), then `config update <r> client_id=...`
+  signs in with the stored client.
+- Rename = Panero's display label (existing "Remote Labels"), not the rclone
+  remote name (mount folder, cache, offline copies and bisync state would move).

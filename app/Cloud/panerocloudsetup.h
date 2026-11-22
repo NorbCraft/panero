@@ -78,6 +78,16 @@ bool verifyRemote(const QString &remote, QString *error);
 /// Deletes a remote from Panero's configuration (no revocation).
 void deleteRemote(const QString &remote);
 
+/// Google Drive with the user's own OAuth client (rclone's shared client is
+/// rate limited by Google): "<number>-<id>.apps.googleusercontent.com".
+bool validGoogleClientId(const QString &id);
+/// "GOCSPX-..." (letters, digits, '-' and '_').
+bool validGoogleClientSecret(const QString &secret);
+/// Sets options of a remote without putting them on a command line (which
+/// other users can read): through a short-lived `rclone rcd` listening on a
+/// private unix socket. Used for the client secret.
+bool setRemoteOptionsPrivately(const QString &remote, const QJsonObject &options, QString *error);
+
 /// Remotes in the user's own rclone configuration (for import).
 QList<PaneroCloudUtils::Remote> listUserRemotes(QString *error);
 

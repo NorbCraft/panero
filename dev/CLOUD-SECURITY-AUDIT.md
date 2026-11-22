@@ -174,3 +174,18 @@ Remaining risks (accepted or outside Panero's reach):
 | Offline copies and opened files are plain files on disk. | Recommend full-disk encryption; deleted on sign-out by default. |
 | Live sign-ins (Google, Microsoft, Dropbox, pCloud, Box) not yet tested with real accounts; pCloud `logout` for OAuth tokens unconfirmed. | Test with disposable accounts (section 5). |
 | The bundled rclone must be kept current by Panero releases. | Weekly rclone-watch workflow opens an issue. |
+
+## 7. Addendum: preview 9 (D-017)
+
+- New interface: rclone's remote control per mount. Unix socket only (no TCP),
+  inside the 0700 runtime folder; random 128-bit credentials per mount; rclone
+  receives an htpasswd `{SHA}` hash in a 0600 file, the password stays in
+  Panero's memory. Tests: wrong credentials -> 401; no `rc-pass`/`rc-user`/
+  `rc-no-auth` in the command line; no `RCLONE_RC_*` in the environment;
+  htpasswd mode 0600.
+- Google Drive own client: the client secret never appears in a command line
+  or environment (process scanner) or in a readable file; it is stored with a
+  short-lived `rclone rcd` on a private socket (same credentials scheme).
+  Client IDs and secrets are format-checked before use.
+- The places entry for a mounted drive (path bar) contains only the label and
+  the mount folder.
