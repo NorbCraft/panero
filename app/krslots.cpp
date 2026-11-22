@@ -75,6 +75,9 @@
 #include "Splitter/combiner.h"
 #include "Splitter/splitter.h"
 #include "Splitter/splittergui.h"
+#ifdef Q_OS_WIN
+#include "Panel/panerowinshell.h"
+#endif
 
 #ifdef SYNCHRONIZER_ENABLED
     #include "Synchronizer/synchronizergui.h"
@@ -481,6 +484,19 @@ void KrSlots::runTerminal(const QString & dir)
     QStringList sepdArgs = KShell::splitArgs(term, KShell::TildeExpand);
     // Panero: the default (konsole) is not installed on GNOME/Zorin desktops; when the
     // configured terminal is missing, use the desktop's default terminal
+#ifdef Q_OS_WIN
+    // Windows: Windows Terminal, else PowerShell, else Command Prompt (all start in "dir")
+    if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
+        for (const QStringList &candidate : {QStringList{QStringLiteral("wt"), QStringLiteral("-d"), QStringLiteral("%d")},
+                                             QStringList{QStringLiteral("powershell")}, QStringList{QStringLiteral("cmd")}}) {
+            if (!QStandardPaths::findExecutable(candidate.first()).isEmpty()) {
+                term = candidate.join(QLatin1Char(' '));
+                sepdArgs = candidate;
+                break;
+            }
+        }
+    }
+#endif
     if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
         for (const QString &candidate : {QStringLiteral("x-terminal-emulator"), QStringLiteral("gnome-terminal"),
                                          QStringLiteral("kgx"), QStringLiteral("ptyxis"), QStringLiteral("konsole"),
@@ -503,6 +519,12 @@ void KrSlots::runTerminal(const QString & dir)
             sepdArgs[i] = dir;
         }
     }
+#ifdef Q_OS_WIN
+    // its own console window, even when Panero's output is redirected
+    if (!PaneroWinShell::startInNewConsole(sepdArgs, dir))
+        KMessageBox::error(krApp, i18n("Error executing %1.", term));
+    return;
+#endif
     proc << sepdArgs;
     if (!proc.startDetached())
         KMessageBox::error(krApp, i18n("Error executing %1.", term));

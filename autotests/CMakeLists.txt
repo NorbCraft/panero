@@ -23,6 +23,7 @@ ecm_add_test(paneropathstest.cpp ../app/Panel/paneropaths.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Core PaneroSlowPaths)
 target_include_directories(paneropathstest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel)
 
+if(NOT WIN32) # Cloud is not offered on Windows (rclone mount needs FUSE)
 # Cloud backend (rclone / KIO servers). The mount test needs rclone in PATH and
 # /dev/fuse; it skips otherwise. All state lives in temporary HOME/XDG dirs.
 ecm_add_test(panerocloudtest.cpp ../app/paneropackageinstaller.cpp
@@ -37,3 +38,4 @@ ecm_add_test(panerocloudsecuritytest.cpp ../app/paneropackageinstaller.cpp
     LINK_LIBRARIES Qt5::Test Qt5::DBus Qt5::Network Cloud)
 target_include_directories(panerocloudsecuritytest PRIVATE ${CMAKE_SOURCE_DIR}/app/Cloud ${CMAKE_SOURCE_DIR}/app)
 add_dependencies(panerocloudsecuritytest panero-cloud-key)
+endif()

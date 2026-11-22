@@ -336,7 +336,12 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         viewerModuleGrp.writeEntry("FirstRun", false);
     }
 
+#ifdef Q_OS_WIN
+    // Windows: also on the first run (upstream skipped it and the window opened small)
+    {
+#else
     if (!runKonfig) {
+#endif
         KConfigGroup cfg(krConfig, "Private");
         move(cfg.readEntry("Start Position", _StartPosition));
         resize(cfg.readEntry("Start Size", _StartSize));

@@ -3,7 +3,10 @@ configure_file(krusaderversion.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/krusaderversi
 add_subdirectory(ActionMan)
 add_subdirectory(Archive)
 add_subdirectory(BookMan)
-add_subdirectory(Cloud)
+if(NOT WIN32)
+    # cloud drives: rclone mounts (FUSE), Secret Service keyring, rc unix sockets
+    add_subdirectory(Cloud)
+endif()
 add_subdirectory(Dialogs)
 add_subdirectory(DiskUsage)
 add_subdirectory(FileSystem)
@@ -48,7 +51,16 @@ set(krusader_SRCS
 
 qt5_add_resources(krusader_RC_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/resources.qrc" )
 
+if(WIN32)
+    # Icon and version resource; WIN32_EXECUTABLE = no console window
+    configure_file(windows/panero.rc.in ${CMAKE_CURRENT_BINARY_DIR}/panero.rc @ONLY)
+    list(APPEND krusader_SRCS ${CMAKE_CURRENT_BINARY_DIR}/panero.rc)
+endif()
+
 add_executable(panero ${krusader_SRCS} ${krusader_RC_SRCS})
+if(WIN32)
+    set_target_properties(panero PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 
 target_link_libraries(panero
                       Panel
@@ -72,7 +84,6 @@ target_link_libraries(panero
                       GUI
                       Archive
                       JobMan
-                      Cloud
                       KF5::Notifications
                       KF5::Parts
                       KF5::WindowSystem
@@ -82,6 +93,10 @@ target_link_libraries(panero
                       # Panero: static libs (GUI, PanelView) use Panel helpers
                       Panel
 )
+
+if(NOT WIN32)
+    target_link_libraries(panero Cloud)
+endif()
 
 if(SYNCHRONIZER_ENABLED)
     target_link_libraries( panero Synchronizer )

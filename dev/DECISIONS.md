@@ -196,6 +196,24 @@ dev/scripts/make-mockups.sh).
 - R12: window title "<folder> — Panero".
 - Theme change asks to restart (live switch is unreliable, see LOG 2026-11-20).
 
+## D-015 — Windows experiment toolchain (2026-11-20, agent, owner request)
+
+- Owner asked for a native Windows x64 preview on branch `experiment/windows`
+  (separate worktree), keeping the Panero layout and look, with Windows icons.
+- Toolchain: MSYS2 UCRT64 (GCC, Qt 5.15) plus the final KF5 5.116 MSYS2 builds,
+  pinned by SHA-256 (`dev/windows/kf5-packages.sha256`). MSYS2 no longer lists
+  KF5, but the files are still on repo.msys2.org. Rejected alternatives: KDE
+  Craft (its Qt 5 cache has been frozen since 2024, so we would need to
+  maintain the qt5-lts branch ourselves), vcpkg (all of KF5 built from source
+  on every cache miss) and porting to Qt 6/KF6 (much larger than an
+  experiment; it stays the long-term path if Windows becomes a target).
+- Distribution: portable ZIP only (no installer, no signing) for the experiment.
+- Windows look: Panero layout, style sheet and toolbar unchanged. Drives,
+  folders and files use the Windows shell icons when Icons = System; Panero
+  Line or a folder colour keep the themed icons. Drive menu uses Explorer names.
+- Not on Windows: D-Bus features (single instance, remote control), Cloud
+  (rclone mount needs WinFsp), ISO worker, handbook.
+
 ## D-016 — Safe cloud sign-in (2026-11-21, owner: "implement R1 to R10")
 
 Supersedes the rclone parts of D-014 (C3). Details and reasons:

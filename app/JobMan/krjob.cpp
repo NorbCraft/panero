@@ -9,6 +9,9 @@
 #include <KI18n/KLocalizedString>
 #include <KIO/DeleteJob>
 #include <KIO/FileUndoManager>
+#include <KCoreAddons/KJobUiDelegate>
+
+#include <QDebug>
 
 KrJob *KrJob::createCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &src,
                             const QUrl &destination, KIO::JobFlags flags)
@@ -116,6 +119,16 @@ void KrJob::start()
 
 void KrJob::connectStartedJob()
 {
+#ifdef Q_OS_WIN
+    // Windows: never fail silently (progress is hidden, so an unreported error went unnoticed)
+    connect(m_job, &KJob::result, this, [this](KJob *job) {
+        if (job->error() && job->error() != KJob::KilledJobError) {
+            qWarning() << "Panero job failed:" << job->error() << job->errorString();
+            if (job->uiDelegate() && !job->uiDelegate()->isAutoErrorHandlingEnabled())
+                job->uiDelegate()->showErrorMessage();
+        }
+    });
+#endif
     connect(m_job, &KIO::Job::finished, this, [=]() {
         emit terminated(this);
         deleteLater();

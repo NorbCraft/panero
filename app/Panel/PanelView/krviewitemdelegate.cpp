@@ -9,6 +9,7 @@
 
 #include "krviewproperties.h"
 #include "listmodel.h"
+#include "../../defaults.h"
 #include "../panerotheme.h"
 
 #include <QAbstractItemView>
@@ -199,7 +200,7 @@ void KrViewItemDelegate::setEditorData(QWidget *editor, const QModelIndex &index
         KConfigGroup gl(krConfig, "Look&Feel");
         QFont font = index.data(Qt::FontRole).value<QFont>();
         lineEdit->setFont(font);
-        if (gl.readEntry("Rename Selects Extension", true))
+        if (gl.readEntry("Rename Selects Extension", _RenameSelectsExtension))
             lineEdit->selectAll();
         else {
             QString nameWithoutExt = index.data(Qt::UserRole).toString();

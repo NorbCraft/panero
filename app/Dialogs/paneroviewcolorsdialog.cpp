@@ -134,7 +134,11 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     lookForm->addRow(i18n("Menus:"), m_menuMode);
     m_showCloud = new QCheckBox(i18n("Show the Cloud section in the sidebar"), lookBox);
     m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
+#ifdef Q_OS_WIN
+    m_showCloud->hide(); // no cloud drives on Windows yet (rclone mounts need FUSE)
+#else
     lookForm->addRow(QString(), m_showCloud);
+#endif
     layout->addWidget(lookBox);
 
     // ---- file list
@@ -268,7 +272,7 @@ void PaneroViewColorsDialog::load()
     m_menuMode->setCurrentIndex(KConfigGroup(krConfig, "Startup").readEntry("Show menubar", false) ? 1 : 0);
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
         m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
-    m_showCloud->setChecked(g.readEntry("Show Cloud", true));
+    m_showCloud->setChecked(g.readEntry("Show Cloud", PANERO_CLOUD_DEFAULT));
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));

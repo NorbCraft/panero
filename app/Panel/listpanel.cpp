@@ -81,7 +81,9 @@
 #include "../GUI/terminaldock.h"
 #include "../MountMan/kmountman.h"
 #include "../UserAction/useractionpopupmenu.h"
-#include "../Cloud/panerooffline.h"
+#ifndef Q_OS_WIN
+#include "../Cloud/panerooffline.h" // cloud drives are Linux-only (rclone, FUSE)
+#endif
 
 #include <QAbstractScrollArea>
 
@@ -391,6 +393,7 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
 
     connect(&KrColorCache::getColorCache(), &KrColorCache::colorsRefreshed, this, &ListPanel::slotRefreshColors);
     connect(krApp, &Krusader::shutdown, this, &ListPanel::cancelProgress);
+#ifndef Q_OS_WIN
     // Panero: folder badges of cloud drives are computed in the background
     connect(PaneroOffline::instance(), &PaneroOffline::statesUpdated, this, [this]() {
         if (view && view->widget()) {
@@ -400,6 +403,7 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
                 view->widget()->update();
         }
     });
+#endif
 }
 
 ListPanel::~ListPanel()
@@ -774,7 +778,7 @@ void ListPanel::start(const QUrl &url)
     if (!startUrl.isValid())
         startUrl = QUrl::fromLocalFile(ROOT_DIR);
 
-    _lastLocalPath = startUrl.isLocalFile() ? startUrl.path() : ROOT_DIR;
+    _lastLocalPath = startUrl.isLocalFile() ? startUrl.toLocalFile() : ROOT_DIR;
 
 
     func->openUrl(startUrl);
@@ -797,7 +801,7 @@ void ListPanel::slotStartUpdate(bool directoryChange)
         }
 
         if (currentUrl.isLocalFile())
-            _lastLocalPath = currentUrl.path();
+            _lastLocalPath = currentUrl.toLocalFile();
 
         setNavigatorUrl(currentUrl);
 

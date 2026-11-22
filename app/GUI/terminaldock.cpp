@@ -135,7 +135,9 @@ void TerminalDock::sendInput(const QString& input, bool clearCommand)
         const int processId = t->terminalProcessId();
         // workaround (firstInput): kill is sent to terminal if shell is not initialized yet
         if (processId > 0 && !firstInput) {
+#ifndef Q_OS_WIN
             kill(processId, SIGINT);
+#endif
         }
     }
     firstInput = false;

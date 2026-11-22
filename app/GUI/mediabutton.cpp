@@ -12,6 +12,11 @@
 
 #include "../krglobal.h"
 #include "../icon.h"
+#ifdef Q_OS_WIN
+#include "../Panel/panerowinshell.h"
+#endif
+
+static const QString windowsDrivePrefix = QStringLiteral("windrive:");
 #include "../MountMan/kmountman.h"
 
 // QtCore
@@ -75,6 +80,13 @@ void MediaButton::updateIcon(const QString &mountPoint)
 
     currentMountPoint = mountPoint;
 
+#ifdef Q_OS_WIN
+    if (!mountPoint.isEmpty()) {
+        setIcon(PaneroWinShell::driveIcon(mountPoint));
+        return;
+    }
+#endif
+
     QString iconName("system-file-manager");
     QStringList overlays;
 
@@ -113,6 +125,15 @@ void MediaButton::slotAboutToHide()
 
 void MediaButton::createMediaList()
 {
+#ifdef Q_OS_WIN
+    // Windows: the drives as Explorer lists them ("Local Disk (C:)", "USB Drive (E:)")
+    for (const PaneroWinShell::Drive &drive : PaneroWinShell::drives()) {
+        QAction *act = popupMenu->addAction(drive.icon, drive.name);
+        act->setData(QVariant(windowsDrivePrefix + drive.rootPath));
+        udiNameMap[windowsDrivePrefix + drive.rootPath] = drive.name;
+    }
+    return;
+#endif
     // devices detected by solid
     storageDevices = Solid::Device::listFromType(Solid::DeviceInterface::StorageAccess);
 
@@ -254,6 +275,10 @@ void MediaButton::slotPopupActivated(QAction *action)
 {
     if (action && action->data().canConvert<QString>()) {
         QString udi = action->data().toString();
+        if (udi.startsWith(windowsDrivePrefix)) {
+            emit openUrl(QUrl::fromLocalFile(udi.mid(windowsDrivePrefix.length())));
+            return;
+        }
         if (!udi.isEmpty()) {
             bool mounted = false;
             QString mountPoint;
@@ -320,6 +345,8 @@ bool MediaButton::eventFilter(QObject *o, QEvent *e)
 
 void MediaButton::rightClickMenu(const QString& udi, QPoint pos)
 {
+    if (udi.startsWith(windowsDrivePrefix))
+        return; // no mount/unmount on Windows
     if (rightMenu)
         rightMenu->close();
 
@@ -637,6 +664,10 @@ void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
     const QString cloudName = url.isLocalFile() ? PaneroSlowPaths::displayName(PaneroSlowPaths::mountRoot(url.toLocalFile())) : QString();
     if (!cloudName.isEmpty()) {
         name = cloudName;
+#ifdef Q_OS_WIN
+    } else if (!mountPoint.isEmpty()) {
+        name = PaneroWinShell::driveName(mountPoint);
+#endif
     } else if (!mountPoint.isEmpty()) {
         if (mountPoint == QLatin1String("/")) {
             name = i18nc("the root file system", "System");

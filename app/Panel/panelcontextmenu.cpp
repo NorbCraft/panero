@@ -45,9 +45,11 @@
 #include "../FileSystem/filesystem.h"
 #include "../FileSystem/krtrashhandler.h"
 #include "../MountMan/kmountman.h"
-#include "../Cloud/panerocloud.h"
 #include "../krglobal.h"
+#ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
+#include "../Cloud/panerocloud.h"
 #include "../Cloud/panerooffline.h"
+#endif
 #include "../UserAction/useractionpopupmenu.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
@@ -334,6 +336,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- copy/paste
     addSeparator();
+#ifndef Q_OS_WIN
     // Panero: offline files of cloud drives (R10), for files and folders
     {
         PaneroOffline *offline = PaneroOffline::instance();
@@ -367,6 +370,8 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
         if (inDrive + inMirror > 0)
             addSeparator();
     }
+
+#endif
 
     addAction(panel->gui->actions()->actCut);
     addAction(panel->gui->actions()->actCopy);
@@ -480,7 +485,7 @@ void PanelContextMenu::performAction(int id)
     break;
 #endif
     case OPEN_TERM_ID :
-        SLOTS->runTerminal(singleURL.path());
+        SLOTS->runTerminal(singleURL.isLocalFile() ? singleURL.toLocalFile() : singleURL.path());
         break;
     case COPY_PATH_ID : {
         QStringList paths;
@@ -490,6 +495,7 @@ void PanelContextMenu::performAction(int id)
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
         break;
     }
+#ifndef Q_OS_WIN
     case CLOUD_AVAILABLE_ID : {
         QStringList paths;
         for (const KFileItem &item : _items)
@@ -545,6 +551,7 @@ void PanelContextMenu::performAction(int id)
         panel->func->refresh();
         break;
     }
+#endif
     case TERMINAL_HERE_ID : {
         // a folder opens there, a file in the folder it is in
         QString dir = panel->virtualPath().toLocalFile();

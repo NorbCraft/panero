@@ -9,7 +9,9 @@
 
 #include <QDockWidget>
 
+#ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
 #include "Cloud/panerocloud.h"
+#endif
 #include <QPointer>
 #include <QUrl>
 
@@ -65,9 +67,11 @@ private:
     void updatePinHighlight();
     /// Highlights the cloud drive or server the active panel is in, else none.
     void updateCloudHighlight();
+#ifndef Q_OS_WIN
     void loadCloud();
     void openCloudEntry(const PaneroCloud::Entry &entry);
     void cloudContextMenu(const QPoint &pos);
+#endif
     QWidget *m_cloudSection = nullptr;
     QListWidget *m_cloud = nullptr;
     QString m_pendingCloud;

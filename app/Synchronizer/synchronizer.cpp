@@ -1018,8 +1018,9 @@ void Synchronizer::slotTaskFinished(KJob *job)
                     timestamp.actime = time(nullptr);
                     timestamp.modtime = item->rightDate() - timeOffset;
 
-                    utime((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), &timestamp);
+                    utime((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), &timestamp);
 
+#ifndef Q_OS_WIN
                     auto newOwnerID = (uid_t) - 1; // chown(2) : -1 means no change
                     if (!item->rightOwner().isEmpty()) {
                         struct passwd* pw = getpwnam(QFile::encodeName(item->rightOwner()));
@@ -1032,19 +1033,20 @@ void Synchronizer::slotTaskFinished(KJob *job)
                         if (g != nullptr)
                             newGroupID = g->gr_gid;
                     }
-                    int status1 = chown((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), newOwnerID, (gid_t) - 1);
-                    int status2 = chown((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), (uid_t) - 1, newGroupID);
+                    int status1 = chown((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), newOwnerID, (gid_t) - 1);
+                    int status2 = chown((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), (uid_t) - 1, newGroupID);
                     if (status1 < 0 || status2 < 0) {
                         // synchronizer currently ignores chown errors
                     }
 
-                    chmod((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), item->rightMode() & 07777);
+#endif
+                    chmod((const char *)(leftURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), item->rightMode() & 07777);
 
 #ifdef HAVE_POSIX_ACL
                     if (!item->rightACL().isNull()) {
                         acl_t acl = acl_from_text(item->rightACL().toLatin1());
                         if (acl && !acl_valid(acl))
-                            acl_set_file(leftURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit(), ACL_TYPE_ACCESS, acl);
+                            acl_set_file(leftURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit(), ACL_TYPE_ACCESS, acl);
                         if (acl)
                             acl_free(acl);
                     }
@@ -1058,8 +1060,9 @@ void Synchronizer::slotTaskFinished(KJob *job)
                     timestamp.actime = time(nullptr);
                     timestamp.modtime = item->leftDate() + timeOffset;
 
-                    utime((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), &timestamp);
+                    utime((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), &timestamp);
 
+#ifndef Q_OS_WIN
                     auto newOwnerID = (uid_t) - 1; // chown(2) : -1 means no change
                     if (!item->leftOwner().isEmpty()) {
                         struct passwd* pw = getpwnam(QFile::encodeName(item->leftOwner()));
@@ -1072,19 +1075,20 @@ void Synchronizer::slotTaskFinished(KJob *job)
                         if (g != nullptr)
                             newGroupID = g->gr_gid;
                     }
-                    int status1 = chown((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), newOwnerID, (uid_t) - 1);
-                    int status2 = chown((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), (uid_t) - 1, newGroupID);
+                    int status1 = chown((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), newOwnerID, (uid_t) - 1);
+                    int status2 = chown((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), (uid_t) - 1, newGroupID);
                     if (status1 < 0 || status2 < 0) {
                         // synchronizer currently ignores chown errors
                     }
 
-                    chmod((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit()), item->leftMode() & 07777);
+#endif
+                    chmod((const char *)(rightURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit()), item->leftMode() & 07777);
 
 #ifdef HAVE_POSIX_ACL
                     if (!item->leftACL().isNull()) {
                         acl_t acl = acl_from_text(item->leftACL().toLatin1());
                         if (acl && !acl_valid(acl))
-                            acl_set_file(rightURL.adjusted(QUrl::StripTrailingSlash).path().toLocal8Bit(), ACL_TYPE_ACCESS, acl);
+                            acl_set_file(rightURL.adjusted(QUrl::StripTrailingSlash).toLocalFile().toLocal8Bit(), ACL_TYPE_ACCESS, acl);
                         if (acl)
                             acl_free(acl);
                     }

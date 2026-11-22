@@ -11,8 +11,10 @@
 // QtCore
 #include <QLocale>
 
+#ifndef Q_OS_WIN
 #include <grp.h>
 #include <pwd.h>
+#endif
 #include <sys/stat.h>
 
 QSet<int> KrPermHandler::currentGroups;

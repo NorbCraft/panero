@@ -34,6 +34,12 @@
 #include <errno.h>
 #include "../../app/compat.h"
 
+#ifdef Q_OS_WIN
+// Windows _mkdir() has no permission argument
+#undef QT_MKDIR
+#define QT_MKDIR(path, mode) ::_mkdir(path)
+#endif
+
 #define MAX_IPC_SIZE           (1024*32)
 #define TRIES_WITH_PASSWORDS   3
 
