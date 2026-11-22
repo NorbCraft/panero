@@ -46,6 +46,8 @@
 
 #ifndef Q_OS_WIN
 #include "../Cloud/panerocloud.h"
+#else
+#include "panerowinshell.h"
 #endif
 
 namespace
@@ -225,7 +227,11 @@ void PaneroDrives::refresh()
     auto *watcher = new QFutureWatcher<QList<PaneroDrive>>(this);
     connect(watcher, &QFutureWatcher<QList<PaneroDrive>>::finished, this, [this, watcher]() {
         watcher->deleteLater();
-        const QList<PaneroDrive> found = watcher->result();
+        QList<PaneroDrive> found = watcher->result();
+        // icons only in the GUI thread (QIcon/QPixmap are not thread-safe),
+        // the ones Explorer shows for each drive
+        for (PaneroDrive &d : found)
+            d.icon = PaneroWinShell::driveIcon(d.url.toLocalFile());
         bool same = found.size() == m_drives.size();
         for (int i = 0; same && i < found.size(); ++i)
             same = found[i].id == m_drives[i].id && found[i].label == m_drives[i].label;
@@ -244,7 +250,6 @@ void PaneroDrives::refresh()
             d.id = QStringLiteral("drive:") + root.left(2).toUpper();
             d.label = v.name().isEmpty() ? root.left(2).toUpper() : QStringLiteral("%1 %2").arg(root.left(2).toUpper(), v.name());
             d.url = QUrl::fromLocalFile(v.rootPath());
-            d.icon = Icon(QStringLiteral("drive-harddisk"));
             d.toolTip = root;
             if (v.isReady() && v.bytesTotal() > 0)
                 d.toolTip += QLatin1Char('\n') + i18n("%1 free of %2", formatSize(v.bytesAvailable()), formatSize(v.bytesTotal()));

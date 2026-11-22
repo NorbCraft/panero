@@ -105,6 +105,11 @@ int main(int argc, char *argv[])
 
     // prevent qt5-webengine crashing
     QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+#ifdef Q_OS_WIN
+    // Panero: no "?" (What's This) button in the title bar of dialogs, as in
+    // other Windows programs (the main window has normal buttons, D-019)
+    QCoreApplication::setAttribute(Qt::AA_DisableWindowContextHelpButton, true);
+#endif
 
     // create the application and set application domain so that calls to i18n get strings from right place.
     // Panero ships its own KIO workers (krarc, iso) in a private plugin directory so that

@@ -510,3 +510,9 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   and paneromultirenametest (2 real bugs found: literal brackets, plain
   replace doubled backslashes); gui-rename-test.sh rename+undo on disk.
 - Windows merge running in a separate worktree (feature/windows-main).
+- Windows merge done by a helper session on feature/windows-main (CI
+  45059382401 Windows, 45059382411 Linux, both green); fast-forwarded
+  feature/preview11 to it; local ctest 9/9. Fixed my drive bar building
+  QIcons in a worker thread on Windows; AA_DisableWindowContextHelpButton on
+  Windows. Open: the owner's "right panel without outline" was not
+  reproduced on the runner (fixed what differed: 0 px to the window edge).

@@ -355,8 +355,13 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - [x] Drive buttons (PaneroDriveBar, PaneroDriveFilter + unit test; Windows
       letters coded, compiled after the merge).
 - [x] Multi-Rename dialog (rules + unit tests, gui-rename-test.sh).
-- [ ] Windows in main: merge experiment/windows, platform guards, CI on every
-      change, ZIP in the release; fixes: window buttons, pin icons, right
-      panel frame, Windows wording.
-- [ ] Tests, docs, release v0.1.0-preview.11 (.deb + Windows ZIP).
+- [x] Windows in main (feature/windows-main, 73bf937b1): experiment/windows
+      merged, cloud not built on Windows, windows.yml on every PR/main push,
+      release attaches the ZIP; fixes: window flags (Qt::Window only), pins
+      with shell icons, 6 px right margin (outline at the window edge),
+      Windows wording (PANERO_TEXT), no first-run dialogs. Windows GUI test
+      45/45; dev/windows/screenshots/p11-*.
+- [x] Drive bar on Windows: icons created in the GUI thread (shell icons);
+      no "?" in Windows dialog title bars.
+- [ ] Release v0.1.0-preview.11 (.deb + Windows ZIP).
 - Preview 12: Explorer right-click menu; Windows cloud via app folders.
