@@ -101,7 +101,7 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actSetJumpBack = action(i18n("Set Jump Back Point"), "go-jump-definition", Qt::CTRL + Qt::SHIFT + Qt::Key_J, _gui, SLOT(setJumpBack()), "set_jump_back");
     actSyncBrowse = action(i18n("S&ynchron Folder Changes"), "kr_syncbrowse_off", Qt::ALT + Qt::SHIFT + Qt::Key_Y, _gui, SLOT(toggleSyncBrowse()), "sync browse");
     actLocationBar = action(i18n("Go to Location Bar"), nullptr, Qt::CTRL + Qt::Key_L, _gui, SLOT(editLocation()), "location_bar");
-    toggleAction(i18n("Toggle Sidebar"), nullptr, Qt::ALT + Qt::Key_Down, _gui, SLOT(toggleSidebar()), "toggle sidebar");
+    // Panero: no "Toggle Sidebar" (Alt+Down): the per-panel sidebar is removed
     action(i18n("Bookmarks"), nullptr, Qt::CTRL + Qt::Key_D, _gui, SLOT(openBookmarks()), "bookmarks");
     action(i18n("Left Bookmarks"), nullptr, 0, this, SLOT(openLeftBookmarks()), "left bookmarks");
     action(i18n("Right Bookmarks"), nullptr, 0, this, SLOT(openRightBookmarks()), "right bookmarks");

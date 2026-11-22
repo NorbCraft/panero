@@ -63,6 +63,8 @@ private slots:
 
 private:
     void updatePinHighlight();
+    /// Highlights the cloud drive or server the active panel is in, else none.
+    void updateCloudHighlight();
     void loadCloud();
     void openCloudEntry(const PaneroCloud::Entry &entry);
     void cloudContextMenu(const QPoint &pos);

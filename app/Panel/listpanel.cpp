@@ -272,6 +272,9 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     connect(sidebarButton, &QToolButton::clicked, this, &ListPanel::toggleSidebar);
     sidebarButton->setToolTip(i18n("Open the Sidebar"));
     ADD_WIDGET(sidebarButton);
+    // Panero: Krusader's per-panel sidebar is replaced by the navigation
+    // sidebar (pins, cloud, folders); a second one only confused (owner, preview 11)
+    sidebarButton->hide();
 
 #undef ADD_WIDGET
 
@@ -1049,7 +1052,7 @@ void ListPanel::slotPreviewJobStarted(KJob *job)
     previewJob = job;
     connect(job, SIGNAL(percent(KJob*,ulong)), SLOT(slotPreviewJobPercent(KJob*,ulong)));
     connect(job, &KJob::result, this, &ListPanel::slotPreviewJobResult);
-    cancelProgressButton->setMaximumHeight(sidebarButton->height());
+    cancelProgressButton->setMaximumHeight(totals->height());
     cancelProgressButton->show();
     previewProgress->setValue(0);
     previewProgress->setFormat(i18n("loading previews: %p%"));
@@ -1288,13 +1291,7 @@ void ListPanel::restoreSettings(KConfigGroup cfg)
         setPinnedUrl(pinnedUrl);
     }
 
-    if (cfg.hasKey("PopupPosition")) { // sidebar was visible, restore
-        toggleSidebar(); // create and show
-        sidebar->restoreSettings(KConfigGroup(&cfg, "PanelPopup"));
-        setSidebarPosition(cfg.readEntry("PopupPosition", 42 /* dummy */));
-        sidebarSplitter->restoreState(cfg.readEntry("SplitterSizes", QByteArray()));
-        sidebar->setCurrentPage(cfg.readEntry("PopupPage", 0));
-    }
+    // Panero: the per-panel sidebar is gone; an old "PopupPosition" is ignored
 }
 
 void ListPanel::slotCurrentChanged(KrViewItem *item)

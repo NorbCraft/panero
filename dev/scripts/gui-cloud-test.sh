@@ -80,6 +80,9 @@ check "new name stored" grep -q "Remote Labels=Work Drive" "$DEVHOME/config/pane
 cat "$MNT"/Photos/* >/dev/null; sleep 22
 xdotool mousemove $((X+1000)) $((Y+500)) click 1; sleep 1; xdotool mousemove $((X+1000)) $((Y+210)); sleep 3
 shot 08-photos-offline
+# the drive stays selected in the sidebar only while the active panel is in it
+xdotool key Tab; sleep 1.5; shot 09-other-panel-active
+xdotool key Tab; sleep 1.5; shot 10-drive-panel-active
 
 kill $APID 2>/dev/null; sleep 3; kill -9 $APID 2>/dev/null
 fusermount3 -u "$MNT" 2>/dev/null

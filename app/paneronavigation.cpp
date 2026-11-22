@@ -195,8 +195,10 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
         }
         loadCloud();
         const bool wasPending = id == m_pendingCloud;
-        if (wasPending)
+        if (wasPending) {
             m_pendingCloud.clear();
+            updateCloudHighlight();
+        }
         const QString remote = id.startsWith(QLatin1String("rclone:")) ? id.mid(7) : QString();
         if (wasPending && !remote.isEmpty() && !PaneroOffline::instance()->pins(remote).isEmpty()
             && QFileInfo(PaneroOffline::mirrorRoot(remote)).isDir()) {
@@ -296,6 +298,7 @@ void PaneroNavigationDock::loadCloud()
         auto *hint = new QListWidgetItem(i18n("Add a cloud drive or server with +"), m_cloud);
         hint->setFlags(Qt::NoItemFlags);
     }
+    updateCloudHighlight();
 }
 
 void PaneroNavigationDock::openCloudEntry(const PaneroCloud::Entry &entry)
@@ -420,6 +423,7 @@ void PaneroNavigationDock::activeLocationChanged(const QUrl &url, bool leftPanel
     const bool changed = url != m_currentUrl;
     m_currentUrl = url;
     updatePinHighlight();
+    updateCloudHighlight();
     if (changed && isVisible())
         m_tree->setCurrentUrl(url);
 }
@@ -439,6 +443,53 @@ void PaneroNavigationDock::updatePinHighlight()
     } else {
         m_pins->clearSelection();
         m_pins->setCurrentRow(-1);
+    }
+}
+
+void PaneroNavigationDock::updateCloudHighlight()
+{
+    // stays selected while the active panel is anywhere inside the drive (or
+    // in its offline copies), deselected as soon as it is somewhere else
+    if (!m_cloud)
+        return;
+    QString remote;
+    if (m_currentUrl.isLocalFile()) {
+        QString rel;
+        bool mirror = false;
+        if (!PaneroOffline::instance()->cloudPath(m_currentUrl.toLocalFile(), &remote, &rel, &mirror))
+            remote.clear();
+    }
+    QListWidgetItem *match = nullptr;
+    auto *cloud = PaneroCloud::instance();
+    for (const PaneroCloud::Entry &e : cloud->entries()) {
+        bool inside = false;
+        if (e.isRclone()) {
+            inside = !remote.isEmpty() && remote == e.rcloneRemote;
+        } else if (e.isServer() && e.url.isValid() && !m_currentUrl.isLocalFile()) {
+            const QString base = e.url.adjusted(QUrl::StripTrailingSlash).path();
+            const QString path = m_currentUrl.adjusted(QUrl::StripTrailingSlash).path();
+            inside = m_currentUrl.scheme() == e.url.scheme() && m_currentUrl.host() == e.url.host()
+                && m_currentUrl.port() == e.url.port() && (base.isEmpty() || path == base || path.startsWith(base + QLatin1Char('/')));
+        }
+        if (!inside)
+            continue;
+        for (int i = 0; i < m_cloud->count() && !match; ++i) {
+            if (m_cloud->item(i)->data(UrlRole).toString() == e.id)
+                match = m_cloud->item(i);
+        }
+        break;
+    }
+    // a drive that is still connecting after a click stays selected meanwhile
+    for (int i = 0; i < m_cloud->count() && !match && !m_pendingCloud.isEmpty(); ++i) {
+        if (m_cloud->item(i)->data(UrlRole).toString() == m_pendingCloud)
+            match = m_cloud->item(i);
+    }
+    const QSignalBlocker blocker(m_cloud);
+    if (match) {
+        m_cloud->setCurrentItem(match);
+    } else {
+        m_cloud->clearSelection();
+        m_cloud->setCurrentRow(-1);
     }
 }
 
