@@ -74,11 +74,21 @@ public:
 
     /// Badge state of a local path (inside a mount or a local copy).
     State state(const QString &localPath, qint64 size, bool isDir) const;
+    /// Forgets cached badge states (after offline/cache changes).
+    void invalidateStates();
     /// A path inside a pinned folder of a mounted cloud -> its local copy
     /// (when the copy exists); any other path is returned unchanged.
     QString redirect(const QString &localPath);
     /// Paints the state badge onto @p icon.
     static void decorate(QPixmap &icon, State state);
+
+    /// Downloads files (folders: everything inside) into the drive's cache in
+    /// the background, with a progress window; they stay available like files
+    /// opened once. Several calls queue up.
+    void makeAvailableOffline(QWidget *parent, const QStringList &localPaths);
+    /// Removes the cached copies of files (folders: everything inside) that
+    /// are not open and have no pending upload. Returns a summary for the user.
+    QString freeUpCache(const QStringList &localPaths, qint64 *freedBytes = nullptr);
 
     /// Pins a folder and starts its first synchronisation.
     bool pin(const QString &remote, const QString &relativePath, QString *error = nullptr);
@@ -135,6 +145,8 @@ private:
     bool mirrorBelongsTo(const QString &remote);
     bool claimMirror(const QString &remote, QString *error);
     QString workdir(const Job &job) const;
+    QString cacheSub(const QString &remote) const { return m_cacheSub.value(remote, remote); }
+    State computeState(const QString &localPath, qint64 size, bool isDir) const;
 
     KSharedConfigPtr m_config;
     QList<Job> m_queue;
@@ -147,6 +159,9 @@ private:
     QStringList m_changedKeys;
     QHash<QString, QString> m_cacheSub;
     QSet<QString> m_blocked; ///< pins being freed: never synchronised
+    /// badge states of recently painted items (path -> state, time): the
+    /// panel asks on every repaint
+    mutable QHash<QString, QPair<State, qint64>> m_stateCache;
 };
 
 #endif // PANEROOFFLINE_H

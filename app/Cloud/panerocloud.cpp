@@ -23,6 +23,9 @@
 #include <QFileInfo>
 #include <QFileSystemWatcher>
 #include <QProcess>
+#include <QRegularExpression>
+#include <QJsonObject>
+#include <QJsonDocument>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -605,6 +608,120 @@ void PaneroCloud::signOutAll(QWidget *parent)
     showSignOutSummary(parent, lines);
 }
 
+qint64 PaneroCloud::mountPid(const QString &remote) const
+{
+    const Mount *m = m_mounts.value(entryIdForRemote(remote));
+    return m && m->mounted && m->process ? m->process->processId() : 0;
+}
+
+bool PaneroCloud::mayBeGoogleDocument(const QString &localPath, qint64 size) const
+{
+    if (size != 0)
+        return false;
+    static const QStringList exportExtensions{QStringLiteral("docx"), QStringLiteral("xlsx"), QStringLiteral("pptx"),
+                                              QStringLiteral("svg"),  QStringLiteral("odt"),  QStringLiteral("ods"),
+                                              QStringLiteral("odp"),  QStringLiteral("pdf"),  QStringLiteral("json")};
+    if (!exportExtensions.contains(QFileInfo(localPath).suffix().toLower()))
+        return false;
+    QString remote, rel;
+    bool inMirror = false;
+    if (!PaneroOffline::instance()->cloudPath(localPath, &remote, &rel, &inMirror) || inMirror || rel.isEmpty())
+        return false;
+    return m_remoteTypes.value(remote) == QLatin1String("drive");
+}
+
+// Drive id and native type of a file ("application/vnd.google-apps.*"), via rclone.
+static bool googleDocumentInfo(const QString &localPath, QString *remote, QString *rel, QString *id, QString *googleType)
+{
+    if (!PaneroOffline::instance()->cloudPath(localPath, remote, rel))
+        return false;
+    QByteArray out;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const int rc = PaneroRclone::run({QStringLiteral("lsjson"), *remote + QLatin1Char(':') + *rel, QStringLiteral("--stat"),
+                                      QStringLiteral("--metadata")},
+                                     &out, nullptr, 30000);
+    QApplication::restoreOverrideCursor();
+    if (rc != 0)
+        return false;
+    const QJsonObject o = QJsonDocument::fromJson(out).object();
+    *googleType = o.value(QStringLiteral("Metadata")).toObject().value(QStringLiteral("content-type")).toString();
+    // shortcuts: "<target id>\t<shortcut id>"
+    *id = o.value(QStringLiteral("ID")).toString().section(QLatin1Char('\t'), 0, 0);
+    static const QRegularExpression idRe(QStringLiteral("^[A-Za-z0-9_\\-]{10,200}$"));
+    return googleType->startsWith(QLatin1String("application/vnd.google-apps.")) && idRe.match(*id).hasMatch();
+}
+
+bool PaneroCloud::openGoogleDocument(QWidget *parent, const QString &localPath, qint64 size)
+{
+    Q_UNUSED(parent)
+    if (!mayBeGoogleDocument(localPath, size))
+        return false;
+    QString remote, rel, id, type;
+    if (!googleDocumentInfo(localPath, &remote, &rel, &id, &type))
+        return false;
+    const QString kind = type.mid(int(qstrlen("application/vnd.google-apps.")));
+    QString url;
+    if (kind == QLatin1String("document"))
+        url = QStringLiteral("https://docs.google.com/document/d/%1/edit").arg(id);
+    else if (kind == QLatin1String("spreadsheet"))
+        url = QStringLiteral("https://docs.google.com/spreadsheets/d/%1/edit").arg(id);
+    else if (kind == QLatin1String("presentation"))
+        url = QStringLiteral("https://docs.google.com/presentation/d/%1/edit").arg(id);
+    else if (kind == QLatin1String("drawing"))
+        url = QStringLiteral("https://docs.google.com/drawings/d/%1/edit").arg(id);
+    else
+        url = QStringLiteral("https://drive.google.com/open?id=%1").arg(id);
+    return QDesktopServices::openUrl(QUrl(url));
+}
+
+bool PaneroCloud::saveGoogleDocumentCopy(QWidget *parent, const QString &localPath, const QString &destDir)
+{
+    QString remote, rel, id, type;
+    if (!googleDocumentInfo(localPath, &remote, &rel, &id, &type)) {
+        KMessageBox::error(parent, i18n("This is not a Google Docs, Sheets or Slides file."), i18n("Save a Copy"));
+        return false;
+    }
+    QString target = destDir + QLatin1Char('/') + QFileInfo(localPath).fileName();
+    if (QFileInfo::exists(target)) {
+        const auto answer = KMessageBox::warningTwoActions(parent, i18n("%1 already exists. Replace it?", target), i18n("Save a Copy"),
+                                                           KStandardGuiItem::overwrite(), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return false;
+    }
+    QProgressDialog progress(i18n("Downloading %1...", QFileInfo(localPath).fileName()), QString(), 0, 0, parent);
+    progress.setWindowModality(Qt::WindowModal);
+    progress.setMinimumDuration(0);
+    progress.show();
+    QProcess p;
+    PaneroRclone::prepare(p, {QStringLiteral("copyto"), remote + QLatin1Char(':') + rel, target});
+    p.start();
+    p.closeWriteChannel();
+    while (!p.waitForFinished(100))
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    progress.close();
+    if (p.exitStatus() != QProcess::NormalExit || p.exitCode() != 0) {
+        KMessageBox::error(parent, PaneroCloudUtils::rcloneErrorSummary(QString::fromUtf8(p.readAllStandardError())), i18n("Save a Copy"));
+        return false;
+    }
+    return true;
+}
+
+void PaneroCloud::flushDirectoryCache(const QString &localPath)
+{
+    for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+        const Mount *m = it.value();
+        if (!m->mounted || m->stopping || !m->process)
+            continue;
+        if (localPath == m->dir || localPath.startsWith(m->dir + QLatin1Char('/'))) {
+            // rclone mount: SIGHUP flushes all directory caches
+            const qint64 pid = m->process->processId();
+            if (pid > 0)
+                ::kill(pid_t(pid), SIGHUP);
+            return;
+        }
+    }
+}
+
 QHash<QString, QString> PaneroCloud::mountDirs() const
 {
     QHash<QString, QString> dirs;
@@ -757,7 +874,16 @@ void PaneroCloud::mount(const Entry &e)
     }
     QStringList args{QStringLiteral("mount"), e.rcloneRemote + QLatin1Char(':'), dir};
     args << PaneroOffline::instance()->mountCacheArgs(e.rcloneRemote);
-    args << QStringLiteral("--dir-cache-time") << QStringLiteral("30s");
+    // Folder listings: providers that report changes (polled every 30 s) keep
+    // them for an hour, so revisiting a folder needs no network; others 5 min.
+    // Ctrl+R in Panero flushes them (SIGHUP, flushDirectoryCache()).
+    const bool notifies = e.rcloneType == QLatin1String("drive") || e.rcloneType == QLatin1String("onedrive")
+        || e.rcloneType == QLatin1String("dropbox") || e.rcloneType == QLatin1String("box");
+    args << QStringLiteral("--dir-cache-time") << (notifies ? QStringLiteral("1h") : QStringLiteral("5m"));
+    if (notifies)
+        args << QStringLiteral("--poll-interval") << QStringLiteral("30s");
+    // cached files are checked by size and time only (no extra hash requests)
+    args << QStringLiteral("--vfs-fast-fingerprint");
     PaneroRclone::prepare(*m->process, args);
     m->process->start();
     m->poll->start();

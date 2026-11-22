@@ -27,6 +27,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QProgressDialog>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QActionGroup>
@@ -175,6 +176,10 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     auto *cloud = PaneroCloud::instance();
     connect(cloud, &PaneroCloud::entriesChanged, this, &PaneroNavigationDock::loadCloud);
     connect(cloud, &PaneroCloud::mounted, this, [this](const QString &id, const QUrl &url) {
+        if (m_connecting && id == m_pendingCloud) {
+            m_connecting->disconnect(this);
+            m_connecting->deleteLater();
+        }
         loadCloud();
         if (id == m_pendingCloud) {
             m_pendingCloud.clear();
@@ -182,6 +187,10 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
         }
     });
     connect(cloud, &PaneroCloud::mountFailed, this, [this](const QString &id, const QString &message) {
+        if (m_connecting && id == m_pendingCloud) {
+            m_connecting->disconnect(this);
+            m_connecting->deleteLater();
+        }
         loadCloud();
         const bool wasPending = id == m_pendingCloud;
         if (wasPending)
@@ -305,6 +314,21 @@ void PaneroNavigationDock::openCloudEntry(const PaneroCloud::Entry &entry)
     m_pendingCloud = entry.id;
     cloud->mount(entry);
     loadCloud();
+    // connecting takes a few seconds: a small window instead of a frozen look
+    if (cloud->isMounting(entry.id)) {
+        delete m_connecting;
+        m_connecting = new QProgressDialog(i18n("Connecting to %1...", entry.label), i18n("Cancel"), 0, 0, this);
+        m_connecting->setWindowTitle(i18n("Cloud Drive"));
+        m_connecting->setMinimumDuration(400);
+        m_connecting->setAutoClose(false);
+        m_connecting->setAutoReset(false);
+        const QString id = entry.id;
+        connect(m_connecting.data(), &QProgressDialog::canceled, this, [this, id]() {
+            if (m_pendingCloud == id)
+                m_pendingCloud.clear();
+            PaneroCloud::instance()->unmount(id);
+        });
+    }
 }
 
 void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)

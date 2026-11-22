@@ -117,6 +117,11 @@ QString oneDriveScopes(bool readOnly, bool includeShared);
 /// Path of the rclone VFS cache file for @p relativePath of @p remote below
 /// the remote's cache folder (rclone 1.76 layout: <cache>/vfs/<remote>/<path>).
 QString vfsCacheFile(const QString &remoteCacheDir, const QString &remote, const QString &relativePath);
+/// Path of rclone's metadata file for a cache file (<cache>/vfsMeta/<remote>/<path>).
+QString vfsMetaFile(const QString &remoteCacheDir, const QString &remote, const QString &relativePath);
+/// True when rclone's metadata file marks the cache file as not uploaded yet.
+bool isDirtyMeta(const QString &metaFile);
+
 /// The VFS cache subfolder of an "alias" remote: rclone names the cache after
 /// the backend the alias points to ("other:sub" -> "other/sub", "/data" ->
 /// "local/data").

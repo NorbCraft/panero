@@ -422,6 +422,22 @@ QString vfsCacheFile(const QString &remoteCacheDir, const QString &remote, const
     return remoteCacheDir + QLatin1String("/vfs/") + remote + (rel.isEmpty() ? QString() : QLatin1Char('/') + rel);
 }
 
+QString vfsMetaFile(const QString &remoteCacheDir, const QString &remote, const QString &relativePath)
+{
+    const QString data = vfsCacheFile(remoteCacheDir, remote, relativePath);
+    if (data.isEmpty())
+        return QString();
+    return remoteCacheDir + QLatin1String("/vfsMeta/") + data.mid(remoteCacheDir.length() + int(qstrlen("/vfs/")));
+}
+
+bool isDirtyMeta(const QString &metaFile)
+{
+    QFile f(metaFile);
+    if (f.size() > 1024 * 1024 || !f.open(QIODevice::ReadOnly))
+        return false;
+    return QJsonDocument::fromJson(f.readAll()).object().value(QStringLiteral("Dirty")).toBool(false);
+}
+
 QString aliasCacheSubPath(const QString &aliasTarget)
 {
     const QString t = aliasTarget.trimmed();

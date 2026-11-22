@@ -10,10 +10,12 @@
 #include <QDockWidget>
 
 #include "Cloud/panerocloud.h"
+#include <QPointer>
 #include <QUrl>
 
 class QLabel;
 class QListWidget;
+class QProgressDialog;
 class QListWidgetItem;
 class QToolButton;
 class KrFileTreeView;
@@ -67,6 +69,7 @@ private:
     QWidget *m_cloudSection = nullptr;
     QListWidget *m_cloud = nullptr;
     QString m_pendingCloud;
+    QPointer<QProgressDialog> m_connecting; ///< "Connecting to ..." while a drive mounts
     struct Pin {
         QUrl url;
         QString label;

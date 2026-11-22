@@ -22,6 +22,12 @@
 #include <QProcess>
 #include <QProgressDialog>
 #include <QTimer>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QLocale>
+
+#include <atomic>
+#include <memory>
+#include <sys/stat.h>
 
 #include <KConfigCore/KConfigGroup>
 #include <KI18n/KLocalizedString>
@@ -89,6 +95,7 @@ PaneroOffline *PaneroOffline::instance()
 PaneroOffline::PaneroOffline(QObject *parent)
     : QObject(parent), m_config(KSharedConfig::openConfig())
 {
+    connect(this, &PaneroOffline::changed, this, &PaneroOffline::invalidateStates);
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &PaneroOffline::periodicSync);
     m_timer->start(PERIODIC_MS);
@@ -321,7 +328,25 @@ bool PaneroOffline::cloudPath(const QString &localPath, QString *remote, QString
     return false;
 }
 
+void PaneroOffline::invalidateStates()
+{
+    m_stateCache.clear();
+}
+
 PaneroOffline::State PaneroOffline::state(const QString &localPath, qint64 size, bool isDir) const
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const auto cached = m_stateCache.constFind(localPath);
+    if (cached != m_stateCache.constEnd() && now - cached->second < 3000)
+        return cached->first;
+    const State s = computeState(localPath, size, isDir);
+    if (m_stateCache.size() > 5000)
+        m_stateCache.clear();
+    m_stateCache.insert(localPath, qMakePair(s, now));
+    return s;
+}
+
+PaneroOffline::State PaneroOffline::computeState(const QString &localPath, qint64 size, bool isDir) const
 {
     QString remote, rel;
     bool inMirror = false;
@@ -402,6 +427,206 @@ void PaneroOffline::decorate(QPixmap &icon, State state)
     p.setPen(QPen(pinned ? Qt::white : green, qMax<qreal>(1.2, d / 7.0), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     p.setBrush(Qt::NoBrush);
     p.drawPath(check);
+}
+
+namespace
+{
+/// Shared state of a background "make available offline" run.
+struct PrefetchState {
+    std::atomic<bool> cancel{false};
+    std::atomic<bool> done{false};
+    std::atomic<int> files{0};
+    std::atomic<int> filesDone{0};
+    std::atomic<qint64> bytes{0};
+    std::atomic<qint64> bytesDone{0};
+    std::atomic<int> failed{0};
+    std::atomic<bool> tooLarge{false};
+};
+}
+
+void PaneroOffline::makeAvailableOffline(QWidget *parent, const QStringList &localPaths)
+{
+    QString remote, rel;
+    QStringList paths;
+    for (const QString &p : localPaths) {
+        QString r;
+        bool inMirror = false;
+        if (cloudPath(p, &r, &rel, &inMirror) && !inMirror && !rel.isEmpty()) {
+            remote = r;
+            paths << p;
+        }
+    }
+    if (paths.isEmpty())
+        return;
+    const Settings s = settings(remote);
+    if (!s.keepOpened) {
+        const auto answer = KMessageBox::questionTwoActions(
+            parent, i18n("<p>\"Keep files I open available on this device\" is off for this drive, so downloaded files are deleted "
+                         "when the drive is disconnected.</p><p>Turn it on now?</p>"),
+            i18n("Make Available Offline"), KGuiItem(i18n("Turn On")), KStandardGuiItem::cancel());
+        if (answer != KMessageBox::PrimaryAction)
+            return;
+        Settings on = s;
+        on.keepOpened = true;
+        setSettings(remote, on);
+    }
+    const qint64 limit = qint64(s.cacheLimitGB) * 1024 * 1024 * 1024;
+    const QString cacheRoot = PaneroRclone::cacheDir(remote);
+    const QString sub = cacheSub(remote);
+    const QString mountDir = PaneroCloud::instance()->mountDirs().value(remote);
+
+    auto state = std::make_shared<PrefetchState>();
+    auto *progress = new QProgressDialog(i18n("Looking for files..."), i18n("Cancel"), 0, 1000, parent);
+    progress->setWindowTitle(i18n("Make Available Offline"));
+    progress->setAttribute(Qt::WA_DeleteOnClose);
+    progress->setMinimumDuration(0);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    progress->setValue(0);
+    connect(progress, &QProgressDialog::canceled, progress, [state]() {
+        state->cancel = true;
+    });
+    progress->show();
+
+    QtConcurrent::run([state, paths, mountDir, cacheRoot, sub, limit]() {
+        QStringList files;
+        QList<qint64> sizes;
+        const auto add = [&](const QString &f, qint64 size) {
+            if (size <= 0) // empty files and Google documents (no size, cannot be cached)
+                return;
+            const QString rel = f.mid(mountDir.length() + 1);
+            if (PaneroCloudUtils::isFullyCached(PaneroCloudUtils::vfsCacheFile(cacheRoot, sub, rel), size))
+                return;
+            files << f;
+            sizes << size;
+            state->bytes += size;
+        };
+        for (const QString &p : paths) {
+            if (state->cancel)
+                break;
+            const QFileInfo fi(p);
+            if (fi.isDir()) {
+                QDirIterator it(p, QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+                while (it.hasNext() && !state->cancel) {
+                    it.next();
+                    add(it.filePath(), it.fileInfo().size());
+                }
+            } else {
+                add(p, fi.size());
+            }
+        }
+        state->files = int(files.size());
+        if (state->bytes > limit * 9 / 10) {
+            state->tooLarge = true;
+            state->done = true;
+            return;
+        }
+        QByteArray buffer(1024 * 1024, Qt::Uninitialized);
+        for (int i = 0; i < files.size() && !state->cancel; ++i) {
+            QFile f(files.at(i));
+            bool ok = f.open(QIODevice::ReadOnly);
+            qint64 read = 0;
+            while (ok && !state->cancel) {
+                const qint64 n = f.read(buffer.data(), buffer.size());
+                if (n < 0)
+                    ok = false;
+                if (n <= 0)
+                    break;
+                read += n;
+                state->bytesDone += n;
+            }
+            if (!ok)
+                ++state->failed;
+            state->bytesDone += qMax<qint64>(0, sizes.at(i) - read); // keep the total consistent
+            ++state->filesDone;
+        }
+        state->done = true;
+    });
+
+    auto *timer = new QTimer(progress);
+    connect(timer, &QTimer::timeout, this, [this, timer, progress, state, remote, limit, parent]() {
+        if (state->files > 0 || state->done) {
+            const qint64 total = qMax<qint64>(1, state->bytes);
+            progress->setValue(int(1000 * state->bytesDone / total));
+            progress->setLabelText(i18n("Downloading file %1 of %2 (%3 of %4)...", state->filesDone + (state->done ? 0 : 1), int(state->files),
+                                        QLocale().formattedDataSize(state->bytesDone), QLocale().formattedDataSize(state->bytes)));
+        }
+        if (!state->done)
+            return;
+        timer->stop();
+        invalidateStates();
+        emit changed(remote);
+        progress->close();
+        if (state->tooLarge)
+            KMessageBox::information(parent,
+                                     i18n("The files need %1, more than the space for opened files of this drive (%2). Raise the limit in "
+                                          "Offline Files... or choose fewer files.",
+                                          QLocale().formattedDataSize(state->bytes), QLocale().formattedDataSize(limit)),
+                                     i18n("Make Available Offline"));
+        else if (state->failed > 0)
+            KMessageBox::information(parent, i18np("1 file could not be downloaded.", "%1 files could not be downloaded.", int(state->failed)),
+                                     i18n("Make Available Offline"));
+    });
+    timer->start(200);
+}
+
+QString PaneroOffline::freeUpCache(const QStringList &localPaths, qint64 *freedBytes)
+{
+    qint64 freed = 0;
+    int removed = 0, skippedDirty = 0;
+    QString lastRemote;
+    for (const QString &p : localPaths) {
+        QString remote, rel;
+        bool inMirror = false;
+        if (!cloudPath(p, &remote, &rel, &inMirror) || inMirror || rel.isEmpty())
+            continue;
+        lastRemote = remote;
+        const QString cacheRoot = PaneroRclone::cacheDir(remote);
+        const QString sub = cacheSub(remote);
+        const QString data = PaneroCloudUtils::vfsCacheFile(cacheRoot, sub, rel);
+        if (data.isEmpty())
+            continue;
+        QStringList cacheFiles;
+        if (QFileInfo(data).isDir()) {
+            QDirIterator it(data, QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+            while (it.hasNext())
+                cacheFiles << it.next();
+        } else if (QFileInfo::exists(data)) {
+            cacheFiles << data;
+        }
+        const QString vfsPrefix = cacheRoot + QLatin1String("/vfs/");
+        for (const QString &cf : qAsConst(cacheFiles)) {
+            const QString meta = cacheRoot + QLatin1String("/vfsMeta/") + cf.mid(vfsPrefix.length());
+            if (PaneroCloudUtils::isDirtyMeta(meta)) {
+                ++skippedDirty; // not uploaded yet: never delete
+                continue;
+            }
+            // rclone may still hold the cache file open: removing it is safe, rclone
+            // checks on the next open whether its cache file still exists
+            // (vfscache item.open) and downloads again; a reading app keeps
+            // reading the removed copy until it closes it
+            struct stat st;
+            const qint64 used = ::stat(QFile::encodeName(cf).constData(), &st) == 0 ? qint64(st.st_blocks) * 512 : 0;
+            // rclone notices the removal and downloads the file again when needed
+            if (QFile::remove(cf)) {
+                QFile::remove(meta);
+                freed += used;
+                ++removed;
+            }
+        }
+    }
+    invalidateStates();
+    if (!lastRemote.isEmpty())
+        emit changed(lastRemote);
+    if (freedBytes)
+        *freedBytes = freed;
+    QString summary = removed == 0 ? i18n("Nothing of this was stored on this device.")
+                                   : i18np("Removed the local copy of 1 file (%2).", "Removed the local copies of %1 files (%2).", removed,
+                                           QLocale().formattedDataSize(freed));
+    if (skippedDirty)
+        summary += QLatin1Char(' ') + i18np("1 file was kept because it has not been uploaded yet.",
+                                            "%1 files were kept because they have not been uploaded yet.", skippedDirty);
+    return summary;
 }
 
 bool PaneroOffline::pin(const QString &remote, const QString &relativePath, QString *error)

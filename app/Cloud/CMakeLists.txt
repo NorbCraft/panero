@@ -29,6 +29,7 @@ target_link_libraries(Cloud
     Qt5::Widgets
     Qt5::DBus
     Qt5::Network
+    Qt5::Concurrent
     KF5::ConfigCore
     KF5::CoreAddons
     KF5::I18n

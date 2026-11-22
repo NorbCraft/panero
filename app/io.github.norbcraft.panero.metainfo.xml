@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.8" date="2026-11-22" type="development">
+      <description>
+        <p>Much faster browsing of cloud drives, Make Available Offline and Free Up Space for files and folders, Google Docs open in the browser, progress windows while adding and connecting a cloud drive.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.7" date="2026-11-22" type="development">
       <description>
         <p>OneDrive sign-in works for personal accounts where Microsoft lists a drive that cannot be opened ("ObjectHandle is Invalid"): Panero uses the account's main drive.</p>

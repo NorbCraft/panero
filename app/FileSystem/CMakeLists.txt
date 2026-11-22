@@ -9,11 +9,13 @@ set(FileSystem_SRCS
     krtrashhandler.cpp
     sizecalculator.cpp
     virtualfilesystem.cpp
+    paneroslowpaths.cpp
 )
 
 add_library(FileSystem STATIC ${FileSystem_SRCS})
 
 target_link_libraries(FileSystem
+    Qt5::Concurrent
     KF5::I18n
     KF5::KIOCore
     KF5::KIOWidgets

@@ -21,6 +21,13 @@
 #include <KIO/JobUiDelegate>
 #include <KIO/ListJob>
 #include <KIOCore/KDiskFreeSpaceInfo>
+
+#include <QDateTime>
+#include <QFutureWatcher>
+#include <QHash>
+#include <QtConcurrent/QtConcurrentRun>
+
+#include "paneroslowpaths.h"
 #include <KIOCore/KFileItem>
 #include <KIOCore/KMountPoint>
 #include <KIOCore/KProtocolManager>
@@ -153,6 +160,58 @@ void DefaultFileSystem::updateFilesystemInfo()
     }
 
     const QString path = _currentDirectory.path();
+
+    // Panero: on a cloud/network mount statfs is a network request; use a
+    // cached value and refresh it in the background
+    if (PaneroSlowPaths::isSlowPath(path)) {
+        struct SpaceInfo {
+            KIO::filesize_t size = 0;
+            KIO::filesize_t available = 0;
+            qint64 time = 0;
+            bool running = false;
+        };
+        static QHash<QString, SpaceInfo> cache;
+        const QString root = PaneroSlowPaths::mountRoot(path);
+        _mountPoint = root;
+        SpaceInfo &entry = cache[root];
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (entry.time > 0)
+            emit fileSystemInfoChanged("", QStringLiteral("cloud"), entry.size, entry.available);
+        else
+            emit fileSystemInfoChanged(i18n("Reading space information..."), QStringLiteral("cloud"), 0, 0);
+        if (!entry.running && now - entry.time > 2 * 60 * 1000) {
+            entry.running = true;
+            struct Space {
+                bool valid = false;
+                KIO::filesize_t size = 0;
+                KIO::filesize_t available = 0;
+            };
+            auto *watcher = new QFutureWatcher<Space>(this);
+            connect(watcher, &QFutureWatcher<Space>::finished, this, [this, watcher, root]() {
+                const Space info = watcher->result();
+                watcher->deleteLater();
+                SpaceInfo &e = cache[root];
+                e.running = false;
+                if (!info.valid)
+                    return;
+                e.size = info.size;
+                e.available = info.available;
+                e.time = QDateTime::currentMSecsSinceEpoch();
+                if (_currentDirectory.isLocalFile() && PaneroSlowPaths::mountRoot(_currentDirectory.path()) == root)
+                    emit fileSystemInfoChanged("", QStringLiteral("cloud"), e.size, e.available);
+            });
+            watcher->setFuture(QtConcurrent::run([root]() {
+                const KDiskFreeSpaceInfo info = KDiskFreeSpaceInfo::freeSpaceInfo(root);
+                Space space;
+                space.valid = info.isValid();
+                space.size = info.size();
+                space.available = info.available();
+                return space;
+            }));
+        }
+        return;
+    }
+
     const KDiskFreeSpaceInfo info = KDiskFreeSpaceInfo::freeSpaceInfo(path);
     if (!info.isValid()) {
         _mountPoint = "";
@@ -346,6 +405,8 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     QString name;
     const bool showHidden = showHiddenFiles();
     QSet<QString> hiddenFiles = filesInDotHidden(path);
+    const bool slow = PaneroSlowPaths::isSlowPath(path);
+    QStringList subDirs;
     while ((dirEnt = QT_READDIR(dir)) != nullptr) {
         name = QString::fromLocal8Bit(dirEnt->d_name);
 
@@ -358,10 +419,17 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
 
         FileItem* temp = createLocalFileItem(name);
         addFileItem(temp);
+        if (slow && temp && temp->isDir())
+            subDirs << path + QLatin1Char('/') + name;
     }
     // clean up
     QT_CLOSEDIR(dir);
     QDir::setCurrent(savedDir);
+
+    // Panero: on a cloud drive, list the next level ahead so opening a
+    // subfolder does not wait for the network
+    if (slow && !onlyScan)
+        PaneroSlowPaths::prefetchListings(subDirs);
 
     if (!onlyScan) {
         // start watching the new dir for file changes

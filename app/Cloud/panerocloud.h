@@ -95,6 +95,24 @@ public:
     /// Signs out of every cloud drive (one confirmation for all).
     void signOutAll(QWidget *parent);
 
+    /// rclone process id of a mounted remote (0 when not mounted).
+    qint64 mountPid(const QString &remote) const;
+
+    /// Google Drive: native Google Docs/Sheets/Slides have no size in a
+    /// mount (rclone exports them on download, see rclone's "Limitations of
+    /// Google Docs") and cannot be opened from it. True when @p localPath may
+    /// be one (0 bytes, export extension, on a Google Drive mount).
+    bool mayBeGoogleDocument(const QString &localPath, qint64 size) const;
+    /// Opens a native Google document in the browser (Google's editor).
+    /// False when @p localPath is not one (open it normally then).
+    bool openGoogleDocument(QWidget *parent, const QString &localPath, qint64 size);
+    /// Saves an exported copy (.docx/.xlsx/.pptx/...) of a native Google
+    /// document into @p destDir.
+    bool saveGoogleDocumentCopy(QWidget *parent, const QString &localPath, const QString &destDir);
+
+    /// Makes the rclone mount holding @p localPath forget its folder listings.
+    void flushDirectoryCache(const QString &localPath);
+
     /// Mount folders of the mounted remotes (remote name -> folder).
     QHash<QString, QString> mountDirs() const;
 

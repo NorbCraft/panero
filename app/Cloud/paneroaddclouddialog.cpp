@@ -13,6 +13,7 @@
 #include "panerosecretstore.h"
 
 #include <QCheckBox>
+#include <QCoreApplication>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
@@ -23,6 +24,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QProcess>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QTcpServer>
 #include <QTcpSocket>
@@ -649,7 +651,17 @@ void PaneroAddCloudDialog::connectClicked()
         return;
     }
 
+    // the checks below take a few seconds: show that something happens
+    QProgressDialog busy(i18n("Setting up %1...", p.title), QString(), 0, 0, this);
+    busy.setWindowTitle(i18n("Add Cloud"));
+    busy.setWindowModality(Qt::WindowModal);
+    busy.setCancelButton(nullptr);
+    busy.setMinimumDuration(0);
+    busy.show();
+    QCoreApplication::processEvents();
+
     if (p.type == QLatin1String("pcloud") && !PaneroCloudSetup::checkPcloudHost(remote, &error)) {
+        busy.close();
         PaneroCloudSetup::deleteRemote(remote); // never send the token to a foreign host, not even to revoke it
         cloud->refreshNow();
         m_error->setText(error);
@@ -658,11 +670,13 @@ void PaneroAddCloudDialog::connectClicked()
     }
 
     if (p.type == QLatin1String("onedrive")) {
+        busy.setLabelText(i18n("Finding your OneDrive..."));
         // rclone takes the first drive Microsoft lists; for some personal
         // accounts that one cannot be opened - use the account's main drive
         QString driveError;
         if (!PaneroCloudRevoke::ensureOneDriveMainDrive(remote, &driveError)) {
             if (m_driveRecovery) {
+                busy.close();
                 PaneroCloudRevoke::revoke(remote, p.type);
                 PaneroCloudSetup::deleteRemote(remote);
                 cloud->refreshNow();
@@ -678,8 +692,16 @@ void PaneroAddCloudDialog::connectClicked()
         }
     }
 
+    busy.setLabelText(i18n("Testing the connection to %1...", label));
     QString verifyError;
-    if (!PaneroCloudSetup::verifyRemote(remote, &verifyError)) {
+    const bool verified = PaneroCloudSetup::verifyRemote(remote, &verifyError);
+    QString identity, idError;
+    if (verified && p.kind == Kind::OAuth) {
+        busy.setLabelText(i18n("Checking which account is signed in..."));
+        identity = PaneroCloudRevoke::accountIdentity(remote, p.type, &idError);
+    }
+    busy.close();
+    if (!verified) {
         const auto answer = KMessageBox::warningTwoActions(
             this,
             i18n("<p>Panero could not open %1:</p><p>%2</p>", label.toHtmlEscaped(), toHtml(verifyError))
@@ -697,8 +719,6 @@ void PaneroAddCloudDialog::connectClicked()
     if (p.kind == Kind::OAuth) {
         // show which account was signed in: an account slipped into the sign-in
         // by someone else would receive everything uploaded to this drive
-        QString idError;
-        const QString identity = PaneroCloudRevoke::accountIdentity(remote, p.type, &idError);
         const QString text = identity.isEmpty()
             ? i18n("<p>Panero could not ask %1 which account is signed in (%2).</p><p>Keep this cloud drive only if you just signed "
                    "in with your own account in the browser.</p>",

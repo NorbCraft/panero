@@ -6,6 +6,7 @@
 */
 
 #include "fileitem.h"
+#include "paneroslowpaths.h"
 
 // QtCore
 #include <QCache>
@@ -135,7 +136,12 @@ const QString &FileItem::getMime()
             m_iconName = "file-broken";
         } else {
             const QMimeDatabase db;
-            const QMimeType mt = db.mimeTypeForUrl(getUrl());
+            // Panero: on cloud/network mounts never open the file to sniff its
+            // content (each open starts a download): the extension decides
+            const QUrl url = getUrl();
+            const QMimeType mt = url.isLocalFile() && PaneroSlowPaths::isSlowPath(url.toLocalFile())
+                ? db.mimeTypeForFile(url.toLocalFile(), QMimeDatabase::MatchExtension)
+                : db.mimeTypeForUrl(url);
             m_mimeType = mt.isValid() ? mt.name() : "unknown";
             m_iconName = mt.isValid() ? mt.iconName() : "file-broken";
 

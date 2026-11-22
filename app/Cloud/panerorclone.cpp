@@ -14,7 +14,9 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QElapsedTimer>
 #include <QProcess>
+#include <QThread>
 #include <QRandomGenerator>
 #include <QStandardPaths>
 
@@ -295,7 +297,17 @@ int run(const QStringList &args, QByteArray *out, QByteArray *err, int timeoutMs
     if (!input.isNull())
         p.write(input);
     p.closeWriteChannel();
-    if (!p.waitForFinished(timeoutMs)) {
+    // in the GUI thread keep windows painted (progress indicators move, no
+    // "not responding"); user input waits until rclone is done
+    const bool gui = QCoreApplication::instance() && QThread::currentThread() == QCoreApplication::instance()->thread();
+    QElapsedTimer timer;
+    timer.start();
+    bool finished = false;
+    while (!(finished = p.waitForFinished(gui ? 30 : timeoutMs)) && timer.elapsed() < timeoutMs) {
+        if (gui)
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    if (!finished && p.state() != QProcess::NotRunning) {
         p.kill();
         p.waitForFinished(2000);
         if (err)
