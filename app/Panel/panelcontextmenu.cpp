@@ -7,6 +7,7 @@
 */
 
 #include "panelcontextmenu.h"
+#include "../panerowording.h"
 #include <QClipboard>
 #include <QApplication>
 
@@ -274,7 +275,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     if (KConfigGroup(krConfig, "General").readEntry("Move To Trash", _MoveToTrash)
         && panel->func->files()->canMoveToTrash(fileNames)) {
         addAction(Icon("user-trash"),
-                  i18n("Move to Trash"))->setData(QVariant(TRASH_ID));
+                  PANERO_TEXT(i18n("Move to Trash"), i18n("Move to Recycle Bin")))->setData(QVariant(TRASH_ID));
     }
     // -------- DELETE
     addAction(Icon("edit-delete"),
@@ -324,7 +325,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     // --------- empty trash
     if (trashOnly) {
         addAction(i18n("Restore"))->setData(QVariant(RESTORE_TRASHED_FILE_ID));
-        addAction(i18n("Empty Trash"))->setData(QVariant(EMPTY_TRASH_ID));
+        addAction(PANERO_TEXT(i18n("Empty Trash"), i18n("Empty Recycle Bin")))->setData(QVariant(EMPTY_TRASH_ID));
     }
 
 #ifdef SYNCHRONIZER_ENABLED

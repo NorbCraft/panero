@@ -6,6 +6,7 @@
 */
 
 #include "listpanelactions.h"
+#include "../panerowording.h"
 
 #include "listpanel.h"
 #include "panelfunc.h"
@@ -130,16 +131,22 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
 
     actRenameF2->setToolTip(i18n("Rename file, folder, etc."));
     actViewFileF3->setToolTip(i18n("Open file in viewer."));
-    actEditFileF4->setToolTip(i18n("<qt><p>Edit file.</p>"
+    actEditFileF4->setToolTip(PANERO_TEXT(i18n("<qt><p>Edit file.</p>"
                            "<p>The editor can be defined in Konfigurator, "
-                           "default is <b>internal editor</b>.</p></qt>"));
+                           "default is <b>internal editor</b>.</p></qt>"),
+                                          i18n("<qt><p>Edit file.</p>"
+                           "<p>The editor can be defined in Settings, "
+                           "default is <b>Notepad</b>.</p></qt>")));
     actCopyF5->setToolTip(i18n("Copy file from one panel to the other."));
     actMoveF6->setToolTip(i18n("Move file from one panel to the other."));
     actNewFolderF7->setToolTip(i18n("Create folder in current panel."));
     actDeleteF8->setToolTip(i18n("Delete file, folder, etc."));
-    actTerminalF9->setToolTip(i18n("<qt><p>Open terminal in current folder.</p>"
+    actTerminalF9->setToolTip(PANERO_TEXT(i18n("<qt><p>Open terminal in current folder.</p>"
                            "<p>The terminal can be defined in Konfigurator, "
-                           "default is <b>konsole</b>.</p></qt>"));
+                           "default is <b>konsole</b>.</p></qt>"),
+                                          i18n("<qt><p>Open a terminal in the current folder.</p>"
+                           "<p>The terminal can be defined in Settings, "
+                           "default is <b>Windows Terminal</b> (or <b>PowerShell</b> when it is not installed).</p></qt>")));
 
 }
 

@@ -660,8 +660,15 @@ void PaneroNavigationDock::addPin(const Pin &pin)
 {
     auto *item = new QListWidgetItem(Icon(iconForUrl(pin.url)), pin.label, m_pins);
 #ifdef Q_OS_WIN
-    if (pin.url.isLocalFile() && QDir(pin.url.toLocalFile()).isRoot())
-        item->setIcon(PaneroWinShell::driveIcon(pin.url.toLocalFile())); // Explorer's drive icon
+    // Windows: the shell icons the panels and the folder tree show (Explorer's
+    // drive icons, Desktop/Documents/Downloads with their own icons, folders)
+    if (pin.url.isLocalFile()) {
+        const QString path = pin.url.toLocalFile();
+        if (QDir(path).isRoot())
+            item->setIcon(PaneroWinShell::driveIcon(path));
+        else if (PaneroWinShell::useShellIcons(true) && QFileInfo(path).isDir())
+            item->setIcon(QIcon(PaneroWinShell::fileIcon(path, true).pixmap(KrFileTreeView::IconSize)));
+    }
 #endif
     item->setData(UrlRole, pin.url);
     item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));

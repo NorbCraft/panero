@@ -7,6 +7,7 @@
 */
 
 #include "krarc.h"
+#include "../../app/panerowording.h"
 #include "../../app/defaults.h"
 
 // QtCore
@@ -227,15 +228,19 @@ bool kio_krarcProtocol::checkWriteSupport()
         return WorkerResult::pass();
 
     return WorkerResult::fail(ERR_UNSUPPORTED_ACTION,
-                              i18n("krarc: write support is disabled.\n"
-                                   "You can enable it on the 'Archives' page in Konfigurator."));
+                              PANERO_TEXT(i18n("krarc: write support is disabled.\n"
+                                               "You can enable it on the 'Archives' page in Konfigurator."),
+                                          i18n("krarc: write support is disabled.\n"
+                                               "You can enable it on the 'Archives' page in Settings.")));
 }
 #else
         return true;
     else {
         error(ERR_UNSUPPORTED_ACTION,
-              i18n("krarc: write support is disabled.\n"
-                   "You can enable it on the 'Archives' page in Konfigurator."));
+              PANERO_TEXT(i18n("krarc: write support is disabled.\n"
+                               "You can enable it on the 'Archives' page in Konfigurator."),
+                          i18n("krarc: write support is disabled.\n"
+                               "You can enable it on the 'Archives' page in Settings.")));
         return false;
     }
 }

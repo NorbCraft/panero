@@ -7,6 +7,7 @@
 */
 
 #include "kractions.h"
+#include "panerowording.h"
 
 // QtWidgets
 #include <QMenu>
@@ -200,23 +201,23 @@ void KrActions::setupActions(Krusader *krusaderApp)
 
     NEW_KACTION(actSwapPanels, i18n("S&wap Panels"), nullptr, Qt::CTRL + Qt::Key_U, SLOTS, SLOT(swapPanels()), "swap panels");
 
-    NEW_KACTION(actEmptyTrash, i18n("Empty Trash"), "trash-empty", 0, SLOTS, SLOT(emptyTrash()), "emptytrash");
+    NEW_KACTION(actEmptyTrash, PANERO_TEXT(i18n("Empty Trash"), i18n("Empty Recycle Bin")), "trash-empty", 0, SLOTS, SLOT(emptyTrash()), "emptytrash");
 
     // Panero: open the Trash (trash:/) in the active panel; deleting stays on F8/Delete
-    actOpenTrash = new QAction(Icon(KrTrashHandler::trashIconName()), i18n("Open &Trash"), krusaderApp);
-    actOpenTrash->setToolTip(i18n("Show the Trash in the active panel"));
+    actOpenTrash = new QAction(Icon(KrTrashHandler::trashIconName()), PANERO_TEXT(i18n("Open &Trash"), i18n("Open &Recycle Bin")), krusaderApp);
+    actOpenTrash->setToolTip(PANERO_TEXT(i18n("Show the Trash in the active panel"), i18n("Show the Recycle Bin in the active panel")));
     krusaderApp->actionCollection()->addAction("panero open trash", actOpenTrash);
     QObject::connect(actOpenTrash, &QAction::triggered, krusaderApp, []() {
         ACTIVE_FUNC->openUrl(QUrl(QStringLiteral("trash:/")));
     });
 
     // Toolbar Trash button: a menu with Open Trash and Empty Trash (empty asks first)
-    auto *trashMenu = new KActionMenu(Icon(KrTrashHandler::trashIconName()), i18n("Trash"), krusaderApp);
+    auto *trashMenu = new KActionMenu(Icon(KrTrashHandler::trashIconName()), PANERO_TEXT(i18n("Trash"), i18n("Recycle Bin")), krusaderApp);
     trashMenu->setPopupMode(QToolButton::InstantPopup);
-    trashMenu->setToolTip(i18n("Open or empty the Trash"));
+    trashMenu->setToolTip(PANERO_TEXT(i18n("Open or empty the Trash"), i18n("Open or empty the Recycle Bin")));
     krusaderApp->actionCollection()->addAction("panero trash menu", trashMenu);
 
-    NEW_KACTION(actTrashBin, i18n("Trash Popup Menu"), KrTrashHandler::trashIconName(), 0, SLOTS, SLOT(trashPopupMenu()), "trashbin");
+    NEW_KACTION(actTrashBin, PANERO_TEXT(i18n("Trash Popup Menu"), i18n("Recycle Bin Popup Menu")), KrTrashHandler::trashIconName(), 0, SLOTS, SLOT(trashPopupMenu()), "trashbin");
     trashMenu->addAction(actOpenTrash);
     trashMenu->addAction(actEmptyTrash);
 

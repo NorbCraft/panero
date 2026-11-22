@@ -6,6 +6,7 @@
 */
 
 #include "mediabutton.h"
+#include "../panerowording.h"
 #include "../FileSystem/paneroslowpaths.h"
 
 #include <QFileInfo>
@@ -682,7 +683,7 @@ void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
         }
         name = i18nc("drive name (mount point)", "%1 (%2)", name, mountPoint);
     } else if (url.scheme() == QLatin1String("trash")) {
-        name = i18n("Trash");
+        name = PANERO_TEXT(i18n("Trash"), i18n("Recycle Bin"));
     } else if (!url.isLocalFile() && !url.host().isEmpty()) {
         name = url.host();
     } else if (!url.isLocalFile()) {

@@ -5,6 +5,7 @@
 */
 
 #include "krjob.h"
+#include "../panerowording.h"
 
 #include <KI18n/KLocalizedString>
 #include <KIO/DeleteJob>
@@ -24,8 +25,10 @@ KrJob *KrJob::createDeleteJob(const QList<QUrl> &urls, bool moveToTrash)
     const Type type = moveToTrash ? Trash : Delete;
     const bool oneFile = urls.length() == 1;
     const QString description =
-        moveToTrash ? (oneFile ? i18n("Move %1 to trash", urls.first().toDisplayString()) :
-                                 i18np("Move %1 file to trash", "Move %1 files to trash", urls.length())) :
+        moveToTrash ? PANERO_TEXT((oneFile ? i18n("Move %1 to trash", urls.first().toDisplayString()) :
+                                             i18np("Move %1 file to trash", "Move %1 files to trash", urls.length())),
+                                  (oneFile ? i18n("Move %1 to the Recycle Bin", urls.first().toDisplayString(QUrl::PreferLocalFile)) :
+                                             i18np("Move %1 file to the Recycle Bin", "Move %1 files to the Recycle Bin", urls.length()))) :
                       (oneFile ? i18n("Delete %1", urls.first().toDisplayString()) :
                                  i18np("Delete %1 file", "Delete %1 files", urls.length()));
 

@@ -26,6 +26,7 @@
 #include <QDateTime>
 #include <QFutureWatcher>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QHash>
 #include <QTextStream>
@@ -62,6 +63,23 @@ struct SlowListing {
 /// Reads @p path: names, then the status of each entry (no file opens).
 void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
 {
+    QStringList names;
+#ifdef Q_OS_WIN
+    // Windows (no cloud mounts there yet): Qt's listing, Unicode names
+    const QDir qdir(path);
+    if (!QFileInfo(path).isDir())
+        return;
+    listing.exists = true;
+    listing.opened = listing.accessible = qdir.isReadable();
+    if (!listing.accessible)
+        return;
+    for (const QString &name : qdir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                                              QDir::NoSort)) {
+        if (!showHidden && name.startsWith(QLatin1Char('.')))
+            continue;
+        names << name;
+    }
+#else
     const QByteArray encoded = path.toLocal8Bit();
     QT_STATBUF st;
     if (QT_STAT(encoded.constData(), &st) != 0 || !S_ISDIR(st.st_mode))
@@ -71,12 +89,7 @@ void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
     if (!dir)
         return;
     listing.opened = true;
-#ifdef Q_OS_WIN
-    listing.accessible = true; // no execute bit on Windows
-#else
     listing.accessible = ::access(encoded.constData(), X_OK) == 0;
-#endif
-    QStringList names;
     QT_DIRENT *dirEnt;
     while ((dirEnt = QT_READDIR(dir)) != nullptr) {
         const QString name = QString::fromLocal8Bit(dirEnt->d_name);
@@ -89,6 +102,7 @@ void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
     QT_CLOSEDIR(dir);
     if (!listing.accessible)
         return;
+#endif
 
     QSet<QString> hidden;
     if (!showHidden && names.contains(QLatin1String(".hidden"))) {

@@ -9,6 +9,7 @@
 
 
 #include "konfigurator.h"
+#include "../panerowording.h"
 #include "../krglobal.h"
 #include "../icon.h"
 #include "../Dialogs/krdialogs.h"
@@ -40,7 +41,7 @@
 Konfigurator::Konfigurator(bool f, int startPage) : KPageDialog((QWidget *)nullptr),
         firstTime(f), internalCall(false), sizeX(-1), sizeY(-1)
 {
-    setWindowTitle(i18n("Konfigurator - Creating Your Own Panero"));
+    setWindowTitle(PANERO_TEXT(i18n("Konfigurator - Creating Your Own Panero"), i18n("Panero Settings")));
     setWindowModality(Qt::ApplicationModal);
     setFaceType(KPageDialog::List);
 

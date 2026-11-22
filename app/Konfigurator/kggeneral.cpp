@@ -6,6 +6,7 @@
 */
 
 #include "kggeneral.h"
+#include "../panerowording.h"
 
 // QtCore
 #include <QPointer>
@@ -245,7 +246,8 @@ void KgGeneral::createGeneralTab()
 
     KONFIGURATOR_NAME_VALUE_TIP deleteMode[] =
         //            name            value    tooltip
-        {{i18n("Move to trash"), "true", i18n("Files will be moved to trash when deleted.")},
+        {{PANERO_TEXT(i18n("Move to trash"), i18n("Move to Recycle Bin")), "true",
+          PANERO_TEXT(i18n("Files will be moved to trash when deleted."), i18n("Files will be moved to the Recycle Bin when deleted."))},
          {i18n("Delete files"), "false", i18n("Files will be permanently deleted.")}
         };
     KonfiguratorRadioButtons *trashRadio = createRadioButtonGroup("General", "Move To Trash",

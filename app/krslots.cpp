@@ -7,6 +7,7 @@
 */
 
 #include "krslots.h"
+#include "panerowording.h"
 
 #include <QStandardPaths>
 #include "paneropackageinstaller.h"
@@ -460,9 +461,11 @@ void KrSlots::search()
 void KrSlots::locate()
 {
     if (!KrServices::cmdExist("locate")) {
-        KMessageBox::error(krApp, i18n("Cannot find the 'locate' command. Please install the "
-                                       "findutils-locate package of GNU, or set its dependencies in "
-                                       "Konfigurator"));
+        KMessageBox::error(krApp, PANERO_TEXT(i18n("Cannot find the 'locate' command. Please install the "
+                                                   "findutils-locate package of GNU, or set its dependencies in "
+                                                   "Konfigurator"),
+                                              i18n("Cannot find the 'locate' command. Please install it, "
+                                                   "or set its path in Settings")));
         return;
     }
 
@@ -816,9 +819,9 @@ void KrSlots::emptyTrash()
 void KrSlots::trashPopupMenu()
 {
     QMenu trashMenu(krApp);
-    QAction * act = trashMenu.addAction(Icon("document-open"), i18n("Open trash bin"));
+    QAction * act = trashMenu.addAction(Icon("document-open"), PANERO_TEXT(i18n("Open trash bin"), i18n("Open Recycle Bin")));
     act->setData(QVariant(OPEN_ID));
-    act = trashMenu.addAction(Icon("trash-empty"), i18n("Empty trash bin"));
+    act = trashMenu.addAction(Icon("trash-empty"), PANERO_TEXT(i18n("Empty trash bin"), i18n("Empty Recycle Bin")));
     act->setData(QVariant(EMPTY_TRASH_ID));
 
     int result = -1;

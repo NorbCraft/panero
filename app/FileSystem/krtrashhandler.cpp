@@ -18,6 +18,10 @@
 #include <KIO/JobUiDelegate>
 #include <KIO/RestoreJob>
 #include <KJobWidgets/KJobWidgets>
+#ifdef Q_OS_WIN
+#include <KI18n/KLocalizedString>
+#include <KWidgetsAddons/KMessageBox>
+#endif
 
 #include "filesystemprovider.h"
 #include "../kractions.h"
@@ -41,11 +45,22 @@ QString KrTrashHandler::trashIconName()
 
 void KrTrashHandler::emptyTrash()
 {
+#ifdef Q_OS_WIN
+    // Windows: KIO's question speaks of the "Trash"
+    if (KMessageBox::warningContinueCancel(krMainWindow,
+                                           i18n("Do you really want to empty the Recycle Bin? All items in it will be "
+                                                "permanently deleted."),
+                                           i18n("Empty Recycle Bin"),
+                                           KGuiItem(i18n("Empty Recycle Bin"), QStringLiteral("trash-empty")))
+        != KMessageBox::Continue)
+        return;
+#else
     KIO::JobUiDelegate uiDelegate;
     uiDelegate.setWindow(krMainWindow);
     if (!uiDelegate.askDeleteConfirmation(QList<QUrl>(), KIO::JobUiDelegate::EmptyTrash,
                                           KIO::JobUiDelegate::DefaultConfirmation))
         return;
+#endif
 
     KIO::Job *job = KIO::emptyTrash();
     KJobWidgets::setWindow(job, krMainWindow);

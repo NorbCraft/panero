@@ -5,6 +5,7 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 #include "krfiletreeview.h"
+#include "../panerowording.h"
 #include "paneropaths.h"
 
 #include "panelfunc.h"
@@ -336,7 +337,8 @@ void KrFileTreeView::slotCustomContextMenuRequested(const QPoint &point)
     // trash
     if (KConfigGroup(krConfig, "General").readEntry("Move To Trash", _MoveToTrash)) {
         QAction* moveToTrashAction = new QAction(Icon(QStringLiteral("user-trash")),
-                                                i18nc("@action:inmenu", "Move to Trash"), this);
+                                                PANERO_TEXT(i18nc("@action:inmenu", "Move to Trash"),
+                                                            i18nc("@action:inmenu", "Move to Recycle Bin")), this);
         const bool enableMoveToTrash = capabilities.isLocal() && capabilities.supportsMoving();
         moveToTrashAction->setEnabled(enableMoveToTrash);
         connect(moveToTrashAction, &QAction::triggered, this, [=]() {

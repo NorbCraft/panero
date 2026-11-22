@@ -7,6 +7,7 @@
 */
 
 #include "panelfunc.h"
+#include "../panerowording.h"
 
 // QtCore
 #include <QEventLoop>
@@ -921,9 +922,11 @@ QList<QUrl> ListPanelFunc::confirmDeletion(const QList<QUrl> &urls, bool moveToT
         KGuiItem b; // continue button
 
         if (moveToTrash) {
-            s = i18np("Do you really want to move this item to the trash?",
-                      "Do you really want to move these %1 items to the trash?", files.count());
-            b = KGuiItem(i18n("&Trash"));
+            s = PANERO_TEXT(i18np("Do you really want to move this item to the trash?",
+                                  "Do you really want to move these %1 items to the trash?", files.count()),
+                            i18np("Do you really want to move this item to the Recycle Bin?",
+                                  "Do you really want to move these %1 items to the Recycle Bin?", files.count()));
+            b = KGuiItem(PANERO_TEXT(i18n("&Trash"), i18n("Move to &Recycle Bin")));
         } else if (virtualFS) {
             s = i18np("<qt>Do you really want to delete this item <b>physically</b> (not just "
                       "removing it from the virtual items)?</qt>",
@@ -975,10 +978,11 @@ QList<QUrl> ListPanelFunc::confirmDeletion(const QList<QUrl> &urls, bool moveToT
                     const KMessageBox::ButtonCode result = KMessageBox::warningYesNoCancel(
                         krMainWindow,
                         i18n("<qt><p>Folder <b>%1</b> is not empty.</p>", fileString) +
-                            (moveToTrash ? i18n("<p>Skip this one or trash all?</p></qt>") :
+                            (moveToTrash ? PANERO_TEXT(i18n("<p>Skip this one or trash all?</p></qt>"),
+                                                       i18n("<p>Skip this one or move all to the Recycle Bin?</p></qt>")) :
                                            i18n("<p>Skip this one or delete all?</p></qt>")),
                         QString(), KGuiItem(i18n("&Skip")),
-                        KGuiItem(moveToTrash ? i18n("&Trash All") : i18n("&Delete All")));
+                        KGuiItem(moveToTrash ? PANERO_TEXT(i18n("&Trash All"), i18n("Move &All to Recycle Bin")) : i18n("&Delete All")));
 
                     // process user response
                     if (result == KMessageBox::Yes) {

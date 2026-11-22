@@ -5,6 +5,7 @@
 */
 
 #include "panerojobrow.h"
+#include "../panerowording.h"
 
 #include "listpanel.h"
 #include "../JobMan/jobman.h"
@@ -153,7 +154,8 @@ void PaneroJobRow::refresh()
         text = i18nc("progress: linking <file(s)> in <folder>", "Linking %1 in %2", what, where);
         break;
     case KrJob::Trash:
-        text = i18nc("progress: moving <file(s)> to the trash", "Moving %1 to the Trash", what);
+        text = PANERO_TEXT(i18nc("progress: moving <file(s)> to the trash", "Moving %1 to the Trash", what),
+                           i18nc("progress: moving <file(s)> to the Windows Recycle Bin", "Moving %1 to the Recycle Bin", what));
         break;
     case KrJob::Delete:
         text = i18nc("progress: deleting <file(s)>", "Deleting %1", what);
