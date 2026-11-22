@@ -6,6 +6,7 @@
 */
 
 #include "kgpanel.h"
+#include "../panerowording.h"
 #include "../defaults.h"
 #include "../krglobal.h"
 #include "../Dialogs/krdialogs.h"
@@ -99,7 +100,7 @@ void KgPanel::setupGeneralTab()
 
     KONFIGURATOR_CHECKBOX_PARAM operation_settings[] = { // cfg_class, cfg_name, default, text, restart, tooltip
         {"Look&Feel", "Mark Dirs",            _MarkDirs,          i18n("Autoselect folders"),   false,  i18n("When matching the select criteria, not only files will be selected, but also folders.") },
-        {"Look&Feel", "Rename Selects Extension", true,          i18n("Rename selects extension"),   false,  i18n("When renaming a file, the whole text is selected. If you want Total-Commander like renaming of just the name, without extension, uncheck this option.") },
+        {"Look&Feel", "Rename Selects Extension", _RenameSelectsExtension,          i18n("Rename selects extension"),   false,  i18n("When renaming a file, the whole text is selected. If you want Total-Commander like renaming of just the name, without extension, uncheck this option.") },
         {"Look&Feel", "UnselectBeforeOperation", _UnselectBeforeOperation, i18n("Unselect files before copy/move"), false, i18n("Unselect files, which are to be copied/moved, before the operation starts.") },
         {"Look&Feel", "FilterDialogRemembersSettings", _FilterDialogRemembersSettings, i18n("Filter dialog remembers settings"), false, i18n("The filter dialog is opened with the last filter settings that where applied to the panel.") },
     };
@@ -225,7 +226,7 @@ void KgPanel::setupGeneralTab()
     KONFIGURATOR_CHECKBOX_PARAM bookmarkSearchSettings[] =
     {
         {"Look&Feel", "Always show search bar", true, i18n("Always show search bar"), false, i18n("Make bookmark search bar always visible") },
-        {"Look&Feel", "Search in special items", false, i18n("Search in special items"), false, i18n("Bookmark search is also applied to special items in bookmark menu like Trash, Popular URLs, Jump Back, etc.") },
+        {"Look&Feel", "Search in special items", false, i18n("Search in special items"), false, PANERO_TEXT(i18n("Bookmark search is also applied to special items in bookmark menu like Trash, Popular URLs, Jump Back, etc."), i18n("Bookmark search is also applied to special items in bookmark menu like Recycle Bin, Popular URLs, Jump Back, etc.")) },
     };
     KonfiguratorCheckBoxGroup *bookmarkSearchSettingsGroup = createCheckBoxGroup(2, 0, bookmarkSearchSettings,
                                                                                  2 /*count*/, groupBox, PAGE_GENERAL);

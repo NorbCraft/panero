@@ -1326,7 +1326,7 @@ bool Lister::openUrl(const QUrl &listerUrl)
     _fileSize = 0;
 
     if (listerUrl.isLocalFile()) {
-        _filePath = listerUrl.path();
+        _filePath = listerUrl.toLocalFile();
         if (!QFile::exists(_filePath))
             return false;
         _fileSize = getFileSize();
@@ -1366,7 +1366,11 @@ bool Lister::openUrl(const QUrl &listerUrl)
 
     _textArea->reset();
     emit started(nullptr);
+#ifdef Q_OS_WIN
+    emit setWindowCaption(listerUrl.toDisplayString(QUrl::PreferLocalFile));
+#else
     emit setWindowCaption(listerUrl.toDisplayString());
+#endif
     emit completed();
     return true;
 }

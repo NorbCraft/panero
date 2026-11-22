@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(panero)
 
 # Panero version (Debian mapping: 0.1.0-preview.1 -> 0.1.0~preview.1-1).
-set(VERSION "0.1.0-preview.10")
+set(VERSION "0.1.0-preview.11")
 # Upstream Krusader release this fork is based on (see dev/DECISIONS.md D-001).
 set(KRUSADER_BASE_VERSION "2.8.1")
 # Reverse-DNS application identifier derived from the project owner
@@ -109,6 +109,19 @@ message(STATUS "kdesu path has been hard-coded: ${KDESU_PATH}")
 
 add_definitions(${QT_DEFINITIONS} ${KF5_DEFINITIONS})
 
+# ===== Windows build (see dev/windows/README.md, D-015, D-019) =====
+if(WIN32)
+    # POSIX names MinGW does not provide (uid_t, lstat, S_ISLNK, ...)
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_SOURCE_DIR}/app/compat/panero_win32_compat.h>")
+    # Plugins live next to the executable (qt.conf), not in a compiled-in path
+    add_definitions(-DPANERO_PORTABLE_PLUGINS)
+    # Cloud mounts use rclone + FUSE (Linux only; app/Cloud is not built on Windows)
+    add_definitions(-DPANERO_CLOUD_DEFAULT=false)
+else()
+    add_definitions(-DPANERO_CLOUD_DEFAULT=true)
+endif()
+option(PANERO_BUILD_HANDBOOK "Build the DocBook handbook" ${UNIX})
+
 add_definitions(-DKRARC_ENABLED)
 add_definitions(-DQT_NO_URL_CAST_FROM_STRING)
 
@@ -163,8 +176,13 @@ endif()
 # ===== Subdirectories =====
 
 add_subdirectory(app)
-add_subdirectory(doc/handbook)
-add_subdirectory(plugins/iso)
+if(PANERO_BUILD_HANDBOOK)
+    add_subdirectory(doc/handbook)
+endif()
+if(NOT WIN32)
+    # ISO images use Linux CD-ROM ioctls
+    add_subdirectory(plugins/iso)
+endif()
 add_subdirectory(plugins/krarc)
 if(BUILD_TESTING)
     add_subdirectory(autotests)
@@ -174,7 +192,9 @@ endif()
 # ===== Translations =====
 
 ki18n_install(po)
-kdoctools_install(po)
+if(PANERO_BUILD_HANDBOOK)
+    kdoctools_install(po)
+endif()
 
 
 # ===== Output configuration =====

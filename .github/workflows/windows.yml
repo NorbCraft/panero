@@ -1,0 +1,128 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# Native Windows x64 build of Panero (D-015, D-019: one code base): MSYS2
+# UCRT64, Qt 5.15, the pinned KF5 5.116 builds. Builds and tests, makes the
+# portable ZIP, then starts the ZIP on a fresh runner without MSYS2 (every
+# loaded DLL must come from the ZIP or Windows) and runs the GUI checks
+# (dev/windows/gui-test.py). See dev/windows/README.md.
+#
+# Runs on pull requests, on pushes to main (and to the Windows integration
+# branch), manually, and from the release workflow (workflow_call), which
+# attaches the ZIP to the release. Read-only token; no secrets are used.
+name: Windows
+
+on:
+  push:
+    branches: [main, feature/windows-main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build (the release tag)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ inputs.ref || github.ref }}
+  # a newer push replaces a running check; a release build is never cancelled
+  cancel-in-progress: ${{ !inputs.ref }}
+
+jobs:
+  windows-build:
+    name: Build, test and package (MSYS2 UCRT64)
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Set up MSYS2 UCRT64
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
+        with:
+          msystem: UCRT64
+          update: true
+          cache: true
+          install: >-
+            curl zip
+          pacboy: >-
+            gcc:p cmake:p ninja:p pkgconf:p extra-cmake-modules:p
+            qt5-base:p qt5-svg:p qt5-tools:p qt5-winextras:p qt5-imageformats:p
+            gettext-tools:p zlib:p bzip2:p xz:p dbus:p
+
+      - name: Install pinned KDE Frameworks 5
+        run: dev/windows/install-kf5.sh
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON -DCMAKE_INSTALL_PREFIX="$PWD/stage"
+
+      - name: Build
+        run: ninja -C build -k 0
+
+      - name: Test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: cd build && ctest --output-on-failure
+
+      - name: Package portable ZIP
+        run: dev/windows/package.sh build stage dist
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panero-windows-x64
+          path: dist/panero-*-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  # Start the ZIP on a fresh runner without MSYS2 on PATH, check that every
+  # loaded DLL comes from the ZIP or from Windows, and run the GUI checks.
+  windows-gui-test:
+    name: Launch check and GUI test (fresh runner)
+    needs: windows-build
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout (test scripts only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+          sparse-checkout: dev/windows
+
+      - name: Download ZIP
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: panero-windows-x64
+          path: zip
+
+      - name: Set up Python (GUI automation)
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+
+      - name: Launch check and GUI test
+        run: dev/windows/launch-test.ps1 -ZipDir zip -OutDir results
+
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panero-windows-test-results
+          path: results
+          retention-days: 30

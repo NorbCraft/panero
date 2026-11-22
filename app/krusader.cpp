@@ -7,6 +7,7 @@
 */
 
 #include "krusader.h"
+#include "panerowording.h"
 #include "paneronavigation.h"
 #include "paneroviewmodeaction.h"
 #include "panerotoolbar.h"
@@ -99,8 +100,15 @@ Krusader *Krusader::App = nullptr;
 QString   Krusader::AppName;
 
 // construct the views, statusbar and menu bars and prepare Krusader to start
+// (Windows: plain Qt::Window. Explicit title/help hints make Qt draw a dialog
+// frame there - only "?" and a disabled close button, no minimize/maximize;
+// X11/Wayland window managers ignore these hints.)
 Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullptr,
+#ifdef Q_OS_WIN
+                Qt::Window),
+#else
                 Qt::Window | Qt::WindowTitleHint | Qt::WindowContextHelpButtonHint),
+#endif
         _listPanelActions(nullptr), isStarting(true), _quit(false)
 {
     // create the "krusader"
@@ -224,7 +232,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         // Settings > Show Menubar; with the menu bar hidden, the menu button at the end
         // of the toolbar (KHamburgerMenu) offers the same menus
         KToggleAction *showMenubar = KStandardAction::showMenubar(nullptr, nullptr, actionCollection());
-        // Ctrl+M stays the (upstream) media menu shortcut
+        // Ctrl+M is Multi-Rename (D-019), not Show Menubar
         actionCollection()->setDefaultShortcuts(showMenubar, {});
         connect(showMenubar, &QAction::toggled, this, [this](bool on) { menuBar()->setVisible(on); });
         KHamburgerMenu *menuButton = KStandardAction::hamburgerMenu(nullptr, nullptr, actionCollection());
@@ -327,8 +335,12 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         _popularUrls->load();
     }
 
+#ifndef Q_OS_WIN
+    // (Windows: no first-run Konfigurator and no search for Linux tools - the
+    // panels come straight up with Windows defaults, D-019)
     if (runKonfig)
         SLOTS->runKonfigurator(true);
+#endif
 
     KConfigGroup viewerModuleGrp(krConfig, "ViewerModule");
     if (viewerModuleGrp.readEntry("FirstRun", true)) {
@@ -336,7 +348,12 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         viewerModuleGrp.writeEntry("FirstRun", false);
     }
 
+#ifdef Q_OS_WIN
+    // Windows: also on the first run (upstream skipped it and the window opened small)
+    {
+#else
     if (!runKonfig) {
+#endif
         KConfigGroup cfg(krConfig, "Private");
         move(cfg.readEntry("Start Position", _StartPosition));
         resize(cfg.readEntry("Start Size", _StartSize));
@@ -405,12 +422,15 @@ bool Krusader::versionControl()
     KrGlobal::sCurrentConfigVersion = nogroup.readEntry("Config Version", -1);
 
     // first installation of krusader
+    // (Windows: no welcome box - it announces the Linux tool search and the Konfigurator)
+#ifndef Q_OS_WIN
     if (firstRun) {
         KMessageBox::information(
             krApp, i18n("<qt><b>Welcome to Panero.</b><p>As this is your first run, your machine "
                         "will now be checked for external applications. Then the Konfigurator will "
                         "be launched where you can customize Panero to your needs.</p></qt>"));
     }
+#endif
     nogroup.writeEntry("Version", VERSION);
     nogroup.writeEntry("First Time", false);
     krConfig->sync();
@@ -739,8 +759,8 @@ void Krusader::setupPaneroToolbarLabels()
         {"pack", i18nc("toolbar", "Pack")},
         {"unpack", i18nc("toolbar", "Unpack")},
         {"find", i18nc("toolbar", "Search")},
-        {"panero open trash", i18nc("toolbar", "Open Trash")},
-        {"panero trash menu", i18nc("toolbar", "Trash")},
+        {"panero open trash", PANERO_TEXT(i18nc("toolbar", "Open Trash"), i18nc("toolbar", "Open Recycle Bin"))},
+        {"panero trash menu", PANERO_TEXT(i18nc("toolbar", "Trash"), i18nc("toolbar", "Recycle Bin"))},
         {"panero toggle navigation", i18nc("toolbar", "Folder Tree")},
         {"toggle hidden files", i18nc("toolbar", "Hidden Files")},
         {"view0", i18nc("toolbar", "Details")},

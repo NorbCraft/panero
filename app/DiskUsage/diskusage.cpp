@@ -6,6 +6,7 @@
 */
 
 #include "diskusage.h"
+#include "../panerowording.h"
 
 // QtCore
 #include <QDebug>
@@ -565,8 +566,9 @@ int DiskUsage::del(File *file, bool calcPercents, int depth)
             QString s;
             KGuiItem b;
             if (trash && url.isLocalFile()) {
-                s = i18nc("singularOnly", "Do you really want to move this item to the trash?");
-                b = KGuiItem(i18n("&Trash"));
+                s = PANERO_TEXT(i18nc("singularOnly", "Do you really want to move this item to the trash?"),
+                                i18nc("singularOnly", "Do you really want to move this item to the Recycle Bin?"));
+                b = KGuiItem(PANERO_TEXT(i18n("&Trash"), i18n("Move to &Recycle Bin")));
             } else {
                 s = i18nc("singularOnly", "Do you really want to delete this item?");
                 b = KStandardGuiItem::del();

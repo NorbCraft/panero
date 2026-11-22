@@ -51,6 +51,7 @@
 #include "listpanelactions.h"
 #include "panelfunc.h"
 #include "sidebar.h"
+#include "panerodrivebar.h"
 #include "viewactions.h"
 
 #include "PanelView/krview.h"
@@ -81,7 +82,9 @@
 #include "../GUI/terminaldock.h"
 #include "../MountMan/kmountman.h"
 #include "../UserAction/useractionpopupmenu.h"
-#include "../Cloud/panerooffline.h"
+#ifndef Q_OS_WIN
+#include "../Cloud/panerooffline.h" // cloud drives are Linux-only (rclone, FUSE)
+#endif
 
 #include <QAbstractScrollArea>
 
@@ -272,6 +275,9 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     connect(sidebarButton, &QToolButton::clicked, this, &ListPanel::toggleSidebar);
     sidebarButton->setToolTip(i18n("Open the Sidebar"));
     ADD_WIDGET(sidebarButton);
+    // Panero: Krusader's per-panel sidebar is replaced by the navigation
+    // sidebar (pins, cloud, folders); a second one only confused (owner, preview 11)
+    sidebarButton->hide();
 
 #undef ADD_WIDGET
 
@@ -384,10 +390,19 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
         layout = v;
     }
 
-    setLayout(layout);
+    // Panero: drive buttons above the panel (D-019; off unless enabled)
+    auto *driveBar = new PaneroDriveBar(this);
+    connect(this, &ListPanel::pathChanged, driveBar, &PaneroDriveBar::setCurrentUrl);
+    auto *outer = new QVBoxLayout;
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+    outer->addWidget(driveBar);
+    outer->addLayout(layout);
+    setLayout(outer);
 
     connect(&KrColorCache::getColorCache(), &KrColorCache::colorsRefreshed, this, &ListPanel::slotRefreshColors);
     connect(krApp, &Krusader::shutdown, this, &ListPanel::cancelProgress);
+#ifndef Q_OS_WIN
     // Panero: folder badges of cloud drives are computed in the background
     connect(PaneroOffline::instance(), &PaneroOffline::statesUpdated, this, [this]() {
         if (view && view->widget()) {
@@ -397,6 +412,7 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
                 view->widget()->update();
         }
     });
+#endif
 }
 
 ListPanel::~ListPanel()
@@ -771,7 +787,7 @@ void ListPanel::start(const QUrl &url)
     if (!startUrl.isValid())
         startUrl = QUrl::fromLocalFile(ROOT_DIR);
 
-    _lastLocalPath = startUrl.isLocalFile() ? startUrl.path() : ROOT_DIR;
+    _lastLocalPath = startUrl.isLocalFile() ? startUrl.toLocalFile() : ROOT_DIR;
 
 
     func->openUrl(startUrl);
@@ -794,7 +810,7 @@ void ListPanel::slotStartUpdate(bool directoryChange)
         }
 
         if (currentUrl.isLocalFile())
-            _lastLocalPath = currentUrl.path();
+            _lastLocalPath = currentUrl.toLocalFile();
 
         setNavigatorUrl(currentUrl);
 
@@ -1049,7 +1065,7 @@ void ListPanel::slotPreviewJobStarted(KJob *job)
     previewJob = job;
     connect(job, SIGNAL(percent(KJob*,ulong)), SLOT(slotPreviewJobPercent(KJob*,ulong)));
     connect(job, &KJob::result, this, &ListPanel::slotPreviewJobResult);
-    cancelProgressButton->setMaximumHeight(sidebarButton->height());
+    cancelProgressButton->setMaximumHeight(totals->height());
     cancelProgressButton->show();
     previewProgress->setValue(0);
     previewProgress->setFormat(i18n("loading previews: %p%"));
@@ -1288,13 +1304,7 @@ void ListPanel::restoreSettings(KConfigGroup cfg)
         setPinnedUrl(pinnedUrl);
     }
 
-    if (cfg.hasKey("PopupPosition")) { // sidebar was visible, restore
-        toggleSidebar(); // create and show
-        sidebar->restoreSettings(KConfigGroup(&cfg, "PanelPopup"));
-        setSidebarPosition(cfg.readEntry("PopupPosition", 42 /* dummy */));
-        sidebarSplitter->restoreState(cfg.readEntry("SplitterSizes", QByteArray()));
-        sidebar->setCurrentPage(cfg.readEntry("PopupPage", 0));
-    }
+    // Panero: the per-panel sidebar is gone; an old "PopupPosition" is ignored
 }
 
 void ListPanel::slotCurrentChanged(KrViewItem *item)

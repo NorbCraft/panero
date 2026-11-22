@@ -5,6 +5,7 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 #include "krfiletreeview.h"
+#include "../panerowording.h"
 #include "paneropaths.h"
 
 #include "panelfunc.h"
@@ -38,6 +39,9 @@
 #include <KIOWidgets/KDirLister>
 #include <KIOWidgets/KFileItemDelegate>
 #include <KIOWidgets/KPropertiesDialog>
+#ifdef Q_OS_WIN
+#include "panerowinshell.h"
+#endif
 
 
 class KrDirModel : public KDirModel
@@ -73,6 +77,15 @@ public:
                 return i18n("Folder"); // the tree lists folders only
             }
         }
+#ifdef Q_OS_WIN
+        // Windows: the folder icons Explorer shows, as in the file list
+        if (role == Qt::DecorationRole && index.column() == KDirModel::Name) {
+            const KFileItem item = itemForIndex(index);
+            if (!item.isNull() && item.isLocalFile() && PaneroWinShell::useShellIcons(item.isDir()))
+                return QIcon(PaneroWinShell::fileIcon(item.localPath(), item.isDir())
+                                 .pixmap(KrFileTreeView::IconSize)); // shell icons come in 16/32/48 px
+        }
+#endif
         return KDirModel::data(index, role);
     }
 
@@ -324,7 +337,8 @@ void KrFileTreeView::slotCustomContextMenuRequested(const QPoint &point)
     // trash
     if (KConfigGroup(krConfig, "General").readEntry("Move To Trash", _MoveToTrash)) {
         QAction* moveToTrashAction = new QAction(Icon(QStringLiteral("user-trash")),
-                                                i18nc("@action:inmenu", "Move to Trash"), this);
+                                                PANERO_TEXT(i18nc("@action:inmenu", "Move to Trash"),
+                                                            i18nc("@action:inmenu", "Move to Recycle Bin")), this);
         const bool enableMoveToTrash = capabilities.isLocal() && capabilities.supportsMoving();
         moveToTrashAction->setEnabled(enableMoveToTrash);
         connect(moveToTrashAction, &QAction::triggered, this, [=]() {

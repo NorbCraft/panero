@@ -104,8 +104,12 @@ void PanelViewerBase::openUrl(const QUrl& url)
     emit urlChanged(this, url);
 
     if (url.isLocalFile()) {
-        if (!QFile::exists(url.path())) {
+        if (!QFile::exists(url.toLocalFile())) {
+#ifdef Q_OS_WIN
+            KMessageBox::error(krMainWindow, i18n("Error at opening %1.", url.toDisplayString(QUrl::PreferLocalFile)));
+#else
             KMessageBox::error(krMainWindow, i18n("Error at opening %1.", url.path()));
+#endif
             emit openUrlFinished(this, false);
             return;
         }
@@ -362,6 +366,12 @@ PanelEditor::~PanelEditor()
 
 void PanelEditor::configureDeps()
 {
+#ifdef Q_OS_WIN
+    // Windows: only warn when the internal editor is the one F4 uses (default: Notepad)
+    if (KConfigGroup(krConfig, "General").readEntry("Editor", _Editor) != QLatin1String("internal editor"))
+        return;
+#endif
+
     bool foundPlugin = false;
 
 #if CREATE_KPART_5_82

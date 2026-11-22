@@ -51,7 +51,14 @@ void KrusaderView::start(const KConfigGroup &cfg, bool restoreSettings,
     ////////////////////////////////
     // make a 1x1 mainLayout, it will auto-expand:
     mainLayout = new QGridLayout(this);
+#ifdef Q_OS_WIN
+    // Windows: the window frame has no inner border; keep the right panel's
+    // rounded card (and its accent outline when active) off the window edge,
+    // like the left card is kept off the sidebar by the dock separator
+    mainLayout->setContentsMargins(0, 0, 6, 0);
+#else
     mainLayout->setContentsMargins(0, 0, 0, 0);
+#endif
     mainLayout->setSpacing(0);
     // vertical splitter
     vert_splitter = new QSplitter(this);   // splits between panels and terminal/cmdline

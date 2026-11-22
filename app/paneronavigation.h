@@ -9,7 +9,9 @@
 
 #include <QDockWidget>
 
+#ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
 #include "Cloud/panerocloud.h"
+#endif
 #include <QPointer>
 #include <QUrl>
 
@@ -40,6 +42,13 @@ class PaneroNavigationDock : public QDockWidget
     Q_OBJECT
 public:
     explicit PaneroNavigationDock(QWidget *parent);
+    /// The main window's sidebar (null before it exists).
+    static PaneroNavigationDock *instance();
+#ifndef Q_OS_WIN // no cloud drives on Windows yet
+    /// Opens a cloud drive or server in the active panel, connecting it
+    /// first when needed (progress window, offline fallback).
+    void openCloudEntry(const PaneroCloud::Entry &entry);
+#endif
 
     /// Pin the active panel's current folder.
     void pinCurrentFolder();
@@ -63,9 +72,12 @@ private slots:
 
 private:
     void updatePinHighlight();
+    /// Highlights the cloud drive or server the active panel is in, else none.
+    void updateCloudHighlight();
+#ifndef Q_OS_WIN
     void loadCloud();
-    void openCloudEntry(const PaneroCloud::Entry &entry);
     void cloudContextMenu(const QPoint &pos);
+#endif
     QWidget *m_cloudSection = nullptr;
     QListWidget *m_cloud = nullptr;
     QString m_pendingCloud;

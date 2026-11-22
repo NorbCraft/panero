@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QDir>
 #include <QEventLoop>
+#include <QStorageInfo>
 
 #include <KConfigCore/KSharedConfig>
 #include <KCoreAddons/KUrlMimeData>
@@ -25,6 +26,7 @@
 #include <QDateTime>
 #include <QFutureWatcher>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QHash>
 #include <QTextStream>
@@ -61,6 +63,23 @@ struct SlowListing {
 /// Reads @p path: names, then the status of each entry (no file opens).
 void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
 {
+    QStringList names;
+#ifdef Q_OS_WIN
+    // Windows (no cloud mounts there yet): Qt's listing, Unicode names
+    const QDir qdir(path);
+    if (!QFileInfo(path).isDir())
+        return;
+    listing.exists = true;
+    listing.opened = listing.accessible = qdir.isReadable();
+    if (!listing.accessible)
+        return;
+    for (const QString &name : qdir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                                              QDir::NoSort)) {
+        if (!showHidden && name.startsWith(QLatin1Char('.')))
+            continue;
+        names << name;
+    }
+#else
     const QByteArray encoded = path.toLocal8Bit();
     QT_STATBUF st;
     if (QT_STAT(encoded.constData(), &st) != 0 || !S_ISDIR(st.st_mode))
@@ -71,7 +90,6 @@ void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
         return;
     listing.opened = true;
     listing.accessible = ::access(encoded.constData(), X_OK) == 0;
-    QStringList names;
     QT_DIRENT *dirEnt;
     while ((dirEnt = QT_READDIR(dir)) != nullptr) {
         const QString name = QString::fromLocal8Bit(dirEnt->d_name);
@@ -84,6 +102,7 @@ void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
     QT_CLOSEDIR(dir);
     if (!listing.accessible)
         return;
+#endif
 
     QSet<QString> hidden;
     if (!showHidden && names.contains(QLatin1String(".hidden"))) {
@@ -254,6 +273,21 @@ void DefaultFileSystem::updateFilesystemInfo()
         return;
     }
 
+#ifdef Q_OS_WIN
+    // Windows: drive letter as the "mount point" ("C:/"), NTFS/FAT/exFAT as type
+    {
+        const QStorageInfo storage(_currentDirectory.toLocalFile());
+        if (!storage.isValid() || !storage.isReady()) {
+            _mountPoint = "";
+            emit fileSystemInfoChanged(i18n("Space information unavailable"), "", 0, 0);
+            return;
+        }
+        _mountPoint = storage.rootPath();
+        emit fileSystemInfoChanged("", QString::fromLatin1(storage.fileSystemType()),
+                                   KIO::filesize_t(storage.bytesTotal()), KIO::filesize_t(storage.bytesAvailable()));
+        return;
+    }
+#endif
     const QString path = _currentDirectory.path();
 
     // Panero: on a cloud/network mount statfs is a network request; use a
@@ -458,7 +492,11 @@ void DefaultFileSystem::slotWatcherDeleted(const QString& path)
 }
 
 bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
+#ifdef Q_OS_WIN
+    QString path = KrServices::urlToLocalPath(directory);
+#else
     const QString path = KrServices::urlToLocalPath(directory);
+#endif
 
     if (PaneroSlowPaths::isSlowPath(path))
         return refreshSlow(directory, path, onlyScan);
@@ -484,6 +522,27 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     _currentDirectory = directory;
     _currentDirectory.setPath(QDir::cleanPath(_currentDirectory.path()));
 
+#ifdef Q_OS_WIN
+    // Windows: QDir gives Unicode names and knows the "hidden" and "system" attributes
+    // (hidden like Explorer: both are listed only when hidden files are shown).
+    {
+        const bool showHidden = showHiddenFiles();
+        QDir::Filters filters = QDir::AllEntries | QDir::NoDotAndDotDot;
+        if (showHidden)
+            filters |= QDir::Hidden | QDir::System;
+        const QDir qdir(path);
+        if (!qdir.isReadable()) {
+            emit error(i18nc("%1=folder path", "Access to %1 denied", path));
+            return false;
+        }
+        const QSet<QString> hiddenFiles = filesInDotHidden(path);
+        for (const QString &name : qdir.entryList(filters, QDir::NoSort)) {
+            if (!showHidden && (name.startsWith(QLatin1Char('.')) || hiddenFiles.contains(name)))
+                continue;
+            addFileItem(FileSystem::createLocalFileItem(name, path));
+        }
+    }
+#else
     // Note: we are using low-level Qt functions here.
     // It's around twice as fast as using the QDir class.
 
@@ -521,6 +580,7 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     // clean up
     QT_CLOSEDIR(dir);
     QDir::setCurrent(savedDir);
+#endif
 
     if (!onlyScan)
         startWatching();

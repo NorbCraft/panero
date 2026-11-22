@@ -19,7 +19,11 @@
 
 #define BM_NAME(X)  (QString("Bookmark:")+X)
 
+#ifdef Q_OS_WIN
+static const char* NAME_TRASH = I18N_NOOP("Recycle Bin");
+#else
 static const char* NAME_TRASH = I18N_NOOP("Trash bin");
+#endif
 static const char* NAME_VIRTUAL = I18N_NOOP("Virtual Filesystem");
 static const char* NAME_LAN = I18N_NOOP("Local Network");
 

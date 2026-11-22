@@ -6,6 +6,7 @@
 */
 
 #include "listpanelactions.h"
+#include "../panerowording.h"
 
 #include "listpanel.h"
 #include "panelfunc.h"
@@ -101,16 +102,20 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actSetJumpBack = action(i18n("Set Jump Back Point"), "go-jump-definition", Qt::CTRL + Qt::SHIFT + Qt::Key_J, _gui, SLOT(setJumpBack()), "set_jump_back");
     actSyncBrowse = action(i18n("S&ynchron Folder Changes"), "kr_syncbrowse_off", Qt::ALT + Qt::SHIFT + Qt::Key_Y, _gui, SLOT(toggleSyncBrowse()), "sync browse");
     actLocationBar = action(i18n("Go to Location Bar"), nullptr, Qt::CTRL + Qt::Key_L, _gui, SLOT(editLocation()), "location_bar");
-    toggleAction(i18n("Toggle Sidebar"), nullptr, Qt::ALT + Qt::Key_Down, _gui, SLOT(toggleSidebar()), "toggle sidebar");
+    // Panero: no "Toggle Sidebar" (Alt+Down): the per-panel sidebar is removed
     action(i18n("Bookmarks"), nullptr, Qt::CTRL + Qt::Key_D, _gui, SLOT(openBookmarks()), "bookmarks");
     action(i18n("Left Bookmarks"), nullptr, 0, this, SLOT(openLeftBookmarks()), "left bookmarks");
     action(i18n("Right Bookmarks"), nullptr, 0, this, SLOT(openRightBookmarks()), "right bookmarks");
     action(i18n("History"), nullptr, Qt::CTRL + Qt::Key_H, _gui, SLOT(openHistory()), "history");
     action(i18n("Left History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Left, this, SLOT(openLeftHistory()), "left history");
     action(i18n("Right History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Right, this, SLOT(openRightHistory()), "right history");
-    action(i18n("Media"), nullptr, Qt::CTRL + Qt::Key_M, _gui, SLOT(openMedia()), "media");
-    action(i18n("Left Media"), nullptr, Qt::CTRL + Qt::SHIFT + Qt::Key_Left, this, SLOT(openLeftMedia()), "left media");
-    action(i18n("Right Media"), nullptr, Qt::CTRL + Qt::SHIFT + Qt::Key_Right, this, SLOT(openRightMedia()), "right media");
+    // Panero (D-019): Ctrl+M is Multi-Rename; the drive lists open with Total
+    // Commander's Alt+F1 / Alt+F2 (left / right) and Ctrl+Shift+Left/Right
+    action(i18n("Media"), nullptr, QKeySequence(), _gui, SLOT(openMedia()), "media");
+    action(i18n("Left Media"), nullptr, {QKeySequence(Qt::ALT + Qt::Key_F1), QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Left)},
+           this, SLOT(openLeftMedia()), "left media");
+    action(i18n("Right Media"), nullptr, {QKeySequence(Qt::ALT + Qt::Key_F2), QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Right)},
+           this, SLOT(openRightMedia()), "right media");
 
     // quick search bar
     action(i18n("Find in folder..."), nullptr, Qt::CTRL + Qt::Key_F, _gui, SLOT(showSearchBar()), "search bar");
@@ -122,16 +127,22 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
 
     actRenameF2->setToolTip(i18n("Rename file, folder, etc."));
     actViewFileF3->setToolTip(i18n("Open file in viewer."));
-    actEditFileF4->setToolTip(i18n("<qt><p>Edit file.</p>"
+    actEditFileF4->setToolTip(PANERO_TEXT(i18n("<qt><p>Edit file.</p>"
                            "<p>The editor can be defined in Konfigurator, "
-                           "default is <b>internal editor</b>.</p></qt>"));
+                           "default is <b>internal editor</b>.</p></qt>"),
+                                          i18n("<qt><p>Edit file.</p>"
+                           "<p>The editor can be defined in Settings, "
+                           "default is <b>Notepad</b>.</p></qt>")));
     actCopyF5->setToolTip(i18n("Copy file from one panel to the other."));
     actMoveF6->setToolTip(i18n("Move file from one panel to the other."));
     actNewFolderF7->setToolTip(i18n("Create folder in current panel."));
     actDeleteF8->setToolTip(i18n("Delete file, folder, etc."));
-    actTerminalF9->setToolTip(i18n("<qt><p>Open terminal in current folder.</p>"
+    actTerminalF9->setToolTip(PANERO_TEXT(i18n("<qt><p>Open terminal in current folder.</p>"
                            "<p>The terminal can be defined in Konfigurator, "
-                           "default is <b>konsole</b>.</p></qt>"));
+                           "default is <b>konsole</b>.</p></qt>"),
+                                          i18n("<qt><p>Open a terminal in the current folder.</p>"
+                           "<p>The terminal can be defined in Settings, "
+                           "default is <b>Windows Terminal</b> (or <b>PowerShell</b> when it is not installed).</p></qt>")));
 
 }
 

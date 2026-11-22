@@ -120,14 +120,14 @@ void CompareContentTask::start()
     m_state = ST_STATE_PENDING;
 
     if (leftURL.isLocalFile() && rightURL.isLocalFile()) {
-        leftFile = new QFile(leftURL.path());
+        leftFile = new QFile(leftURL.toLocalFile());
         if (!leftFile->open(QIODevice::ReadOnly)) {
             KMessageBox::error(parentWidget, i18n("Error at opening %1.", leftURL.path()));
             m_state = ST_STATE_ERROR;
             return;
         }
 
-        rightFile = new QFile(rightURL.path());
+        rightFile = new QFile(rightURL.toLocalFile());
         if (!rightFile->open(QIODevice::ReadOnly)) {
             KMessageBox::error(parentWidget, i18n("Error at opening %1.", rightURL.path()));
             m_state = ST_STATE_ERROR;

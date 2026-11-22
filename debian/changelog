@@ -1,3 +1,19 @@
+panero (0.1.0~preview.11-1) noble; urgency=medium
+
+  * Eleventh preview (git tag v0.1.0-preview.11).
+  * Drive buttons above each panel (Quick Settings, off by default); no snap
+    images, /boot or other system mounts in the drive list.
+  * Multi-Rename built in (Ctrl+M) with Total Commander's patterns, preview,
+    presets and undo; KRename offered when installed.
+  * Alt+F1 / Alt+F2 open the drive list of the left / right panel.
+  * Sort arrow: ^ ascending, v descending on every platform.
+  * Krusader's per-panel sidebar removed; a cloud stays selected only while
+    the panel is in it; no duplicate "Copy path" from service menus.
+  * Windows: one code base, portable ZIP with every release; normal window
+    buttons, Explorer icons for pins, Windows wording (Recycle Bin, Settings).
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sun, 22 Nov 2026 23:00:00 +0100
+
 panero (0.1.0~preview.10-1) noble; urgency=medium
 
   * Tenth preview (git tag v0.1.0-preview.10).

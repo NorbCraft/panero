@@ -7,6 +7,8 @@
 */
 
 #include "krslots.h"
+#include "panerowording.h"
+#include "Dialogs/paneromultirenamedialog.h"
 
 #include <QStandardPaths>
 #include "paneropackageinstaller.h"
@@ -52,6 +54,7 @@
 #include "DiskUsage/diskusagegui.h"
 #include "FileSystem/fileitem.h"
 #include "FileSystem/filesystem.h"
+#include "FileSystem/filesystemprovider.h"
 #include "FileSystem/krquery.h"
 #include "GUI/dirhistorybutton.h"
 #include "GUI/kcmdline.h"
@@ -75,6 +78,9 @@
 #include "Splitter/combiner.h"
 #include "Splitter/splitter.h"
 #include "Splitter/splittergui.h"
+#ifdef Q_OS_WIN
+#include "Panel/panerowinshell.h"
+#endif
 
 #ifdef SYNCHRONIZER_ENABLED
     #include "Synchronizer/synchronizergui.h"
@@ -457,9 +463,11 @@ void KrSlots::search()
 void KrSlots::locate()
 {
     if (!KrServices::cmdExist("locate")) {
-        KMessageBox::error(krApp, i18n("Cannot find the 'locate' command. Please install the "
-                                       "findutils-locate package of GNU, or set its dependencies in "
-                                       "Konfigurator"));
+        KMessageBox::error(krApp, PANERO_TEXT(i18n("Cannot find the 'locate' command. Please install the "
+                                                   "findutils-locate package of GNU, or set its dependencies in "
+                                                   "Konfigurator"),
+                                              i18n("Cannot find the 'locate' command. Please install it, "
+                                                   "or set its path in Settings")));
         return;
     }
 
@@ -481,6 +489,19 @@ void KrSlots::runTerminal(const QString & dir)
     QStringList sepdArgs = KShell::splitArgs(term, KShell::TildeExpand);
     // Panero: the default (konsole) is not installed on GNOME/Zorin desktops; when the
     // configured terminal is missing, use the desktop's default terminal
+#ifdef Q_OS_WIN
+    // Windows: Windows Terminal, else PowerShell, else Command Prompt (all start in "dir")
+    if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
+        for (const QStringList &candidate : {QStringList{QStringLiteral("wt"), QStringLiteral("-d"), QStringLiteral("%d")},
+                                             QStringList{QStringLiteral("powershell")}, QStringList{QStringLiteral("cmd")}}) {
+            if (!QStandardPaths::findExecutable(candidate.first()).isEmpty()) {
+                term = candidate.join(QLatin1Char(' '));
+                sepdArgs = candidate;
+                break;
+            }
+        }
+    }
+#endif
     if (!sepdArgs.isEmpty() && QStandardPaths::findExecutable(sepdArgs.first()).isEmpty()) {
         for (const QString &candidate : {QStringLiteral("x-terminal-emulator"), QStringLiteral("gnome-terminal"),
                                          QStringLiteral("kgx"), QStringLiteral("ptyxis"), QStringLiteral("konsole"),
@@ -503,6 +524,12 @@ void KrSlots::runTerminal(const QString & dir)
             sepdArgs[i] = dir;
         }
     }
+#ifdef Q_OS_WIN
+    // its own console window, even when Panero's output is redirected
+    if (!PaneroWinShell::startInNewConsole(sepdArgs, dir))
+        KMessageBox::error(krApp, i18n("Error executing %1.", term));
+    return;
+#endif
     proc << sepdArgs;
     if (!proc.startDetached())
         KMessageBox::error(krApp, i18n("Error executing %1.", term));
@@ -515,37 +542,41 @@ void KrSlots::homeTerminal()
 
 void KrSlots::multiRename()
 {
-    QStringList lst = KrServices::supportedTools();
-    int i = lst.indexOf("RENAME");
-    if (i == -1) {
-        KMessageBox::error(krApp, i18n("Cannot find a batch rename tool.\nYou can get KRename at %1", QLatin1String("https://www.kde.org/applications/utilities/krename/")));
+    // Panero: built-in Multi-Rename with Total Commander's patterns (D-019);
+    // KRename is offered from the dialog when it is installed
+    FileSystem *files = ACTIVE_FUNC->files();
+    if (files->type() == FileSystem::FS_VIRTUAL) {
+        KMessageBox::information(krApp, i18n("Multi-Rename works on the files of one folder. Open the folder the files are in."));
         return;
     }
-    QString pathToRename = lst[i+1];
-
-    const QStringList names = ACTIVE_PANEL->gui->getSelectedNames();
-    if (names.isEmpty()) {
+    QStringList names = ACTIVE_PANEL->gui->getSelectedNames();
+    names.removeAll(QStringLiteral(".."));
+    if (names.isEmpty())
         return;
-    }
-
-    KProcess proc;
-    proc << pathToRename;
-
-    for (const QString& name: names) {
-        FileItem *file = ACTIVE_FUNC->files()->getFileItem(name);
+    QList<PaneroMultiRenameDialog::Entry> entries;
+    QSet<QString> selected(names.begin(), names.end());
+    for (const QString &name : qAsConst(names)) {
+        FileItem *file = files->getFileItem(name);
         if (!file)
             continue;
-        const QUrl url = file->getUrl();
-        // KRename only supports the recursive option combined with a local directory path
-        if (file->isDir() && url.scheme() == "file") {
-            proc << "-r" << url.path();
-        } else {
-            proc << url.toString();
-        }
+        PaneroMultiRenameDialog::Entry e;
+        e.name = file->getName();
+        e.isDir = file->isDir();
+        e.modified = QDateTime::fromSecsSinceEpoch(qint64(file->getModificationTime()));
+        e.size = qint64(file->getSize());
+        entries << e;
     }
-
-    if (!proc.startDetached())
-        KMessageBox::error(nullptr, i18n("Error executing '%1'.", proc.program().join(" ")));
+    QSet<QString> others;
+    for (FileItem *file : files->fileItems()) {
+        if (!selected.contains(file->getName()))
+            others.insert(file->getName());
+    }
+    auto *dialog = new PaneroMultiRenameDialog(krApp, files->currentDirectory(), entries, others);
+    connect(dialog, &PaneroMultiRenameDialog::renamed, this, [](const QUrl &folder) {
+        // panels on this folder show the new names (cloud folders have no watcher)
+        FileSystemProvider::instance().refreshFilesystems(folder, false);
+    });
+    dialog->show();
 }
 
 void KrSlots::rootKrusader()
@@ -794,9 +825,9 @@ void KrSlots::emptyTrash()
 void KrSlots::trashPopupMenu()
 {
     QMenu trashMenu(krApp);
-    QAction * act = trashMenu.addAction(Icon("document-open"), i18n("Open trash bin"));
+    QAction * act = trashMenu.addAction(Icon("document-open"), PANERO_TEXT(i18n("Open trash bin"), i18n("Open Recycle Bin")));
     act->setData(QVariant(OPEN_ID));
-    act = trashMenu.addAction(Icon("trash-empty"), i18n("Empty trash bin"));
+    act = trashMenu.addAction(Icon("trash-empty"), PANERO_TEXT(i18n("Empty trash bin"), i18n("Empty Recycle Bin")));
     act->setData(QVariant(EMPTY_TRASH_ID));
 
     int result = -1;

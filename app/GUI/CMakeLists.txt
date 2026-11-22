@@ -10,6 +10,7 @@ set(GUI_SRCS
     krstyleproxy.cpp
     krlistwidget.cpp
     mediabutton.cpp
+    panerodrivefilter.cpp
     kcmdmodebutton.cpp
     recentlyclosedtabsmenu.cpp
     terminaldock.cpp)

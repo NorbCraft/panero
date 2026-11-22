@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 Panero contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Final KDE Frameworks 5 (5.116) builds for MSYS2 UCRT64. They are no longer in
+# the MSYS2 package database, but repo.msys2.org still serves the files. CI
+# downloads these exact files, checks the SHA-256 sums and installs them with
+# pacman -U; pacman takes the other dependencies (Qt 5.15, gettext, ...) from
+# the live repository. Regenerate with dev/windows/kf5-closure.py.
+aa9e4e68664afe144efbf4ac4b3a4e052642b69f52731d82c179072e48656af4  mingw-w64-ucrt-x86_64-attica-qt5-5.116.0-1-any.pkg.tar.zst
+b52ed2990960661e248a0b67c088541b44d7900e643f7e2868c1abac28ce3665  mingw-w64-ucrt-x86_64-breeze-icons-qt5-5.115.0-1-any.pkg.tar.zst
+02ee505de37256f9073a32a58311b799479bcdc5dcfe995910be444a9b3774d3  mingw-w64-ucrt-x86_64-karchive-qt5-5.116.0-1-any.pkg.tar.zst
+7d154a4bb549138d2e4041ae14b3d1ededb640b1ebb8db81edc9e94895b1b039  mingw-w64-ucrt-x86_64-kauth-qt5-5.116.0-1-any.pkg.tar.zst
+686bbff2d6e151a8d2df78f258630fef8b715ad659246867ebbba00f9d3766ad  mingw-w64-ucrt-x86_64-kbookmarks-qt5-5.116.0-1-any.pkg.tar.zst
+b36f8f76085377afc4e8b40dbe588e3be8c2573e247ae983f8039ddbbda50dfc  mingw-w64-ucrt-x86_64-kcodecs-qt5-5.116.0-1-any.pkg.tar.zst
+6a7dd335981f14879e72f7e16062c7b0d61252a6bff4deb522db4df98eaeb6fc  mingw-w64-ucrt-x86_64-kcompletion-qt5-5.116.0-1-any.pkg.tar.zst
+5183317d21d00f014836e7b84a8f211dcbac1f61f5fe2c73dcb832a3b77e9040  mingw-w64-ucrt-x86_64-kconfig-qt5-5.116.0-1-any.pkg.tar.zst
+1f690a042a53e0b29e74ebcffc2374c6ad70dadeb1827ea6617653cb6a7fccb3  mingw-w64-ucrt-x86_64-kconfigwidgets-qt5-5.116.0-1-any.pkg.tar.zst
+7bbc933fafa341b5cde6ca510857ce27725fa605624fecd745bb48cc4d4772ba  mingw-w64-ucrt-x86_64-kcoreaddons-qt5-5.116.0-1-any.pkg.tar.zst
+d5f96e9b7c58e845380407161711587dfb97e3914a091d9325b443ddccf8452a  mingw-w64-ucrt-x86_64-kcrash-qt5-5.116.0-1-any.pkg.tar.zst
+7290045f3e644b8bbd3d91eb4effe82d1653c1f35db95ff854a4688417ae00c8  mingw-w64-ucrt-x86_64-kdbusaddons-qt5-5.116.0-1-any.pkg.tar.zst
+8005a8d4dedc36f63a3e42ecc4a39b0ca0e49bb9b1538d9ec75c952f1b261354  mingw-w64-ucrt-x86_64-kdoctools-qt5-5.116.0-4-any.pkg.tar.zst
+9cd99352b4a3ca83e80415338949d26d8f3e0bde10263c557cd4a8e83c51c294  mingw-w64-ucrt-x86_64-kglobalaccel-qt5-5.116.0-1-any.pkg.tar.zst
+33775fd2d3e1541c0ce1931ccd3954a716ab6478f6c180db488811e1a9c3abb7  mingw-w64-ucrt-x86_64-kguiaddons-qt5-5.116.0-1-any.pkg.tar.zst
+d8b49e42c387532f11a1ff5ac55f973d599e1c9cf6fbf29393ff5efbc33b3feb  mingw-w64-ucrt-x86_64-ki18n-qt5-5.116.0-2-any.pkg.tar.zst
+40a1ac649a639d0bfa71c18f59826f855cb7db0a448a52f3e08827220b47e4f2  mingw-w64-ucrt-x86_64-kiconthemes-qt5-5.116.0-1-any.pkg.tar.zst
+aa654e3c155afb998a735f0237560017eed8e7cd4d9cd5ff2d9f17da3ba4bf9b  mingw-w64-ucrt-x86_64-kio-qt5-5.116.0-4-any.pkg.tar.zst
+d69a3e71a469ab34706fda89cbb1545e89e3151b8b87d286556e35725a1d3455  mingw-w64-ucrt-x86_64-kitemviews-qt5-5.116.0-1-any.pkg.tar.zst
+eb67695e3c9b5691557b9b7de1b545876645af20be729d35a2559524162ee125  mingw-w64-ucrt-x86_64-kjobwidgets-qt5-5.116.0-1-any.pkg.tar.zst
+59ceb8d7e6bfcb0639ffd58f8e8937c0e0f4c93b840fe0c11e90b2c358199316  mingw-w64-ucrt-x86_64-knotifications-qt5-5.116.0-1-any.pkg.tar.zst
+f870f458407bea31be1fcfff5b338c225f025d8adb62c320424da87e98b5c04e  mingw-w64-ucrt-x86_64-kparts-qt5-5.116.0-1-any.pkg.tar.zst
+4bb3b665b3da3e378809737ca42a435558325731d8fb0c316b92aee1351392ac  mingw-w64-ucrt-x86_64-kservice-qt5-5.116.0-1-any.pkg.tar.zst
+d848bfd60f41183248e8644787023ae03bd3882709b4497fba405b9614be9a68  mingw-w64-ucrt-x86_64-ktextwidgets-qt5-5.116.0-1-any.pkg.tar.zst
+eabb8abe748c218222f7b7c3fd734977a8c81c59c386a1d281b96d58670911d4  mingw-w64-ucrt-x86_64-kwallet-qt5-5.116.0-2-any.pkg.tar.zst
+46623ffc3ffd5adeaf8347ddefddc4d779b285fb687f5738387927fa93ca6560  mingw-w64-ucrt-x86_64-kwidgetsaddons-qt5-5.116.0-1-any.pkg.tar.zst
+cf876046dc0353d87e01248bf176db41e477780cc6a843d32aae62a7ab52cfe4  mingw-w64-ucrt-x86_64-kwindowsystem-qt5-5.116.0-1-any.pkg.tar.zst
+76da561059ae110a1d6ba49fe1bb18d630189784c73101a2ddca09153d6356d8  mingw-w64-ucrt-x86_64-kxmlgui-qt5-5.116.0-1-any.pkg.tar.zst
+21eab5cc2f5bf23196e5e4be54da9d0b9cb36c6770fcd68a4077fc5faaca6446  mingw-w64-ucrt-x86_64-phonon-qt5-4.12.0-3-any.pkg.tar.zst
+2c242e93d5f6ee99f34e07a34ccf7b773969a34f5b722f76576fe812023164fb  mingw-w64-ucrt-x86_64-solid-qt5-5.116.0-1-any.pkg.tar.zst
+9ef18870a33c9774975948214ae11a96fbc9c19eec70eeea9bc8edf3945b8ec4  mingw-w64-ucrt-x86_64-sonnet-qt5-5.116.0-1-any.pkg.tar.zst

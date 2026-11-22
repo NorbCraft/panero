@@ -5,11 +5,13 @@
 */
 
 #include "paneronavigation.h"
+#ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE); Windows: preview 12
 #include "Cloud/panerocloud.h"
 #include "Cloud/paneroaddclouddialog.h"
 #include "Cloud/panerooffline.h"
 #include "Cloud/paneroofflinedialog.h"
 #include "Cloud/paneroconnectserverdialog.h"
+#endif
 #include "Panel/paneroappearance.h"
 
 #include <QSignalBlocker>
@@ -21,6 +23,9 @@
 #include "Panel/krpanel.h"
 #include "Panel/listpanel.h"
 #include "Panel/panelfunc.h"
+#ifdef Q_OS_WIN
+#include "Panel/panerowinshell.h"
+#endif
 #include "MountMan/kmountman.h"
 
 #include <memory>
@@ -28,6 +33,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QProgressDialog>
+#include <QStandardPaths>
+#include <QStorageInfo>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QActionGroup>
@@ -81,10 +88,21 @@ QLabel *sectionLabel(const QString &text, QWidget *parent)
 }
 } // namespace
 
+namespace
+{
+QPointer<PaneroNavigationDock> s_navigationDock;
+}
+
+PaneroNavigationDock *PaneroNavigationDock::instance()
+{
+    return s_navigationDock.data();
+}
+
 PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     : QDockWidget(i18n("Navigation"), parent)
 {
     setObjectName(QStringLiteral("panero_navigation_dock"));
+    s_navigationDock = this;
     setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
     setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
@@ -131,6 +149,7 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     connect(m_pins, &QListWidget::customContextMenuRequested, this, &PaneroNavigationDock::pinContextMenu);
     pinLayout->addWidget(m_pins, 1);
 
+#ifndef Q_OS_WIN
     // cloud drives and servers (D-014: rclone remotes, Connect to Server), switchable
     m_cloudSection = new QWidget(m_splitter);
     auto *cloudLayout = new QVBoxLayout(m_cloudSection);
@@ -195,8 +214,10 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
         }
         loadCloud();
         const bool wasPending = id == m_pendingCloud;
-        if (wasPending)
+        if (wasPending) {
             m_pendingCloud.clear();
+            updateCloudHighlight();
+        }
         const QString remote = id.startsWith(QLatin1String("rclone:")) ? id.mid(7) : QString();
         if (wasPending && !remote.isEmpty() && !PaneroOffline::instance()->pins(remote).isEmpty()
             && QFileInfo(PaneroOffline::mirrorRoot(remote)).isDir()) {
@@ -211,6 +232,8 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     });
     connect(PaneroOffline::instance(), &PaneroOffline::changed, this, &PaneroNavigationDock::loadCloud);
     connect(cloud, &PaneroCloud::unmounted, this, &PaneroNavigationDock::loadCloud);
+
+#endif
 
     // folder tree
     auto *treeSection = new QWidget(m_splitter);
@@ -235,6 +258,14 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     connect(m_tree, &KrFileTreeView::urlActivated, this, &PaneroNavigationDock::treeUrlActivated);
     treeLayout->addWidget(m_tree, 1);
 
+#ifdef Q_OS_WIN
+    // Windows: no Cloud section yet (preview 12: OneDrive / Google Drive app folders)
+    m_splitter->addWidget(pinSection);
+    m_splitter->addWidget(treeSection);
+    m_splitter->setStretchFactor(0, 0);
+    m_splitter->setStretchFactor(1, 1);
+    m_splitter->setSizes({150, 400});
+#else
     m_splitter->addWidget(pinSection);
     m_splitter->addWidget(m_cloudSection);
     m_splitter->addWidget(treeSection);
@@ -242,6 +273,7 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     m_splitter->setStretchFactor(1, 0);
     m_splitter->setStretchFactor(2, 1);
     m_splitter->setSizes({150, 90, 400});
+#endif
     layout->addWidget(m_splitter, 1);
 
     setWidget(content);
@@ -249,13 +281,17 @@ PaneroNavigationDock::PaneroNavigationDock(QWidget *parent)
     // compact: no separate title bar; the toolbar's sidebar button shows/hides it
     setTitleBarWidget(new QWidget(this));
     loadPins();
+#ifndef Q_OS_WIN
     loadCloud();
     connect(PaneroAppearance::instance(), &PaneroAppearance::settingsChanged, this, &PaneroNavigationDock::loadCloud);
+#endif
 }
+
+#ifndef Q_OS_WIN
 
 void PaneroNavigationDock::loadCloud()
 {
-    const bool show = KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Cloud", true);
+    const bool show = KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Cloud", PANERO_CLOUD_DEFAULT);
     m_cloudSection->setVisible(show);
     if (!show)
         return;
@@ -296,6 +332,7 @@ void PaneroNavigationDock::loadCloud()
         auto *hint = new QListWidgetItem(i18n("Add a cloud drive or server with +"), m_cloud);
         hint->setFlags(Qt::NoItemFlags);
     }
+    updateCloudHighlight();
 }
 
 void PaneroNavigationDock::openCloudEntry(const PaneroCloud::Entry &entry)
@@ -414,12 +451,15 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
     }
 }
 
+#endif // !Q_OS_WIN
+
 void PaneroNavigationDock::activeLocationChanged(const QUrl &url, bool leftPanel)
 {
     Q_UNUSED(leftPanel)
     const bool changed = url != m_currentUrl;
     m_currentUrl = url;
     updatePinHighlight();
+    updateCloudHighlight();
     if (changed && isVisible())
         m_tree->setCurrentUrl(url);
 }
@@ -440,6 +480,55 @@ void PaneroNavigationDock::updatePinHighlight()
         m_pins->clearSelection();
         m_pins->setCurrentRow(-1);
     }
+}
+
+void PaneroNavigationDock::updateCloudHighlight()
+{
+    // stays selected while the active panel is anywhere inside the drive (or
+    // in its offline copies), deselected as soon as it is somewhere else
+#ifndef Q_OS_WIN
+    if (!m_cloud)
+        return;
+    QString remote;
+    if (m_currentUrl.isLocalFile()) {
+        QString rel;
+        bool mirror = false;
+        if (!PaneroOffline::instance()->cloudPath(m_currentUrl.toLocalFile(), &remote, &rel, &mirror))
+            remote.clear();
+    }
+    QListWidgetItem *match = nullptr;
+    auto *cloud = PaneroCloud::instance();
+    for (const PaneroCloud::Entry &e : cloud->entries()) {
+        bool inside = false;
+        if (e.isRclone()) {
+            inside = !remote.isEmpty() && remote == e.rcloneRemote;
+        } else if (e.isServer() && e.url.isValid() && !m_currentUrl.isLocalFile()) {
+            const QString base = e.url.adjusted(QUrl::StripTrailingSlash).path();
+            const QString path = m_currentUrl.adjusted(QUrl::StripTrailingSlash).path();
+            inside = m_currentUrl.scheme() == e.url.scheme() && m_currentUrl.host() == e.url.host()
+                && m_currentUrl.port() == e.url.port() && (base.isEmpty() || path == base || path.startsWith(base + QLatin1Char('/')));
+        }
+        if (!inside)
+            continue;
+        for (int i = 0; i < m_cloud->count() && !match; ++i) {
+            if (m_cloud->item(i)->data(UrlRole).toString() == e.id)
+                match = m_cloud->item(i);
+        }
+        break;
+    }
+    // a drive that is still connecting after a click stays selected meanwhile
+    for (int i = 0; i < m_cloud->count() && !match && !m_pendingCloud.isEmpty(); ++i) {
+        if (m_cloud->item(i)->data(UrlRole).toString() == m_pendingCloud)
+            match = m_cloud->item(i);
+    }
+    const QSignalBlocker blocker(m_cloud);
+    if (match) {
+        m_cloud->setCurrentItem(match);
+    } else {
+        m_cloud->clearSelection();
+        m_cloud->setCurrentRow(-1);
+    }
+#endif
 }
 
 void PaneroNavigationDock::showEvent(QShowEvent *event)
@@ -581,6 +670,17 @@ bool PaneroNavigationDock::eventFilter(QObject *watched, QEvent *event)
 void PaneroNavigationDock::addPin(const Pin &pin)
 {
     auto *item = new QListWidgetItem(Icon(iconForUrl(pin.url)), pin.label, m_pins);
+#ifdef Q_OS_WIN
+    // Windows: the shell icons the panels and the folder tree show (Explorer's
+    // drive icons, Desktop/Documents/Downloads with their own icons, folders)
+    if (pin.url.isLocalFile()) {
+        const QString path = pin.url.toLocalFile();
+        if (QDir(path).isRoot())
+            item->setIcon(PaneroWinShell::driveIcon(path));
+        else if (PaneroWinShell::useShellIcons(true) && QFileInfo(path).isDir())
+            item->setIcon(QIcon(PaneroWinShell::fileIcon(path, true).pixmap(KrFileTreeView::IconSize)));
+    }
+#endif
     item->setData(UrlRole, pin.url);
     item->setSizeHint(QSize(0, KrFileTreeView::RowHeight));
     item->setData(UdiRole, pin.driveUdi);
@@ -723,6 +823,30 @@ void PaneroNavigationDock::loadPins()
         home.url = QUrl::fromLocalFile(QDir::homePath());
         home.label = i18n("Home");
         addPin(home);
+#ifdef Q_OS_WIN
+        // Windows: what Explorer's Quick access and "This PC" offer first
+        const QList<QPair<QStandardPaths::StandardLocation, QString>> places = {
+            {QStandardPaths::DesktopLocation, i18n("Desktop")},
+            {QStandardPaths::DocumentsLocation, i18n("Documents")},
+            {QStandardPaths::DownloadLocation, i18n("Downloads")}};
+        for (const auto &place : places) {
+            const QString path = QStandardPaths::writableLocation(place.first);
+            if (path.isEmpty() || !QFileInfo::exists(path))
+                continue;
+            Pin pin;
+            pin.url = QUrl::fromLocalFile(path);
+            pin.label = place.second;
+            addPin(pin);
+        }
+        for (const PaneroWinShell::Drive &drive : PaneroWinShell::drives()) {
+            if (!QStorageInfo(drive.rootPath).isReady())
+                continue; // empty card reader or DVD drive
+            Pin pin;
+            pin.url = QUrl::fromLocalFile(drive.rootPath);
+            pin.label = drive.name;
+            addPin(pin);
+        }
+#endif
         return;
     }
     const QStringList urls = g.readEntry("Urls", QStringList());

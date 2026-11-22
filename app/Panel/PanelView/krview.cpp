@@ -8,6 +8,10 @@
 
 #include "krview.h"
 
+#ifdef Q_OS_WIN
+#include "../panerowinshell.h"
+#endif
+
 #include "krselectionmode.h"
 #include "krviewfactory.h"
 #include "krviewitem.h"
@@ -21,7 +25,9 @@
 #include "../krglobal.h"
 #include "../krpreviews.h"
 #include "../viewactions.h"
-#include "../../Cloud/panerooffline.h"
+#ifndef Q_OS_WIN
+#include "../../Cloud/panerooffline.h" // cloud drives are Linux-only (rclone, FUSE)
+#endif
 
 // QtCore
 #include <QDebug>
@@ -322,14 +328,32 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     if (iconName.isNull())
         iconName = "";
 
+#ifdef Q_OS_WIN
+    // Windows: the icons Explorer shows (file associations, folder and drive icons)
+    const QUrl url = fileitem->getUrl();
+    if (url.isLocalFile() && PaneroWinShell::useShellIcons(fileitem->isDir())) {
+        const QString path = url.toLocalFile();
+        cacheName = QStringLiteral("WIN_%1_%2%3").arg(size).arg(dim ? QStringLiteral("DIM_") : QString(),
+                                                              PaneroWinShell::iconKey(path, fileitem->isDir()));
+        if (!QPixmapCache::find(cacheName, &icon)) {
+            icon = processIcon(PaneroWinShell::fileIcon(path, fileitem->isDir()).pixmap(size), dim, dimColor, dimFactor,
+                               false); // .lnk icons already carry the shortcut arrow
+            QPixmapCache::insert(cacheName, icon);
+        }
+        return icon;
+    }
+#else
     // Panero: cloud badge (online-only / available offline / always kept), R10
     PaneroOffline::State cloudState = PaneroOffline::State::NotCloud;
     if (fileitem->getUrl().isLocalFile())
         cloudState = PaneroOffline::instance()->state(fileitem->getUrl().toLocalFile(), qint64(fileitem->getSize()), fileitem->isDir());
+#endif
 
     cacheName.append(QString::number(size));
+#ifndef Q_OS_WIN
     if (cloudState != PaneroOffline::State::NotCloud)
         cacheName.append(QStringLiteral("CLOUD%1_").arg(int(cloudState)));
+#endif
     if(fileitem->isSymLink())
         cacheName.append("LINK_");
     if(dim)
@@ -342,7 +366,9 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     if (!QPixmapCache::find(cacheName, &icon)) {
         icon = processIcon(Icon(iconName, Icon("unknown")).pixmap(size),
                            dim, dimColor, dimFactor, fileitem->isSymLink());
+#ifndef Q_OS_WIN
         PaneroOffline::decorate(icon, cloudState);
+#endif
         // insert it into the cache
         QPixmapCache::insert(cacheName, icon);
     }

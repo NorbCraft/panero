@@ -22,3 +22,6 @@
 /debian/panero-dbgsym/
 /debian/*.substvars
 /debian/*.debhelper.log
+
+# Python bytecode (dev scripts)
+__pycache__/

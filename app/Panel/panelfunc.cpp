@@ -7,6 +7,7 @@
 */
 
 #include "panelfunc.h"
+#include "../panerowording.h"
 
 // QtCore
 #include <QEventLoop>
@@ -80,9 +81,14 @@
 #include "../KViewer/krviewer.h"
 #include "../MountMan/kmountman.h"
 #include "../compat.h"
-#include "../Cloud/panerocloud.h"
+#ifndef Q_OS_WIN
+#include "../Cloud/panerocloud.h" // cloud drives are Linux-only (rclone, FUSE)
 #include "../Cloud/panerooffline.h"
+#endif
 #include "../FileSystem/paneroslowpaths.h"
+#ifdef Q_OS_WIN
+#include "panerowinshell.h"
+#endif
 
 QPointer<ListPanelFunc> ListPanelFunc::copyToClipboardOrigin;
 
@@ -135,10 +141,12 @@ void ListPanelFunc::openFileNameInternal(const QString &name, bool externallyExe
         return;
     }
 
+#ifndef Q_OS_WIN
     // Panero: native Google Docs/Sheets/Slides on a Google Drive open in the browser
     if (externallyExecutable && url.isLocalFile()
         && PaneroCloud::instance()->openGoogleDocument(krMainWindow, url.toLocalFile(), qint64(fileitem->getSize())))
         return;
+#endif
 
     QString mime = fileitem->getMime();
 
@@ -222,6 +230,7 @@ void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCu
                                     bool immediately, bool manuallyEntered)
 {
     QUrl cleanUrl = cleanPath(url);
+#ifndef Q_OS_WIN
     // Panero: a folder kept on this device opens as its local copy (R10)
     if (cleanUrl.isLocalFile()) {
         const QString local = cleanUrl.toLocalFile();
@@ -229,6 +238,7 @@ void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCu
         if (redirected != local)
             cleanUrl = QUrl::fromLocalFile(redirected);
     }
+#endif
 
     if (panel->isLocked() &&
             !files()->currentDirectory().matches(cleanUrl, QUrl::StripTrailingSlash)) {
@@ -254,6 +264,7 @@ void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCu
 
 void ListPanelFunc::reloadByUser()
 {
+#ifndef Q_OS_WIN
     const QUrl dir = files()->currentDirectory();
     if (dir.isLocalFile()) {
         // cloud drive: read this folder again from the provider first (only
@@ -262,6 +273,7 @@ void ListPanelFunc::reloadByUser()
             return;
         PaneroCloud::instance()->flushDirectoryCache(dir.toLocalFile());
     }
+#endif
     refresh();
 }
 
@@ -420,6 +432,17 @@ void ListPanelFunc::redirectLink()
     // if the user canceled - quit
     if (!ok || newLink == currentLink)
         return;
+#ifdef Q_OS_WIN
+    file = fileitem->getUrl().toLocalFile();
+    if (!QFile::remove(file)) {
+        KMessageBox::error(krMainWindow, i18n("Cannot remove old link: %1", file));
+        return;
+    }
+    if (!PaneroWinShell::createSymlink(newLink, file)) {
+        KMessageBox::error(krMainWindow, i18n("Failed to create a new link: %1", file));
+        return;
+    }
+#else
     // delete the current link
     if (unlink(file.toLocal8Bit()) == -1) {
         KMessageBox::error(krMainWindow, i18n("Cannot remove old link: %1", file));
@@ -430,6 +453,7 @@ void ListPanelFunc::redirectLink()
         KMessageBox:: /* --=={ Patch by Heiner <h.eichmann@gmx.de> }==-- */error(krMainWindow, i18n("Failed to create a new link: %1", file));
         return;
     }
+#endif
 }
 
 void ListPanelFunc::krlink(bool sym)
@@ -457,6 +481,15 @@ void ListPanelFunc::krlink(bool sym)
         return;
     }
 
+#ifdef Q_OS_WIN
+    if (QDir::isRelativePath(linkName))
+        linkName = files()->currentDirectory().toLocalFile() + '/' + linkName;
+    name = files()->getUrl(name).toLocalFile();
+    if (!(sym ? PaneroWinShell::createSymlink(name, linkName) : PaneroWinShell::createHardLink(name, linkName)))
+        KMessageBox::error(krMainWindow, sym ? i18n("Failed to create a new symlink '%1' to: '%2'", linkName, name)
+                                             : i18n("Failed to create a new link '%1' to '%2'", linkName, name));
+    return;
+#else
     // make link name and target absolute path
     if (linkName.left(1) != "/")
         linkName = files()->currentDirectory().path() + '/' + linkName;
@@ -471,6 +504,7 @@ void ListPanelFunc::krlink(bool sym)
             KMessageBox::error(krMainWindow,
                                i18n("Failed to create a new link '%1' to '%2'", linkName, name));
     }
+#endif
 }
 
 void ListPanelFunc::view()
@@ -888,9 +922,11 @@ QList<QUrl> ListPanelFunc::confirmDeletion(const QList<QUrl> &urls, bool moveToT
         KGuiItem b; // continue button
 
         if (moveToTrash) {
-            s = i18np("Do you really want to move this item to the trash?",
-                      "Do you really want to move these %1 items to the trash?", files.count());
-            b = KGuiItem(i18n("&Trash"));
+            s = PANERO_TEXT(i18np("Do you really want to move this item to the trash?",
+                                  "Do you really want to move these %1 items to the trash?", files.count()),
+                            i18np("Do you really want to move this item to the Recycle Bin?",
+                                  "Do you really want to move these %1 items to the Recycle Bin?", files.count()));
+            b = KGuiItem(PANERO_TEXT(i18n("&Trash"), i18n("Move to &Recycle Bin")));
         } else if (virtualFS) {
             s = i18np("<qt>Do you really want to delete this item <b>physically</b> (not just "
                       "removing it from the virtual items)?</qt>",
@@ -942,10 +978,11 @@ QList<QUrl> ListPanelFunc::confirmDeletion(const QList<QUrl> &urls, bool moveToT
                     const KMessageBox::ButtonCode result = KMessageBox::warningYesNoCancel(
                         krMainWindow,
                         i18n("<qt><p>Folder <b>%1</b> is not empty.</p>", fileString) +
-                            (moveToTrash ? i18n("<p>Skip this one or trash all?</p></qt>") :
+                            (moveToTrash ? PANERO_TEXT(i18n("<p>Skip this one or trash all?</p></qt>"),
+                                                       i18n("<p>Skip this one or move all to the Recycle Bin?</p></qt>")) :
                                            i18n("<p>Skip this one or delete all?</p></qt>")),
                         QString(), KGuiItem(i18n("&Skip")),
-                        KGuiItem(moveToTrash ? i18n("&Trash All") : i18n("&Delete All")));
+                        KGuiItem(moveToTrash ? PANERO_TEXT(i18n("&Trash All"), i18n("Move &All to Recycle Bin")) : i18n("&Delete All")));
 
                     // process user response
                     if (result == KMessageBox::Yes) {

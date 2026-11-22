@@ -5,10 +5,14 @@
 */
 
 #include "krjob.h"
+#include "../panerowording.h"
 
 #include <KI18n/KLocalizedString>
 #include <KIO/DeleteJob>
 #include <KIO/FileUndoManager>
+#include <KCoreAddons/KJobUiDelegate>
+
+#include <QDebug>
 
 KrJob *KrJob::createCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &src,
                             const QUrl &destination, KIO::JobFlags flags)
@@ -21,8 +25,10 @@ KrJob *KrJob::createDeleteJob(const QList<QUrl> &urls, bool moveToTrash)
     const Type type = moveToTrash ? Trash : Delete;
     const bool oneFile = urls.length() == 1;
     const QString description =
-        moveToTrash ? (oneFile ? i18n("Move %1 to trash", urls.first().toDisplayString()) :
-                                 i18np("Move %1 file to trash", "Move %1 files to trash", urls.length())) :
+        moveToTrash ? PANERO_TEXT((oneFile ? i18n("Move %1 to trash", urls.first().toDisplayString()) :
+                                             i18np("Move %1 file to trash", "Move %1 files to trash", urls.length())),
+                                  (oneFile ? i18n("Move %1 to the Recycle Bin", urls.first().toDisplayString(QUrl::PreferLocalFile)) :
+                                             i18np("Move %1 file to the Recycle Bin", "Move %1 files to the Recycle Bin", urls.length()))) :
                       (oneFile ? i18n("Delete %1", urls.first().toDisplayString()) :
                                  i18np("Delete %1 file", "Delete %1 files", urls.length()));
 
@@ -116,6 +122,16 @@ void KrJob::start()
 
 void KrJob::connectStartedJob()
 {
+#ifdef Q_OS_WIN
+    // Windows: never fail silently (progress is hidden, so an unreported error went unnoticed)
+    connect(m_job, &KJob::result, this, [this](KJob *job) {
+        if (job->error() && job->error() != KJob::KilledJobError) {
+            qWarning() << "Panero job failed:" << job->error() << job->errorString();
+            if (job->uiDelegate() && !job->uiDelegate()->isAutoErrorHandlingEnabled())
+                job->uiDelegate()->showErrorMessage();
+        }
+    });
+#endif
     connect(m_job, &KIO::Job::finished, this, [=]() {
         emit terminated(this);
         deleteLater();

@@ -160,6 +160,7 @@ public:
         KIO::filesize_t size = 0;
         mode_t mode = 0;
         time_t mtime = 0, ctime = 0, atime = 0;
+        time_t btime = -1; ///< creation time; only known on Windows
         uid_t uid = 0;
         gid_t gid = 0;
         QString linkDestination;

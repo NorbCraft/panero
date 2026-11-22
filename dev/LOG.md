@@ -486,3 +486,33 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Released v0.1.0-preview.10: PR #15 (CI green), tag on 1099ea025, release
   run 45044078622; SHA256SUMS verified, Version 0.1.0~preview.10-1; .deb
   copied to ~/Downloads.
+
+## 2026-11-22 — Preview 11 planning
+
+- Owner plan: remove legacy sidebar, cloud selection, drive buttons, TC-like
+  Multi-Rename (Ctrl+M), Windows version up to date, duplicate Copy path.
+- Done on feature/preview11 (not released): per-panel sidebar unreachable
+  (button, Alt+Down, restore); cloud highlight follows the active panel
+  (GUI test screenshots 09/10).
+- Facts gathered: Krusader's HideSquashFS is off by default (snaps listed);
+  KRename 5.0.2 (Ubuntu, not installed) features read from its binary (no
+  handbook shipped, docs.kde.org pages 404); experiment/windows is 21 ahead,
+  27 behind main; Windows CI screenshot shows "?" + grey close (dialog flags).
+- Waiting for the owner's decisions before implementing the rest.
+- Owner decisions (D-019): all recommendations; plus sort arrow ^/v.
+- Done on feature/preview11: sort arrow drawn by KrStyleProxy (Fusion/Breeze
+  drew v for ascending, Windows ^); Copy Path duplicates hidden; Ctrl+M =
+  Multi-Rename, Alt+F1/F2 = drive lists (GNOME binds Alt+F1 panel-main-menu
+  and Alt+F2 panel-run-dialog on this desktop: they reach Panero only when
+  freed); drive buttons (no file access in the GUI thread, mountinfo
+  notifier, Solid); Multi-Rename (TC rules, KIO renames, swap-safe plan,
+  rollback on error, undo, presets). Tests: 9 suites incl. panerodrivestest
+  and paneromultirenametest (2 real bugs found: literal brackets, plain
+  replace doubled backslashes); gui-rename-test.sh rename+undo on disk.
+- Windows merge running in a separate worktree (feature/windows-main).
+- Windows merge done by a helper session on feature/windows-main (CI
+  45059382401 Windows, 45059382411 Linux, both green); fast-forwarded
+  feature/preview11 to it; local ctest 9/9. Fixed my drive bar building
+  QIcons in a worker thread on Windows; AA_DisableWindowContextHelpButton on
+  Windows. Open: the owner's "right panel without outline" was not
+  reproduced on the runner (fixed what differed: 0 px to the window edge).

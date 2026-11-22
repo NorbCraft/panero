@@ -96,6 +96,11 @@ KUrlRequesterDlgForCopy::KUrlRequesterDlgForCopy(const QUrl &urlName, const QStr
     mainLayout->addWidget(label);
 
     urlRequester_ = new KUrlRequester(urlName, this);
+#ifdef Q_OS_WIN
+    // Windows: show C:\folder\ as Explorer and Total Commander do (both forms are accepted)
+    if (urlName.isLocalFile())
+        urlRequester_->setText(QDir::toNativeSeparators(urlName.toLocalFile()));
+#endif
     urlRequester_->setMinimumWidth(urlRequester_->sizeHint().width() * 3);
     mainLayout->addWidget(urlRequester_);
 

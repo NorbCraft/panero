@@ -20,6 +20,10 @@
 #include <KConfigCore/KSharedConfig>
 #include <KI18n/KLocalizedString>
 #include <KIO/JobUiDelegate>
+#include <KWidgetsAddons/KMessageBox>
+
+#include <algorithm>
+#include <QFile>
 
 #include "fileitem.h"
 #include "krpermhandler.h"
@@ -138,6 +142,28 @@ bool FileSystem::scanOrRefresh(const QUrl &directory, bool onlyScan)
 
 void FileSystem::deleteFiles(const QList<QUrl> &urls, bool moveToTrash)
 {
+#ifdef Q_OS_WIN
+    // Windows: KIO 5's trash worker passes "\C:\..." to SHFileOperation, which fails, and
+    // reports success (kio_trash_win.cpp, doFileOp/translateError). Qt's moveToTrash uses
+    // IFileOperation and puts local files into the Recycle Bin.
+    if (moveToTrash && !urls.isEmpty() &&
+        std::all_of(urls.cbegin(), urls.cend(), [](const QUrl &url) { return url.isLocalFile(); })) {
+        QStringList failed;
+        for (const QUrl &url : urls) {
+            const QString path = QDir::toNativeSeparators(url.toLocalFile());
+            if (!QFile::moveToTrash(path))
+                failed << path;
+        }
+        emit fileSystemChanged(urls.first().adjusted(QUrl::RemoveFilename), true);
+        emit fileSystemChanged(QUrl("trash:/"), false);
+        if (!failed.isEmpty()) {
+            qWarning() << "Panero: could not move to the Recycle Bin:" << failed;
+            KMessageBox::errorList(krMainWindow, i18n("These items could not be moved to the Recycle Bin:"),
+                                   failed);
+        }
+        return;
+    }
+#endif
     KrJob *krJob = KrJob::createDeleteJob(urls, moveToTrash);
     connect(krJob, &KrJob::started, this, [=](KIO::Job *job) {
         connectJobToSources(job, urls);
@@ -196,6 +222,36 @@ FileSystem::LocalStat FileSystem::statLocalFile(const QString &name, const QStri
     LocalStat s;
     s.name = name;
 
+#ifdef Q_OS_WIN
+    // Windows: QFileInfo (Unicode paths). Symbolic links and junctions are links;
+    // .lnk shortcuts are ordinary files, as in Explorer and Total Commander.
+    Q_UNUSED(pathByteArray)
+    const QFileInfo fi(path);
+    s.isLink = fi.isSymbolicLink();
+    if (!fi.exists() && !s.isLink)
+        return s;
+    s.ok = true;
+    s.isDir = fi.isDir();
+    if (s.isLink) {
+        s.linkDestination = fi.symLinkTarget();
+        s.brokenLink = !QFileInfo::exists(s.linkDestination);
+    }
+    s.size = s.isDir ? 0 : KIO::filesize_t(fi.size());
+    s.mode = (s.isDir ? S_IFDIR | 0755 : S_IFREG | 0644);
+    if (!fi.isWritable())
+        s.mode &= ~mode_t(0222);
+    if (s.isLink)
+        s.mode = (s.mode & ~mode_t(0170000)) | S_IFLNK;
+    const auto secs = [](const QDateTime &t) { return t.isValid() ? time_t(t.toSecsSinceEpoch()) : time_t(-1); };
+    s.mtime = secs(fi.lastModified());
+    s.ctime = secs(fi.metadataChangeTime());
+    s.atime = secs(fi.lastRead());
+    s.btime = secs(fi.birthTime());
+    s.uid = uid_t(-1);
+    s.gid = gid_t(-1);
+    return s;
+#else
+
     // read file status; in case of error create a "broken" file item
     QT_STATBUF stat_p;
     memset(&stat_p, 0, sizeof(stat_p));
@@ -228,6 +284,7 @@ FileSystem::LocalStat FileSystem::statLocalFile(const QString &name, const QStri
         }
     }
     return s;
+#endif
 }
 
 FileItem *FileSystem::createFileItemFromStat(const LocalStat &s, const QString &directory, bool virt)
@@ -243,13 +300,17 @@ FileItem *FileSystem::createFileItemFromStat(const LocalStat &s, const QString &
     // create normal file item
     return new FileItem(fileItemName, fileItemUrl, s.isDir,
                         s.size, s.mode,
-                        s.mtime, s.ctime, s.atime, -1,
+                        s.mtime, s.ctime, s.atime, s.btime,
                         s.uid, s.gid, QString(), QString(),
                         s.isLink, s.linkDestination, s.brokenLink);
 }
 
 QString FileSystem::readLinkSafely(const char *path)
 {
+#ifdef Q_OS_WIN
+    const QString target = QFileInfo(QString::fromLocal8Bit(path)).symLinkTarget();
+    return target.isEmpty() ? QString() : target;
+#else
     // inspired by the areadlink_with_size function from gnulib, which is used for coreutils
     // idea: start with a small buffer and gradually increase it as we discover it wasn't enough
 
@@ -286,6 +347,7 @@ QString FileSystem::readLinkSafely(const char *path)
             bufferSize = maxBufferSize;
         }
     }
+#endif
 }
 
 FileItem *FileSystem::createFileItemFromKIO(const KIO::UDSEntry &entry, const QUrl &directory, bool virt)

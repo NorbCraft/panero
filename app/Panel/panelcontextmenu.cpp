@@ -7,6 +7,7 @@
 */
 
 #include "panelcontextmenu.h"
+#include "../panerowording.h"
 #include <QClipboard>
 #include <QApplication>
 
@@ -45,9 +46,11 @@
 #include "../FileSystem/filesystem.h"
 #include "../FileSystem/krtrashhandler.h"
 #include "../MountMan/kmountman.h"
-#include "../Cloud/panerocloud.h"
 #include "../krglobal.h"
+#ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
+#include "../Cloud/panerocloud.h"
 #include "../Cloud/panerooffline.h"
+#endif
 #include "../UserAction/useractionpopupmenu.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
@@ -246,11 +249,15 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
         auto *fileItemActions = new KFileItemActions(this);
         fileItemActions->setItemListProperties(KFileItemListProperties(_items));
         fileItemActions->setParentWidget(MAIN_VIEW);
+        const int before = actions().count();
 #if KIO_VERSION >= QT_VERSION_CHECK(5, 79, 0)
         fileItemActions->addActionsTo(this);
 #else
         fileItemActions->addServiceActionsTo(this);
 #endif
+        // Panero: Panero has its own Copy Path; installed service menus doing
+        // the same would show it twice (D-019)
+        hideCopyPathDuplicates(actions().mid(before));
     }
 
     addSeparator();
@@ -272,7 +279,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     if (KConfigGroup(krConfig, "General").readEntry("Move To Trash", _MoveToTrash)
         && panel->func->files()->canMoveToTrash(fileNames)) {
         addAction(Icon("user-trash"),
-                  i18n("Move to Trash"))->setData(QVariant(TRASH_ID));
+                  PANERO_TEXT(i18n("Move to Trash"), i18n("Move to Recycle Bin")))->setData(QVariant(TRASH_ID));
     }
     // -------- DELETE
     addAction(Icon("edit-delete"),
@@ -322,7 +329,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     // --------- empty trash
     if (trashOnly) {
         addAction(i18n("Restore"))->setData(QVariant(RESTORE_TRASHED_FILE_ID));
-        addAction(i18n("Empty Trash"))->setData(QVariant(EMPTY_TRASH_ID));
+        addAction(PANERO_TEXT(i18n("Empty Trash"), i18n("Empty Recycle Bin")))->setData(QVariant(EMPTY_TRASH_ID));
     }
 
 #ifdef SYNCHRONIZER_ENABLED
@@ -334,6 +341,7 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- copy/paste
     addSeparator();
+#ifndef Q_OS_WIN
     // Panero: offline files of cloud drives (R10), for files and folders
     {
         PaneroOffline *offline = PaneroOffline::instance();
@@ -368,6 +376,8 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
             addSeparator();
     }
 
+#endif
+
     addAction(panel->gui->actions()->actCut);
     addAction(panel->gui->actions()->actCopy);
     addAction(panel->gui->actions()->actPaste);
@@ -380,6 +390,38 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- properties
     addAction(panel->gui->actions()->actProperties);
+}
+
+bool PanelContextMenu::isCopyPathText(const QString &text)
+{
+    QString t = text;
+    t.remove(QLatin1Char('&'));
+    t = t.simplified().toLower();
+    while (t.endsWith(QLatin1Char('.')) || t.endsWith(QChar(0x2026)))
+        t.chop(1);
+    static const QStringList same{QStringLiteral("copy path"), QStringLiteral("copy paths"), QStringLiteral("copy location"),
+                                  QStringLiteral("copy full path"), QStringLiteral("copy file path"), QStringLiteral("copy file paths"),
+                                  QStringLiteral("copy path to clipboard"), QStringLiteral("copy file path to clipboard")};
+    return same.contains(t.trimmed());
+}
+
+bool PanelContextMenu::hideCopyPathDuplicates(const QList<QAction *> &added)
+{
+    bool anyVisible = false;
+    for (QAction *a : added) {
+        if (a->isSeparator()) {
+            continue;
+        }
+        if (QMenu *sub = a->menu()) {
+            // KFileItemActions puts most service menus into an "Actions" submenu
+            if (!hideCopyPathDuplicates(sub->actions()))
+                a->setVisible(false);
+        } else if (isCopyPathText(a->text())) {
+            a->setVisible(false);
+        }
+        anyVisible = anyVisible || a->isVisible();
+    }
+    return anyVisible;
 }
 
 void PanelContextMenu::addEmptyMenuEntries()
@@ -480,7 +522,7 @@ void PanelContextMenu::performAction(int id)
     break;
 #endif
     case OPEN_TERM_ID :
-        SLOTS->runTerminal(singleURL.path());
+        SLOTS->runTerminal(singleURL.isLocalFile() ? singleURL.toLocalFile() : singleURL.path());
         break;
     case COPY_PATH_ID : {
         QStringList paths;
@@ -490,6 +532,7 @@ void PanelContextMenu::performAction(int id)
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
         break;
     }
+#ifndef Q_OS_WIN
     case CLOUD_AVAILABLE_ID : {
         QStringList paths;
         for (const KFileItem &item : _items)
@@ -545,6 +588,7 @@ void PanelContextMenu::performAction(int id)
         panel->func->refresh();
         break;
     }
+#endif
     case TERMINAL_HERE_ID : {
         // a folder opens there, a file in the folder it is in
         QString dir = panel->virtualPath().toLocalFile();

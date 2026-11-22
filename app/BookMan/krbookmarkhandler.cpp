@@ -7,6 +7,7 @@
 */
 
 #include "krbookmarkhandler.h"
+#include "../panerowording.h"
 #include "kraddbookmarkdlg.h"
 
 #include "../krglobal.h"
@@ -843,7 +844,7 @@ void KrBookmarkHandler::rightClickOnSpecialBookmark()
     act->setData(QVariant(POPULAR_URLS_ID));
     act->setCheckable(true);
     act->setChecked(hasPopularURLs);
-    act = menu.addAction(i18n("Trash bin"));
+    act = menu.addAction(PANERO_TEXT(i18n("Trash bin"), i18n("Recycle Bin")));
     act->setData(QVariant(TRASH_ID));
     act->setCheckable(true);
     act->setChecked(hasTrash);

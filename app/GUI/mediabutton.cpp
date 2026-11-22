@@ -6,12 +6,19 @@
 */
 
 #include "mediabutton.h"
+#include "../panerowording.h"
+#include "panerodrivefilter.h"
 #include "../FileSystem/paneroslowpaths.h"
 
 #include <QFileInfo>
 
 #include "../krglobal.h"
 #include "../icon.h"
+#ifdef Q_OS_WIN
+#include "../Panel/panerowinshell.h"
+#endif
+
+static const QString windowsDrivePrefix = QStringLiteral("windrive:");
 #include "../MountMan/kmountman.h"
 
 // QtCore
@@ -25,6 +32,7 @@
 #include <KI18n/KLocalizedString>
 #include <KIO/Global>
 #include <KIOCore/KMountPoint>
+#include <Solid/Block>
 #include <KWidgetsAddons/KMessageBox>
 
 #include <Solid/DeviceInterface>
@@ -75,6 +83,13 @@ void MediaButton::updateIcon(const QString &mountPoint)
 
     currentMountPoint = mountPoint;
 
+#ifdef Q_OS_WIN
+    if (!mountPoint.isEmpty()) {
+        setIcon(PaneroWinShell::driveIcon(mountPoint));
+        return;
+    }
+#endif
+
     QString iconName("system-file-manager");
     QStringList overlays;
 
@@ -113,6 +128,15 @@ void MediaButton::slotAboutToHide()
 
 void MediaButton::createMediaList()
 {
+#ifdef Q_OS_WIN
+    // Windows: the drives as Explorer lists them ("Local Disk (C:)", "USB Drive (E:)")
+    for (const PaneroWinShell::Drive &drive : PaneroWinShell::drives()) {
+        QAction *act = popupMenu->addAction(drive.icon, drive.name);
+        act->setData(QVariant(windowsDrivePrefix + drive.rootPath));
+        udiNameMap[windowsDrivePrefix + drive.rootPath] = drive.name;
+    }
+    return;
+#endif
     // devices detected by solid
     storageDevices = Solid::Device::listFromType(Solid::DeviceInterface::StorageAccess);
 
@@ -181,6 +205,19 @@ bool MediaButton::getNameAndIcon(Solid::Device & device, QString &name, QIcon &i
         label = vol->label();
         fstype = vol->fsType();
         size = KIO::convertSize(vol->size());
+    }
+
+    // Panero: the same rules as the drive buttons (D-019): no snap images,
+    // loop devices, /boot, memory file systems, AppImage mounts ...
+    if (vol && (vol->isIgnored() || PaneroDriveFilter::isSystemFsType(fstype)))
+        return false;
+    {
+        const auto *block = device.as<Solid::Block>();
+        const QString devicePath = block ? block->device() : QString();
+        if (devicePath.startsWith(QLatin1String("/dev/loop")))
+            return false;
+        if (mounted && PaneroDriveFilter::classify(path, fstype, devicePath, QString(), false) == PaneroDriveFilter::Kind::Hidden)
+            return false;
     }
 
     bool printSize = false;
@@ -254,6 +291,10 @@ void MediaButton::slotPopupActivated(QAction *action)
 {
     if (action && action->data().canConvert<QString>()) {
         QString udi = action->data().toString();
+        if (udi.startsWith(windowsDrivePrefix)) {
+            emit openUrl(QUrl::fromLocalFile(udi.mid(windowsDrivePrefix.length())));
+            return;
+        }
         if (!udi.isEmpty()) {
             bool mounted = false;
             QString mountPoint;
@@ -320,6 +361,8 @@ bool MediaButton::eventFilter(QObject *o, QEvent *e)
 
 void MediaButton::rightClickMenu(const QString& udi, QPoint pos)
 {
+    if (udi.startsWith(windowsDrivePrefix))
+        return; // no mount/unmount on Windows
     if (rightMenu)
         rightMenu->close();
 
@@ -637,6 +680,10 @@ void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
     const QString cloudName = url.isLocalFile() ? PaneroSlowPaths::displayName(PaneroSlowPaths::mountRoot(url.toLocalFile())) : QString();
     if (!cloudName.isEmpty()) {
         name = cloudName;
+#ifdef Q_OS_WIN
+    } else if (!mountPoint.isEmpty()) {
+        name = PaneroWinShell::driveName(mountPoint);
+#endif
     } else if (!mountPoint.isEmpty()) {
         if (mountPoint == QLatin1String("/")) {
             name = i18nc("the root file system", "System");
@@ -651,7 +698,7 @@ void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
         }
         name = i18nc("drive name (mount point)", "%1 (%2)", name, mountPoint);
     } else if (url.scheme() == QLatin1String("trash")) {
-        name = i18n("Trash");
+        name = PANERO_TEXT(i18n("Trash"), i18n("Recycle Bin"));
     } else if (!url.isLocalFile() && !url.host().isEmpty()) {
         name = url.host();
     } else if (!url.isLocalFile()) {
