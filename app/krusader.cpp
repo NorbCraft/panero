@@ -232,7 +232,7 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         // Settings > Show Menubar; with the menu bar hidden, the menu button at the end
         // of the toolbar (KHamburgerMenu) offers the same menus
         KToggleAction *showMenubar = KStandardAction::showMenubar(nullptr, nullptr, actionCollection());
-        // Ctrl+M stays the (upstream) media menu shortcut
+        // Ctrl+M is Multi-Rename (D-019), not Show Menubar
         actionCollection()->setDefaultShortcuts(showMenubar, {});
         connect(showMenubar, &QAction::toggled, this, [this](bool on) { menuBar()->setVisible(on); });
         KHamburgerMenu *menuButton = KStandardAction::hamburgerMenu(nullptr, nullptr, actionCollection());

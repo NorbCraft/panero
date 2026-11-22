@@ -39,3 +39,15 @@ ecm_add_test(panerocloudsecuritytest.cpp ../app/paneropackageinstaller.cpp
 target_include_directories(panerocloudsecuritytest PRIVATE ${CMAKE_SOURCE_DIR}/app/Cloud ${CMAKE_SOURCE_DIR}/app)
 add_dependencies(panerocloudsecuritytest panero-cloud-key)
 endif()
+
+# Which mounts get a drive button (D-019): pure classification of mount table entries.
+ecm_add_test(panerodrivestest.cpp ../app/GUI/panerodrivefilter.cpp
+    TEST_NAME panerodrivestest
+    LINK_LIBRARIES Qt5::Test Qt5::Core KF5::I18n)
+target_include_directories(panerodrivestest PRIVATE ${CMAKE_SOURCE_DIR}/app/GUI)
+
+# Multi-Rename rules (D-019): Total Commander style patterns, search & replace, conflicts, order.
+ecm_add_test(paneromultirenametest.cpp ../app/Dialogs/paneromultirenamerules.cpp
+    TEST_NAME paneromultirenametest
+    LINK_LIBRARIES Qt5::Test Qt5::Core)
+target_include_directories(paneromultirenametest PRIVATE ${CMAKE_SOURCE_DIR}/app/Dialogs)

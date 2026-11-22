@@ -76,9 +76,10 @@ unchanged):
   uses: Recycle Bin (toolbar, menus, F8/Del question and button, progress,
   settings), "Panero Settings" for the Konfigurator window and in messages,
   Windows Terminal / PowerShell and Notepad in the F9/F4 tooltips.
-- `app/GUI/mediabutton.cpp`: the drive menu lists drive letters. On Windows
-  Alt+F1 / Alt+F2 open the left / right drive list (Total Commander), in
-  addition to Ctrl+Shift+Left/Right (`listpanelactions.cpp`); Ctrl+M stays.
+- `app/GUI/mediabutton.cpp`: the drive menu lists drive letters (Alt+F1 /
+  Alt+F2 open the left / right list, on every platform since preview 11).
+- `app/Panel/panerodrivebar.cpp` (drive buttons, off by default): drive letters
+  from `QStorageInfo` in a worker thread, polled every 5 s; no cloud entries.
 - `app/main.cpp`: no D-Bus on Windows, so no single-instance mode or remote
   control. Plugins are found through `qt.conf`.
 - `app/krusader.cpp`: the main window is a plain `Qt::Window` on Windows (see
@@ -108,8 +109,14 @@ unchanged):
 - **Pin icons**: pins used the theme icons (only drive pins had the shell
   icon). They now use the shell icons when Icons = System, like the file list
   and the tree. GUI test: `pins-shell-icons*`.
-- **Right panel outline**: see the notes in the GUI test results
-  (`outline-*`).
+- **Right panel outline**: the CI screenshots (`outline-*`, with each panel
+  active, by Tab and by mouse, normal and maximized) show the outline drawn on
+  both panels, but the right card sat on the last pixel column of the window
+  (maximized: of the screen), so the window border or the screen edge hides
+  its right side and corners, while the left card sits beside the dock
+  separator. Windows now keeps a 6 px margin on the right
+  (`krusaderview.cpp`); the GUI test requires the outline on both sides of the
+  active panel, none on the other, and at least 3 px to the window edge.
 - **Windows words and first run**: see above. GUI test:
   `toolbar-recycle-bin-menu`, `f8-confirm`, `context-menu-recycle-bin`,
   `settings-window`, `first-run-main-window`.

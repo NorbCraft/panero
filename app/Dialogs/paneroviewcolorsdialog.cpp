@@ -139,6 +139,10 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
 #else
     lookForm->addRow(QString(), m_showCloud);
 #endif
+    m_showDrives = new QCheckBox(i18n("Show drive buttons above each panel"), lookBox);
+    m_showDrives->setToolTip(i18n("System, Home, USB drives, network shares and cloud drives as buttons; "
+                                  "a click opens the drive in that panel. Alt+F1 / Alt+F2 open the drive list."));
+    lookForm->addRow(QString(), m_showDrives);
     layout->addWidget(lookBox);
 
     // ---- file list
@@ -273,6 +277,7 @@ void PaneroViewColorsDialog::load()
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar)))
         m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
     m_showCloud->setChecked(g.readEntry("Show Cloud", PANERO_CLOUD_DEFAULT));
+    m_showDrives->setChecked(g.readEntry("Show Drive Buttons", false));
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
@@ -352,6 +357,7 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_folderColor->setCurrentIndex(0);
     m_menuMode->setCurrentIndex(0);
     m_showCloud->setChecked(true);
+    m_showDrives->setChecked(false);
     m_holdFeedback->setCurrentIndex(0);
     for (QCheckBox *box : qAsConst(m_transparentFill))
         box->setChecked(false);
@@ -376,6 +382,7 @@ void PaneroViewColorsDialog::apply()
     g.writeEntry("Icon Set", m_iconSet->currentData().toString());
     g.writeEntry("Folder Color", folderValue);
     g.writeEntry("Show Cloud", m_showCloud->isChecked());
+    g.writeEntry("Show Drive Buttons", m_showDrives->isChecked());
     KConfigGroup(krConfig, "Look&Feel").writeEntry("Hold Indicator", m_holdFeedback->currentData().toString());
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar))) {
         if (menubar->isChecked() != m_menuMode->currentData().toBool())

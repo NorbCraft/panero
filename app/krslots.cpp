@@ -8,6 +8,7 @@
 
 #include "krslots.h"
 #include "panerowording.h"
+#include "Dialogs/paneromultirenamedialog.h"
 
 #include <QStandardPaths>
 #include "paneropackageinstaller.h"
@@ -53,6 +54,7 @@
 #include "DiskUsage/diskusagegui.h"
 #include "FileSystem/fileitem.h"
 #include "FileSystem/filesystem.h"
+#include "FileSystem/filesystemprovider.h"
 #include "FileSystem/krquery.h"
 #include "GUI/dirhistorybutton.h"
 #include "GUI/kcmdline.h"
@@ -540,37 +542,41 @@ void KrSlots::homeTerminal()
 
 void KrSlots::multiRename()
 {
-    QStringList lst = KrServices::supportedTools();
-    int i = lst.indexOf("RENAME");
-    if (i == -1) {
-        KMessageBox::error(krApp, i18n("Cannot find a batch rename tool.\nYou can get KRename at %1", QLatin1String("https://www.kde.org/applications/utilities/krename/")));
+    // Panero: built-in Multi-Rename with Total Commander's patterns (D-019);
+    // KRename is offered from the dialog when it is installed
+    FileSystem *files = ACTIVE_FUNC->files();
+    if (files->type() == FileSystem::FS_VIRTUAL) {
+        KMessageBox::information(krApp, i18n("Multi-Rename works on the files of one folder. Open the folder the files are in."));
         return;
     }
-    QString pathToRename = lst[i+1];
-
-    const QStringList names = ACTIVE_PANEL->gui->getSelectedNames();
-    if (names.isEmpty()) {
+    QStringList names = ACTIVE_PANEL->gui->getSelectedNames();
+    names.removeAll(QStringLiteral(".."));
+    if (names.isEmpty())
         return;
-    }
-
-    KProcess proc;
-    proc << pathToRename;
-
-    for (const QString& name: names) {
-        FileItem *file = ACTIVE_FUNC->files()->getFileItem(name);
+    QList<PaneroMultiRenameDialog::Entry> entries;
+    QSet<QString> selected(names.begin(), names.end());
+    for (const QString &name : qAsConst(names)) {
+        FileItem *file = files->getFileItem(name);
         if (!file)
             continue;
-        const QUrl url = file->getUrl();
-        // KRename only supports the recursive option combined with a local directory path
-        if (file->isDir() && url.scheme() == "file") {
-            proc << "-r" << url.path();
-        } else {
-            proc << url.toString();
-        }
+        PaneroMultiRenameDialog::Entry e;
+        e.name = file->getName();
+        e.isDir = file->isDir();
+        e.modified = QDateTime::fromSecsSinceEpoch(qint64(file->getModificationTime()));
+        e.size = qint64(file->getSize());
+        entries << e;
     }
-
-    if (!proc.startDetached())
-        KMessageBox::error(nullptr, i18n("Error executing '%1'.", proc.program().join(" ")));
+    QSet<QString> others;
+    for (FileItem *file : files->fileItems()) {
+        if (!selected.contains(file->getName()))
+            others.insert(file->getName());
+    }
+    auto *dialog = new PaneroMultiRenameDialog(krApp, files->currentDirectory(), entries, others);
+    connect(dialog, &PaneroMultiRenameDialog::renamed, this, [](const QUrl &folder) {
+        // panels on this folder show the new names (cloud folders have no watcher)
+        FileSystemProvider::instance().refreshFilesystems(folder, false);
+    });
+    dialog->show();
 }
 
 void KrSlots::rootKrusader()

@@ -39,6 +39,11 @@ private:
     explicit PanelContextMenu(KrPanel *thePanel, bool background, QWidget *parent = nullptr);
 
     void performAction(int id);
+    /// Panero: true for a menu text meaning "copy the path" (service menus)
+    static bool isCopyPathText(const QString &text);
+    /// Panero: hides service-menu entries duplicating Copy Path; false when
+    /// none of @p added stays visible
+    static bool hideCopyPathDuplicates(const QList<QAction *> &added);
     void addEmptyMenuEntries(); // adds the choices for a menu without selected items
     void addCreateNewMenu(); // adds a "create new" submenu
 #if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)

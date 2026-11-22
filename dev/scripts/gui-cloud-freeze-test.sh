@@ -21,6 +21,8 @@ done
 mkdir -p "$DEVHOME/config/panero/cloud"; chmod 700 "$DEVHOME/config/panero/cloud"
 printf '[TestDrive]\ntype = alias\nremote = %s\n' "$DATA" > "$DEVHOME/config/panero/cloud/rclone.conf"
 chmod 600 "$DEVHOME/config/panero/cloud/rclone.conf"
+# with the drive buttons on: they must not touch the drive either
+printf '\n[Panero Appearance]\nShow Drive Buttons=true\n' >> "$DEVHOME/config/panerorc"
 STAGE="$ROOT/build/stage"
 LIBDIR=$(cd "$STAGE/usr/lib" && ls -d */panero | head -1)
 export HOME="$DEVHOME" XDG_CONFIG_HOME="$DEVHOME/config" XDG_DATA_HOME="$DEVHOME/data" XDG_CACHE_HOME="$DEVHOME/cache" \

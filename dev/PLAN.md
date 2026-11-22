@@ -349,10 +349,12 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - [x] Owner decisions (D-019): all recommendations taken; plus sort arrow
       ^ ascending / v descending on every platform.
 - [x] Sort arrow drawn by KrStyleProxy (panel headers).
-- [ ] Hide service-menu duplicates of Copy Path.
-- [ ] Ctrl+M = Multi-Rename, Alt+F1/F2 = drive lists.
-- [ ] Drive buttons (Linux filter; Windows letters after the merge).
-- [ ] Multi-Rename dialog (TC masks, preview, undo, presets, KRename button).
+- [x] Hide service-menu duplicates of Copy Path (checked in the window).
+- [x] Ctrl+M = Multi-Rename, Alt+F1/F2 = drive lists (GNOME owns Alt+F1/F2
+      by default; Ctrl+Shift+Left/Right kept).
+- [x] Drive buttons (PaneroDriveBar, PaneroDriveFilter + unit test; Windows
+      letters coded, compiled after the merge).
+- [x] Multi-Rename dialog (rules + unit tests, gui-rename-test.sh).
 - [ ] Windows in main: merge experiment/windows, platform guards, CI on every
       change, ZIP in the release; fixes: window buttons, pin icons, right
       panel frame, Windows wording.

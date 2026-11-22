@@ -10,6 +10,7 @@ set(Panel_SRCS
     krfiletreeview.cpp
     paneropaths.cpp
     panerowinshell.cpp
+    panerodrivebar.cpp
     paneroiconthemes.cpp
     panerojobrow.cpp
     krlayoutfactory.cpp
@@ -41,6 +42,8 @@ target_link_libraries(Panel
     KF5::KIOFileWidgets
     KF5::KIOWidgets
     KF5::Service
+    KF5::Solid
+    Qt5::Concurrent
     KF5::WidgetsAddons
     KF5::XmlGui
     Qt5::Xml
