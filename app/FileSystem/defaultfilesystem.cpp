@@ -24,8 +24,15 @@
 
 #include <QDateTime>
 #include <QFutureWatcher>
+#include <QFile>
+#include <QGuiApplication>
 #include <QHash>
+#include <QTextStream>
 #include <QtConcurrent/QtConcurrentRun>
+
+#include <atomic>
+#include <memory>
+#include <unistd.h>
 
 #include "paneroslowpaths.h"
 #include <KIOCore/KFileItem>
@@ -39,6 +46,94 @@
 #include "../krglobal.h"
 #include "../krservices.h"
 #include "../JobMan/krjob.h"
+
+namespace
+{
+/// Result of reading a cloud/network folder in a worker thread.
+struct SlowListing {
+    bool exists = false;
+    bool opened = false;
+    bool accessible = false;
+    QList<FileSystem::LocalStat> entries;
+    quint64 signature = 0;
+};
+
+/// Reads @p path: names, then the status of each entry (no file opens).
+void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
+{
+    const QByteArray encoded = path.toLocal8Bit();
+    QT_STATBUF st;
+    if (QT_STAT(encoded.constData(), &st) != 0 || !S_ISDIR(st.st_mode))
+        return;
+    listing.exists = true;
+    QT_DIR *dir = QT_OPENDIR(encoded.constData());
+    if (!dir)
+        return;
+    listing.opened = true;
+    listing.accessible = ::access(encoded.constData(), X_OK) == 0;
+    QStringList names;
+    QT_DIRENT *dirEnt;
+    while ((dirEnt = QT_READDIR(dir)) != nullptr) {
+        const QString name = QString::fromLocal8Bit(dirEnt->d_name);
+        if (name == QLatin1String(".") || name == QLatin1String(".."))
+            continue;
+        if (!showHidden && name.startsWith(QLatin1Char('.')))
+            continue;
+        names << name;
+    }
+    QT_CLOSEDIR(dir);
+    if (!listing.accessible)
+        return;
+
+    QSet<QString> hidden;
+    if (!showHidden && names.contains(QLatin1String(".hidden"))) {
+        QFile dotHidden(path + QLatin1String("/.hidden"));
+        if (dotHidden.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream stream(&dotHidden);
+            while (!stream.atEnd()) {
+                const QString line = stream.readLine();
+                if (!line.isEmpty())
+                    hidden.insert(line);
+            }
+        }
+    }
+    quint64 signature = quint64(names.count());
+    for (const QString &name : qAsConst(names)) {
+        if (hidden.contains(name))
+            continue;
+        const FileSystem::LocalStat entry = FileSystem::statLocalFile(name, path);
+        // order independent: a sum of per entry hashes
+        signature += quint64(qHash(name, 7)) * 1000003u ^ quint64(entry.size) ^ (quint64(entry.mtime) << 20)
+            ^ (entry.isDir ? 0x9E3779B97F4A7C15ull : 0);
+        listing.entries << entry;
+    }
+    listing.signature = signature;
+}
+
+/// Panel progress for a cloud folder being read ("Reading...", cancel button).
+class PaneroListJob : public KIO::Job
+{
+public:
+    PaneroListJob()
+    {
+        setCapabilities(KJob::Killable);
+    }
+    void finish()
+    {
+        done = true;
+        emitResult();
+    }
+    bool killed = false;
+    bool done = false;
+
+protected:
+    bool doKill() override
+    {
+        killed = true;
+        return true;
+    }
+};
+} // namespace
 
 DefaultFileSystem::DefaultFileSystem()
 {
@@ -365,6 +460,11 @@ void DefaultFileSystem::slotWatcherDeleted(const QString& path)
 bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     const QString path = KrServices::urlToLocalPath(directory);
 
+    if (PaneroSlowPaths::isSlowPath(path))
+        return refreshSlow(directory, path, onlyScan);
+    if (_slowTimer)
+        _slowTimer->stop();
+
 #ifdef Q_OS_WIN
     if (!path.contains("/")) { // change C: to C:/
         path = path + QString("/");
@@ -405,8 +505,6 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
     QString name;
     const bool showHidden = showHiddenFiles();
     QSet<QString> hiddenFiles = filesInDotHidden(path);
-    const bool slow = PaneroSlowPaths::isSlowPath(path);
-    QStringList subDirs;
     while ((dirEnt = QT_READDIR(dir)) != nullptr) {
         name = QString::fromLocal8Bit(dirEnt->d_name);
 
@@ -419,19 +517,20 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
 
         FileItem* temp = createLocalFileItem(name);
         addFileItem(temp);
-        if (slow && temp && temp->isDir())
-            subDirs << path + QLatin1Char('/') + name;
     }
     // clean up
     QT_CLOSEDIR(dir);
     QDir::setCurrent(savedDir);
 
-    // Panero: on a cloud drive, list the next level ahead so opening a
-    // subfolder does not wait for the network
-    if (slow && !onlyScan)
-        PaneroSlowPaths::prefetchListings(subDirs);
+    if (!onlyScan)
+        startWatching();
 
-    if (!onlyScan) {
+    return true;
+}
+
+void DefaultFileSystem::startWatching()
+{
+    {
         // start watching the new dir for file changes
         _watcher = new KDirWatch(this);
         // if the current dir is a link path the watcher needs to watch the real path - and signal
@@ -443,8 +542,132 @@ bool DefaultFileSystem::refreshLocal(const QUrl &directory, bool onlyScan) {
         connect(_watcher.data(), &KDirWatch::deleted, this, &DefaultFileSystem::slotWatcherDeleted);
         _watcher->startScan(false);
     }
+}
 
+bool DefaultFileSystem::refreshSlow(const QUrl &directory, const QString &path, bool onlyScan)
+{
+    // mount if needed
+    emit aboutToOpenDir(path);
+
+    _currentDirectory = directory;
+    _currentDirectory.setPath(QDir::cleanPath(_currentDirectory.path()));
+
+    auto listing = std::make_shared<SlowListing>();
+    const bool showHidden = showHiddenFiles();
+    QFutureWatcher<void> watcher;
+    auto *job = new PaneroListJob;
+    QPointer<PaneroListJob> jobGuard(job);
+    QEventLoop loop;
+    connect(&watcher, &QFutureWatcher<void>::finished, &loop, &QEventLoop::quit);
+    connect(job, &KJob::finished, &loop, &QEventLoop::quit);
+    watcher.setFuture(QtConcurrent::run([listing, path, showHidden]() {
+        readSlowFolder(*listing, path, showHidden);
+    }));
+    // "Reading..." and the cancel button only when it takes a moment
+    QTimer::singleShot(250, job, [this, job]() {
+        if (!job->done && !job->killed)
+            emit refreshJobStarted(job);
+    });
+    if (!watcher.isFinished())
+        loop.exec(); // the GUI stays usable; a new navigation kills the job
+
+    if (!jobGuard || jobGuard->killed) {
+        // cancelled: the worker finishes on its own, its result is dropped
+        return false;
+    }
+    job->finish(); // deletes itself
+
+    if (!listing->exists) {
+        emit error(i18n("The folder %1 does not exist.", path));
+        return false;
+    }
+    if (!listing->opened) {
+        emit error(i18n("Cannot open the folder %1.", path));
+        return false;
+    }
+    if (!listing->accessible) {
+        emit error(i18nc("%1=folder path", "Access to %1 denied", path));
+        return false;
+    }
+
+    QStringList subDirs;
+    for (const FileSystem::LocalStat &entry : qAsConst(listing->entries)) {
+        FileItem *item = createFileItemFromStat(entry, path);
+        addFileItem(item);
+        if (item && item->isDir())
+            subDirs << path + QLatin1Char('/') + entry.name;
+    }
+    _slowSignature = listing->signature;
+
+    if (!onlyScan) {
+        // list the next level ahead so opening a subfolder does not wait for
+        // the network
+        PaneroSlowPaths::prefetchListings(subDirs);
+        startWatching();
+        // show what is there now, then ask the provider for changes
+        QTimer::singleShot(0, this, &DefaultFileSystem::revalidateSlowFolder);
+        if (!_slowTimer) {
+            _slowTimer = new QTimer(this);
+            _slowTimer->setInterval(30000);
+            connect(_slowTimer, &QTimer::timeout, this, [this]() {
+                if (QGuiApplication::applicationState() == Qt::ApplicationActive)
+                    revalidateSlowFolder();
+            });
+        }
+        _slowTimer->start();
+    }
     return true;
+}
+
+void DefaultFileSystem::revalidateSlowFolder()
+{
+    if (_slowChecking || _isRefreshing || !_currentDirectory.isLocalFile())
+        return;
+    const QString path = _currentDirectory.toLocalFile();
+    if (!PaneroSlowPaths::isSlowPath(path))
+        return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (path == _revalidatedPath && now - _revalidatedAt < 20000) {
+        checkSlowFolder(); // rclone may have noticed a change by polling
+        return;
+    }
+    _slowChecking = true;
+    const bool started = PaneroSlowPaths::revalidate(path, this, [this, path]() {
+        _slowChecking = false;
+        _revalidatedPath = path;
+        _revalidatedAt = QDateTime::currentMSecsSinceEpoch();
+        checkSlowFolder();
+    });
+    if (!started) {
+        _slowChecking = false;
+        _revalidatedPath = path;
+        _revalidatedAt = now;
+        checkSlowFolder();
+    }
+}
+
+void DefaultFileSystem::checkSlowFolder()
+{
+    if (_slowChecking || _isRefreshing || !_currentDirectory.isLocalFile())
+        return;
+    const QString path = _currentDirectory.toLocalFile();
+    if (!PaneroSlowPaths::isSlowPath(path))
+        return;
+    _slowChecking = true;
+    auto listing = std::make_shared<SlowListing>();
+    auto *watcher = new QFutureWatcher<void>(this);
+    connect(watcher, &QFutureWatcher<void>::finished, this, [this, watcher, listing, path]() {
+        watcher->deleteLater();
+        _slowChecking = false;
+        if (_isRefreshing || _currentDirectory.toLocalFile() != path || !listing->accessible)
+            return;
+        if (listing->signature != _slowSignature)
+            refresh();
+    });
+    const bool showHidden = showHiddenFiles();
+    watcher->setFuture(QtConcurrent::run([listing, path, showHidden]() {
+        readSlowFolder(*listing, path, showHidden);
+    }));
 }
 
 QSet<QString> DefaultFileSystem::filesInDotHidden(const QString &dir)

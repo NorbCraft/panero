@@ -424,3 +424,36 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - rclone warns: the shared Google Drive client id is being retired during 2026
   -> owner decision needed (own client id).
 - Released v0.1.0-preview.8: PR #13, tag on 36b51f366; assets verified; .deb copied to ~/Downloads.
+
+## 2026-11-22 (afternoon) — preview 9: smooth cloud browsing
+
+- Owner: still slower than OneDrive on Windows; never freeze; folder badge;
+  rename clouds; navigation must not leave the cloud's top folder.
+- Checked rclone 1.76 (vfs/dir.go): readDirTree walks without holding the
+  directory lock, so a background recursive refresh does not block browsing;
+  vfs/refresh dir=X forces a re-read (tested on a local mount); rc methods
+  need auth -> random user/pass via RCLONE_RC_USER/PASS environment, socket in
+  the 0700 mount base folder.
+- Measured read-only on the owner's drives (separate --read-only mount with
+  the new flags, own cache in the scratch folder, removed afterwards):
+  Google Drive (7 folders, 240 items) whole tree 33 s, single folder 17–35 s:
+  rclone -vv shows Google 403 "Quota exceeded ... rateLimitExceeded" for
+  rclone's shared client id -> root cause of the Google slowness; own client
+  id support added. OneDrive: recursive refresh failed on "Personal Vault"
+  (ObjectHandle is Invalid) -> read per top folder (4.7 s, 1 of 9 failed).
+  After warm-up, walking every folder: 6 ms (GD) / 6 ms (OD, vault excluded).
+- Implemented: async cloud listing (DefaultFileSystem::refreshSlow), shown
+  folder revalidation, parallel prefetch, rc client (app/Cloud/panerorcclient),
+  folder badges (PaneroCloudUtils::folderCacheState), places + isCloudRoot,
+  media button shows the drive name, tree root without QStorageInfo (statfs),
+  Rename..., own Google client id (Add Cloud + sidebar), D-017.
+- Bugs found while testing: rclone wants recursive="true" as a string; the
+  test dialog check failed because KIOFileWidgets in the Cloud library turns
+  on KDE's automatic accelerators ("&Read-only") - test made tolerant.
+- First version passed rc credentials / client secret through environment
+  variables; the security test's process scanner flagged it (D-016 R3) ->
+  htpasswd hash file and secret only via rclone rcd socket.
+- Tests: ctest 7/7 (46 cloud unit tests), security suite 16/16, new GUI test
+  dev/scripts/gui-cloud-test.sh (Xvfb, stand-in alias drive): path bar,
+  no "..", Up stops, Rename, folder badge - all as expected (screenshots
+  build/cloud-shots, not committed).

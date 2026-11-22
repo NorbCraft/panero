@@ -5,6 +5,7 @@
 */
 
 #include "paneropaths.h"
+#include "../FileSystem/paneroslowpaths.h"
 
 #include <QDir>
 #include <QStorageInfo>
@@ -21,6 +22,10 @@ QUrl PaneroPaths::homeOrDriveRoot(const QUrl &url)
         return root;
     }
     const QString path = QDir::cleanPath(url.toLocalFile());
+    // a cloud drive: its top folder (and no statfs: a network request there)
+    const QString cloudRoot = PaneroSlowPaths::mountRoot(path);
+    if (!cloudRoot.isEmpty())
+        return QUrl::fromLocalFile(cloudRoot);
     const QString home = QDir::cleanPath(QDir::homePath());
     if (path == home || path.startsWith(home + QLatin1Char('/')))
         return QUrl::fromLocalFile(home);

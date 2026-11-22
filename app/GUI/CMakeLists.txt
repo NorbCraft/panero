@@ -17,6 +17,7 @@ set(GUI_SRCS
 add_library(GUI STATIC ${GUI_SRCS})
 
 target_link_libraries(GUI
+    PaneroSlowPaths
     KF5::ConfigCore
     KF5::CoreAddons
     KF5::I18n

@@ -6,6 +6,8 @@
 
 #include "panerocloudutils.h"
 
+#include <dirent.h>
+
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -478,6 +480,47 @@ bool isFullyCached(const QString &cacheFile, qint64 size)
     ::close(fd);
     // the end of the file counts as a hole: no earlier hole means fully downloaded
     return hole >= 0 && hole >= off_t(size);
+}
+
+FolderCache folderCacheState(const QString &folder, const QString &cacheFolder, int maxEntries)
+{
+    struct stat cst;
+    if (::stat(QFile::encodeName(cacheFolder).constData(), &cst) != 0 || !S_ISDIR(cst.st_mode))
+        return FolderCache::Incomplete; // nothing of it was ever downloaded
+    QStringList pending{QString()}; // relative folders still to read
+    int seen = 0;
+    while (!pending.isEmpty()) {
+        const QString rel = pending.takeLast();
+        const QString dirPath = rel.isEmpty() ? folder : folder + QLatin1Char('/') + rel;
+        DIR *dir = ::opendir(QFile::encodeName(dirPath).constData());
+        if (!dir)
+            return FolderCache::Incomplete;
+        bool missing = false;
+        while (dirent *e = ::readdir(dir)) {
+            const QString name = QFile::decodeName(e->d_name);
+            if (name == QLatin1String(".") || name == QLatin1String(".."))
+                continue;
+            if (++seen > maxEntries) {
+                ::closedir(dir);
+                return FolderCache::TooLarge;
+            }
+            const QString childRel = rel.isEmpty() ? name : rel + QLatin1Char('/') + name;
+            struct stat st;
+            if (::lstat(QFile::encodeName(folder + QLatin1Char('/') + childRel).constData(), &st) != 0)
+                continue;
+            if (S_ISDIR(st.st_mode)) {
+                pending << childRel;
+            } else if (S_ISREG(st.st_mode) && st.st_size > 0
+                       && !isFullyCached(cacheFolder + QLatin1Char('/') + childRel, qint64(st.st_size))) {
+                missing = true;
+                break;
+            }
+        }
+        ::closedir(dir);
+        if (missing)
+            return FolderCache::Incomplete;
+    }
+    return FolderCache::Complete;
 }
 
 QString cleanRcloneLogLine(const QString &line)

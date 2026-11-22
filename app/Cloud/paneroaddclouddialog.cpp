@@ -17,6 +17,9 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
+#include <QProcessEnvironment>
+#include <QHash>
+#include <QJsonObject>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHostAddress>
@@ -337,6 +340,17 @@ PaneroAddCloudDialog::PaneroAddCloudDialog(QWidget *parent)
     m_password->setEchoMode(QLineEdit::Password);
     m_readOnly = new QCheckBox(i18n("Read-only access (browse and download only)"), this);
     m_shared = new QCheckBox(i18n("Also files others shared with me"), this);
+    m_ownClient = new QCheckBox(i18n("Use my own Google client ID (much faster)"), this);
+    m_ownClient->setToolTip(i18n("Google limits the shared client ID that rclone uses for everyone, which makes Google Drive slow, "
+                                 "and is retiring it during 2026."));
+    m_clientId = new QLineEdit(this);
+    m_clientId->setPlaceholderText(QStringLiteral("123456789012-abc...apps.googleusercontent.com"));
+    m_clientSecret = new QLineEdit(this);
+    m_clientSecret->setEchoMode(QLineEdit::Password);
+    m_clientSecret->setPlaceholderText(QStringLiteral("GOCSPX-..."));
+    m_ownClientHelp = new QLabel(this);
+    m_ownClientHelp->setWordWrap(true);
+    m_ownClientHelp->setOpenExternalLinks(true);
     m_form->addRow(i18n("Name:"), m_name);
     m_form->addRow(QString(), m_nameHint);
     m_form->addRow(i18n("Server type:"), m_vendor);
@@ -345,6 +359,10 @@ PaneroAddCloudDialog::PaneroAddCloudDialog(QWidget *parent)
     m_form->addRow(i18n("App password:"), m_password);
     m_form->addRow(QString(), m_readOnly);
     m_form->addRow(QString(), m_shared);
+    m_form->addRow(QString(), m_ownClient);
+    m_form->addRow(i18n("Client ID:"), m_clientId);
+    m_form->addRow(i18n("Client secret:"), m_clientSecret);
+    m_form->addRow(QString(), m_ownClientHelp);
     right->addLayout(m_form);
 
     m_importList = new QListWidget(this);
@@ -376,6 +394,9 @@ PaneroAddCloudDialog::PaneroAddCloudDialog(QWidget *parent)
         connect(e, &QLineEdit::textChanged, this, &PaneroAddCloudDialog::updateState);
     connect(m_readOnly, &QCheckBox::toggled, this, &PaneroAddCloudDialog::providerChanged);
     connect(m_shared, &QCheckBox::toggled, this, &PaneroAddCloudDialog::providerChanged);
+    connect(m_ownClient, &QCheckBox::toggled, this, &PaneroAddCloudDialog::providerChanged);
+    for (QLineEdit *e : {m_clientId, m_clientSecret})
+        connect(e, &QLineEdit::textChanged, this, &PaneroAddCloudDialog::updateState);
     connect(m_importList, &QListWidget::itemChanged, this, &PaneroAddCloudDialog::updateState);
     connect(m_terminal, &QPushButton::clicked, this, &PaneroAddCloudDialog::openInteractiveSetup);
 
@@ -396,6 +417,96 @@ QString PaneroAddCloudDialog::suggestedName(const QString &title) const
     for (int i = 2; existing.contains(PaneroCloudUtils::sanitizeRemoteName(name)); ++i)
         name = title + QLatin1Char(' ') + QString::number(i);
     return name;
+}
+
+static QString googleClientHelp()
+{
+    return i18n("<small>Create it once in Google's console (about 10 minutes, free): a project, the Google Drive API, an "
+                "OAuth client of type <i>Desktop app</i>. Step by step: "
+                "<a href=\"https://rclone.org/drive/#making-your-own-client-id\">rclone.org/drive/#making-your-own-client-id</a>. "
+                "The secret is stored encrypted like your sign-in.</small>");
+}
+
+bool PaneroAddCloudDialog::useOwnGoogleClient(QWidget *parent, const PaneroCloud::Entry &entry)
+{
+    if (!entry.isRclone() || entry.rcloneType != QLatin1String("drive"))
+        return false;
+    QDialog ask(parent);
+    ask.setWindowTitle(i18n("Use Own Google Client ID"));
+    auto *layout = new QVBoxLayout(&ask);
+    auto *intro = new QLabel(i18n("<p>Google limits the client ID that rclone shares with everyone, so <b>%1</b> is slow "
+                                  "(Google answers \"quota exceeded\" and rclone has to wait). It is also being retired during "
+                                  "2026. With your own client ID Google Drive is fast.</p><p>After this you sign in to Google "
+                                  "once more in your browser. Your files are not touched.</p>",
+                                  entry.label.toHtmlEscaped()),
+                             &ask);
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+    auto *form = new QFormLayout;
+    auto *id = new QLineEdit(&ask);
+    id->setPlaceholderText(QStringLiteral("123456789012-abc...apps.googleusercontent.com"));
+    auto *secret = new QLineEdit(&ask);
+    secret->setEchoMode(QLineEdit::Password);
+    secret->setPlaceholderText(QStringLiteral("GOCSPX-..."));
+    form->addRow(i18n("Client ID:"), id);
+    form->addRow(i18n("Client secret:"), secret);
+    layout->addLayout(form);
+    auto *help = new QLabel(googleClientHelp(), &ask);
+    help->setWordWrap(true);
+    help->setOpenExternalLinks(true);
+    layout->addWidget(help);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &ask);
+    buttons->button(QDialogButtonBox::Ok)->setText(i18n("Sign In"));
+    buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
+    layout->addWidget(buttons);
+    const auto check = [id, secret, buttons]() {
+        buttons->button(QDialogButtonBox::Ok)->setEnabled(PaneroCloudSetup::validGoogleClientId(id->text().trimmed())
+                                                          && PaneroCloudSetup::validGoogleClientSecret(secret->text().trimmed()));
+    };
+    QObject::connect(id, &QLineEdit::textChanged, &ask, check);
+    QObject::connect(secret, &QLineEdit::textChanged, &ask, check);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &ask, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &ask, &QDialog::reject);
+    ask.setMinimumWidth(520);
+    if (ask.exec() != QDialog::Accepted)
+        return false;
+
+    QString why;
+    if (!PaneroCloudSetup::callbackPortFree(&why)) {
+        KMessageBox::error(parent, why);
+        return false;
+    }
+    auto *cloud = PaneroCloud::instance();
+    const bool wasMounted = cloud->isMounted(entry.id);
+    if (wasMounted)
+        cloud->unmount(entry.id);
+    const QString clientId = id->text().trimmed();
+    QString error;
+    // the client first (the secret only through rclone's private socket; the
+    // current sign-in key stays until the new sign-in replaces it)
+    bool ok = PaneroCloudSetup::setRemoteOptionsPrivately(
+        entry.rcloneRemote, QJsonObject{{QStringLiteral("client_id"), clientId}, {QStringLiteral("client_secret"), secret->text().trimmed()}}, &error);
+    if (ok) {
+        // a new sign-in with the new client: the old key belongs to the shared client
+        SignInDialog dlg(QStringLiteral("Google Drive"), entry.rcloneType,
+                         {QStringLiteral("config"), QStringLiteral("update"), entry.rcloneRemote, QStringLiteral("client_id=") + clientId}, parent);
+        ok = dlg.exec() == QDialog::Accepted;
+        if (!ok)
+            error = dlg.cancelled() ? QString() : dlg.error();
+    }
+    if (ok)
+        ok = PaneroCloudSetup::verifyRemote(entry.rcloneRemote, &error);
+    if (!ok) {
+        // back to the shared client (the old sign-in key works with it)
+        PaneroCloudSetup::setRemoteOptionsPrivately(entry.rcloneRemote,
+                                                    QJsonObject{{QStringLiteral("client_id"), QString()}, {QStringLiteral("client_secret"), QString()}},
+                                                    nullptr);
+        if (!error.isEmpty())
+            KMessageBox::error(parent, i18n("Google Drive still uses the shared client ID: %1", error));
+    }
+    if (wasMounted)
+        cloud->mount(cloud->entry(entry.id));
+    return ok;
 }
 
 void PaneroAddCloudDialog::providerChanged()
@@ -447,6 +558,12 @@ void PaneroAddCloudDialog::providerChanged()
     setRowVisible(m_form, m_password, p.kind == Kind::WebDav);
     setRowVisible(m_form, m_readOnly, p.kind == Kind::OAuth && scoped);
     setRowVisible(m_form, m_shared, p.type == QLatin1String("onedrive"));
+    const bool drive = p.type == QLatin1String("drive");
+    setRowVisible(m_form, m_ownClient, drive);
+    setRowVisible(m_form, m_clientId, drive && m_ownClient->isChecked());
+    setRowVisible(m_form, m_clientSecret, drive && m_ownClient->isChecked());
+    setRowVisible(m_form, m_ownClientHelp, drive && m_ownClient->isChecked());
+    m_ownClientHelp->setText(googleClientHelp());
     m_importList->setVisible(p.kind == Kind::Import);
     m_importDelete->setVisible(p.kind == Kind::Import);
     m_terminal->setVisible(p.kind == Kind::Other);
@@ -485,6 +602,9 @@ void PaneroAddCloudDialog::updateState()
         ok = !m_name->text().trimmed().isEmpty() && !exists;
         if (p.kind == Kind::WebDav)
             ok = ok && !m_url->text().trimmed().isEmpty() && !m_user->text().trimmed().isEmpty() && !m_password->text().isEmpty();
+        if (p.type == QLatin1String("drive") && m_ownClient->isChecked())
+            ok = ok && PaneroCloudSetup::validGoogleClientId(m_clientId->text().trimmed())
+                && PaneroCloudSetup::validGoogleClientSecret(m_clientSecret->text().trimmed());
     }
     m_buttons->button(QDialogButtonBox::Ok)->setEnabled(ok);
 }
@@ -524,6 +644,24 @@ bool PaneroAddCloudDialog::createRemote(const Provider &p, const QString &remote
         const bool scoped = p.type == QLatin1String("drive") || p.type == QLatin1String("onedrive");
         QStringList args{QStringLiteral("config"), QStringLiteral("create"), remote, p.type};
         args << PaneroCloudSetup::oauthOptions(p.type, scoped && m_readOnly->isChecked(), m_shared->isChecked());
+        // own Google client: the ID is public; the secret goes only through
+        // rclone's private socket into the encrypted configuration, never into
+        // a command line or an environment
+        const bool ownClient = p.type == QLatin1String("drive") && m_ownClient->isChecked();
+        if (ownClient) {
+            const QString clientId = m_clientId->text().trimmed();
+            QByteArray err;
+            PaneroRclone::run(args + QStringList{QStringLiteral("client_id=") + clientId, QStringLiteral("config_refresh_token=false"),
+                                                 QStringLiteral("--non-interactive")},
+                              nullptr, &err, 30000);
+            if (!PaneroCloudSetup::setRemoteOptionsPrivately(remote, QJsonObject{{QStringLiteral("client_secret"), m_clientSecret->text().trimmed()}},
+                                                             error)) {
+                PaneroCloudSetup::deleteRemote(remote);
+                return false;
+            }
+            // the sign-in: rclone reads the client from its configuration
+            args = QStringList{QStringLiteral("config"), QStringLiteral("update"), remote, QStringLiteral("client_id=") + clientId};
+        }
         SignInDialog dlg(p.title, p.type, args, this);
         m_driveRecovery = false;
         m_setupError.clear();
@@ -534,6 +672,8 @@ bool PaneroAddCloudDialog::createRemote(const Provider &p, const QString &remote
         }
         if (error)
             *error = dlg.cancelled() ? QString() : dlg.error();
+        if (ownClient)
+            PaneroCloudSetup::deleteRemote(remote);
         return false;
     }
     const QString vendor = m_vendor->currentData().toString();

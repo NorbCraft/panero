@@ -6,6 +6,7 @@
 */
 
 #include "mediabutton.h"
+#include "../FileSystem/paneroslowpaths.h"
 
 #include <QFileInfo>
 
@@ -77,6 +78,10 @@ void MediaButton::updateIcon(const QString &mountPoint)
     QString iconName("system-file-manager");
     QStringList overlays;
 
+    if (PaneroSlowPaths::isCloudRoot(mountPoint)) {
+        setIcon(Icon(QStringLiteral("folder-cloud")));
+        return;
+    }
     if(!mountPoint.isEmpty()) {
         Solid::Device device(krMtMan.findUdiForPath(mountPoint, Solid::DeviceInterface::StorageAccess));;
         auto *vol = device.as<Solid::StorageVolume> ();
@@ -628,7 +633,11 @@ void MediaButton::slotCheckMounts()
 void MediaButton::updateLabel(const QUrl &url, const QString &mountPoint)
 {
     QString name;
-    if (!mountPoint.isEmpty()) {
+    // Panero: a cloud drive shows its name only (not the mount folder)
+    const QString cloudName = url.isLocalFile() ? PaneroSlowPaths::displayName(PaneroSlowPaths::mountRoot(url.toLocalFile())) : QString();
+    if (!cloudName.isEmpty()) {
+        name = cloudName;
+    } else if (!mountPoint.isEmpty()) {
         if (mountPoint == QLatin1String("/")) {
             name = i18nc("the root file system", "System");
         } else {

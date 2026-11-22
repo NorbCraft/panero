@@ -254,8 +254,13 @@ void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCu
 void ListPanelFunc::reloadByUser()
 {
     const QUrl dir = files()->currentDirectory();
-    if (dir.isLocalFile())
+    if (dir.isLocalFile()) {
+        // cloud drive: read this folder again from the provider first (only
+        // this folder; the rest of the drive's listings stay in memory)
+        if (PaneroCloud::instance()->refreshFolder(dir.toLocalFile(), this, [this]() { refresh(); }))
+            return;
         PaneroCloud::instance()->flushDirectoryCache(dir.toLocalFile());
+    }
     refresh();
 }
 
@@ -1448,6 +1453,9 @@ void ListPanelFunc::historyForward()
 
 void ListPanelFunc::dirUp()
 {
+    // Panero: the top folder of a cloud drive is as far up as browsing it goes
+    if (files()->isRoot())
+        return;
     openUrl(KIO::upUrl(files()->currentDirectory()), files()->currentDirectory().fileName());
 }
 

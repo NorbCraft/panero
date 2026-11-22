@@ -128,6 +128,11 @@ bool isDirtyMeta(const QString &metaFile);
 QString aliasCacheSubPath(const QString &aliasTarget);
 /// True when @p cacheFile exists and has no holes up to @p size (fully downloaded).
 bool isFullyCached(const QString &cacheFile, qint64 size);
+/// Folder badge: whether every file inside @p folder (a cloud mount folder,
+/// recursively) is fully in @p cacheFolder (its folder in the VFS cache).
+/// Empty files count as available. Stops at the first missing file.
+enum class FolderCache { Complete, Incomplete, TooLarge };
+FolderCache folderCacheState(const QString &folder, const QString &cacheFolder, int maxEntries = 20000);
 
 /// One rclone log line without its "<5>" level / date prefix and "ERROR : " tag.
 QString cleanRcloneLogLine(const QString &line);

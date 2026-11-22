@@ -11,7 +11,10 @@
 #include "panerooffline.h"
 #include "panerorclone.h"
 #include "panerocloudsetup.h"
+#include "../FileSystem/paneroslowpaths.h"
 #include <QEventLoop>
+#include <QCryptographicHash>
+#include <QJsonArray>
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -22,6 +25,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QProcess>
 #include <QRegularExpression>
 #include <QJsonObject>
@@ -32,6 +37,7 @@
 #include <algorithm>
 
 #include <KConfigCore/KConfigGroup>
+#include <KIOFileWidgets/KFilePlacesModel>
 #include <KI18n/KLocalizedString>
 #include <KWidgetsAddons/KMessageBox>
 
@@ -118,6 +124,18 @@ PaneroCloud::PaneroCloud(QObject *parent)
     rebuildEntries();
     watchConfigFile();
     refresh();
+    // cloud folders shown in a panel are re-read from the provider in the
+    // background (DefaultFileSystem, stale-while-revalidate)
+    PaneroSlowPaths::setRevalidator([this](const QString &dir, QObject *context, std::function<void()> done) {
+        return refreshFolder(dir, context, done);
+    });
+    PaneroSlowPaths::setNameProvider([this](const QString &mountRoot) {
+        for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+            if (it.value()->dir == mountRoot)
+                return entry(it.key()).label;
+        }
+        return QString();
+    });
 }
 
 PaneroCloud::~PaneroCloud()
@@ -407,6 +425,7 @@ void PaneroCloud::setLabel(const Entry &e, const QString &label)
     if (e.isRclone()) {
         PaneroCloudUtils::setRemoteLabel(g, e.rcloneRemote, label.trimmed());
         rebuildEntries();
+        updatePlaces();
     }
 }
 
@@ -722,6 +741,201 @@ void PaneroCloud::flushDirectoryCache(const QString &localPath)
     }
 }
 
+bool PaneroCloud::refreshFolder(const QString &localPath, QObject *context, const std::function<void()> &done)
+{
+    for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+        const Mount *m = it.value();
+        if (!m->mounted || m->stopping)
+            continue;
+        if (localPath != m->dir && !localPath.startsWith(m->dir + QLatin1Char('/')))
+            continue;
+        if (!m->rc.isValid())
+            return false;
+        QJsonObject params;
+        const QString rel = localPath.mid(m->dir.length() + 1);
+        if (!rel.isEmpty())
+            params.insert(QStringLiteral("dir"), rel); // without "dir": the drive's top folder
+        PaneroRc::call(m->rc, QStringLiteral("vfs/refresh"), params, context, [done](int, const QJsonObject &) {
+            if (done)
+                done();
+        }, 120000);
+        return true;
+    }
+    return false;
+}
+
+bool PaneroCloud::isReadingTree(const QString &id) const
+{
+    const Mount *m = m_mounts.value(id);
+    return m && m->mounted && m->readingTree;
+}
+
+bool PaneroCloud::hasTree(const QString &id) const
+{
+    const Mount *m = m_mounts.value(id);
+    return m && m->mounted && m->treeRead;
+}
+
+void PaneroCloud::readTree(const QString &id)
+{
+    Mount *m = m_mounts.value(id);
+    if (!m || !m->rc.isValid())
+        return;
+    // like OneDrive's Files On-Demand: know every folder up front, so opening
+    // any folder later needs no network (rclone keeps the listings in memory,
+    // changes arrive by polling or when a folder is shown again).
+    // Each top folder is read on its own: one folder that cannot be listed
+    // (OneDrive's locked "Personal Vault") would stop a single walk.
+    m->readingTree = true;
+    m->treeRead = false;
+    const auto failed = [this, id]() {
+        if (Mount *mm = m_mounts.value(id))
+            mm->readingTree = false;
+    };
+    PaneroRc::call(m->rc, QStringLiteral("vfs/refresh"), QJsonObject(), this, [this, id, failed](int status, const QJsonObject &) {
+        Mount *mm = m_mounts.value(id);
+        if (!mm)
+            return;
+        if (status != 200)
+            return failed();
+        const QString dir = mm->dir;
+        auto *watcher = new QFutureWatcher<QStringList>(this);
+        connect(watcher, &QFutureWatcher<QStringList>::finished, this, [this, id, watcher, failed]() {
+            const QStringList folders = watcher->result();
+            watcher->deleteLater();
+            Mount *m2 = m_mounts.value(id);
+            if (!m2)
+                return;
+            if (folders.isEmpty()) {
+                m2->readingTree = false;
+                m2->treeRead = true;
+                return;
+            }
+            QJsonObject params{{QStringLiteral("recursive"), QStringLiteral("true")}, {QStringLiteral("_async"), true}};
+            for (int i = 0; i < folders.count(); ++i)
+                params.insert(i == 0 ? QStringLiteral("dir") : QStringLiteral("dir%1").arg(i), folders.at(i));
+            PaneroRc::call(m2->rc, QStringLiteral("vfs/refresh"), params, this, [this, id, failed](int st, const QJsonObject &answer) {
+                const qint64 jobId = qint64(answer.value(QStringLiteral("jobid")).toDouble());
+                if (st != 200 || jobId <= 0)
+                    return failed();
+                // poll the job until it is done (for the sidebar status)
+                auto *timer = new QTimer(this);
+                timer->setInterval(2000);
+                connect(timer, &QTimer::timeout, this, [this, id, jobId, timer]() {
+                    Mount *m3 = m_mounts.value(id);
+                    if (!m3 || !m3->rc.isValid()) {
+                        timer->deleteLater();
+                        return;
+                    }
+                    PaneroRc::call(m3->rc, QStringLiteral("job/status"), QJsonObject{{QStringLiteral("jobid"), double(jobId)}}, timer,
+                                   [this, id, timer](int code, const QJsonObject &job) {
+                                       Mount *m4 = m_mounts.value(id);
+                                       if (!m4) {
+                                           timer->deleteLater();
+                                           return;
+                                       }
+                                       if (code != 200 || job.value(QStringLiteral("finished")).toBool()) {
+                                           m4->readingTree = false;
+                                           // folders that cannot be listed are reported per folder
+                                           m4->treeRead = code == 200;
+                                           timer->deleteLater();
+                                           emit entriesChanged();
+                                       }
+                                   }, 10000);
+                });
+                timer->start();
+            }, 30000);
+        });
+        // the top level is in memory now; read its folder names off the GUI thread
+        watcher->setFuture(QtConcurrent::run([dir]() {
+            QStringList folders;
+            const QFileInfoList entries = QDir(dir).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::NoSymLinks);
+            for (const QFileInfo &fi : entries)
+                folders << fi.fileName();
+            return folders;
+        }));
+    }, 120000);
+}
+
+void PaneroCloud::setPlacesEnabled(bool enabled)
+{
+    if (!enabled) {
+        delete m_places;
+        m_places = nullptr;
+        return;
+    }
+    if (m_places)
+        return;
+    m_places = new KFilePlacesModel(this);
+    // places of an earlier session (Panero crashed or was killed)
+    const QString base = PaneroCloudUtils::mountBaseDir() + QLatin1Char('/');
+    for (int row = m_places->rowCount() - 1; row >= 0; --row) {
+        const QModelIndex index = m_places->index(row, 0);
+        if (m_places->url(index).isLocalFile() && m_places->url(index).toLocalFile().startsWith(base))
+            m_places->removePlace(index);
+    }
+    updatePlaces();
+}
+
+static QString placeIcon(const QString &rcloneType)
+{
+    // the provider's own icon (a file: places take icon names or paths)
+    const QString name = rcloneType == QLatin1String("drive") ? QStringLiteral("google-drive.svg")
+        : rcloneType == QLatin1String("onedrive")              ? QStringLiteral("onedrive.svg")
+                                                               : QString();
+    if (name.isEmpty())
+        return QStringLiteral("folder-cloud");
+    const QString dir = PaneroCloudUtils::mountBaseDir() + QLatin1String("/.control");
+    const QString path = dir + QLatin1Char('/') + name;
+    if (!QFileInfo::exists(path)) {
+        QDir().mkpath(dir);
+        QFile::copy(QStringLiteral(":/panero-cloud/") + name, path);
+    }
+    return QFileInfo::exists(path) ? path : QStringLiteral("folder-cloud");
+}
+
+void PaneroCloud::addPlace(const QString &id)
+{
+    if (!m_places)
+        return;
+    const Mount *m = m_mounts.value(id);
+    const Entry e = entry(id);
+    if (!m || !m->mounted || e.id.isEmpty())
+        return;
+    const QUrl url = QUrl::fromLocalFile(m->dir);
+    initCloudIcons();
+    const QString icon = placeIcon(e.rcloneType);
+    for (int row = 0; row < m_places->rowCount(); ++row) {
+        const QModelIndex index = m_places->index(row, 0);
+        if (m_places->url(index).adjusted(QUrl::StripTrailingSlash) == url) {
+            if (m_places->text(index) != e.label)
+                m_places->editPlace(index, e.label, url, icon, QCoreApplication::applicationName());
+            return;
+        }
+    }
+    m_places->addPlace(e.label, url, icon, QCoreApplication::applicationName());
+}
+
+void PaneroCloud::removePlace(const QString &dir)
+{
+    if (!m_places)
+        return;
+    const QUrl url = QUrl::fromLocalFile(dir);
+    for (int row = m_places->rowCount() - 1; row >= 0; --row) {
+        const QModelIndex index = m_places->index(row, 0);
+        if (m_places->url(index).adjusted(QUrl::StripTrailingSlash) == url)
+            m_places->removePlace(index);
+    }
+}
+
+void PaneroCloud::updatePlaces()
+{
+    for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+        if (it.value()->mounted && !it.value()->stopping)
+            addPlace(it.key());
+    }
+}
+
 QHash<QString, QString> PaneroCloud::mountDirs() const
 {
     QHash<QString, QString> dirs;
@@ -811,6 +1025,8 @@ void PaneroCloud::mount(const Entry &e)
     folder.replace(QLatin1Char('/'), QLatin1Char('_'));
     if (folder.isEmpty() || folder == QLatin1String(".") || folder == QLatin1String(".."))
         folder = QStringLiteral("remote");
+    if (folder == QLatin1String(".control")) // Panero's own folder there
+        folder = QStringLiteral("_control");
     const QString base = PaneroCloudUtils::mountBaseDir();
     QString dir = base + QLatin1Char('/') + folder;
     if (!QDir().mkpath(base)) {
@@ -874,16 +1090,38 @@ void PaneroCloud::mount(const Entry &e)
     }
     QStringList args{QStringLiteral("mount"), e.rcloneRemote + QLatin1Char(':'), dir};
     args << PaneroOffline::instance()->mountCacheArgs(e.rcloneRemote);
-    // Folder listings: providers that report changes (polled every 30 s) keep
-    // them for an hour, so revisiting a folder needs no network; others 5 min.
-    // Ctrl+R in Panero flushes them (SIGHUP, flushDirectoryCache()).
+    // Folder listings stay in memory: the whole tree is read after mounting
+    // (readTree()), a folder shown in Panero is re-read in the background
+    // (refreshFolder()), and providers that report changes are polled every
+    // 30 s. So opening a folder normally needs no network at all.
     const bool notifies = e.rcloneType == QLatin1String("drive") || e.rcloneType == QLatin1String("onedrive")
         || e.rcloneType == QLatin1String("dropbox") || e.rcloneType == QLatin1String("box");
-    args << QStringLiteral("--dir-cache-time") << (notifies ? QStringLiteral("1h") : QStringLiteral("5m"));
+    args << QStringLiteral("--dir-cache-time") << (notifies ? QStringLiteral("168h") : QStringLiteral("24h"));
     if (notifies)
         args << QStringLiteral("--poll-interval") << QStringLiteral("30s");
+    // the tree is read with few requests where the provider allows it
+    args << QStringLiteral("--fast-list");
     // cached files are checked by size and time only (no extra hash requests)
     args << QStringLiteral("--vfs-fast-fingerprint");
+    // remote control for readTree()/refreshFolder(): only a unix socket in
+    // the private (0700) mount base folder, random credentials per mount;
+    // rclone gets only their hash (PaneroRc)
+    const QString control = QDir(QFileInfo(base).canonicalFilePath()).filePath(QStringLiteral(".control"));
+    if (QDir().mkpath(control)) {
+        QFile::setPermissions(control, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+        QString socketName = folder + QLatin1String(".sock");
+        if (control.length() + socketName.length() > 100) // sun_path limit
+            socketName = QString::fromLatin1(QCryptographicHash::hash(folder.toUtf8(), QCryptographicHash::Sha1).toHex().left(16)) + QLatin1String(".sock");
+        const QString socket = control + QLatin1Char('/') + socketName;
+        QFile::remove(socket); // left over from a crashed session
+        const PaneroRc::Credentials rc = PaneroRc::newCredentials(socket);
+        const QString htpasswd = socket.left(socket.length() - 5) + QLatin1String(".htpasswd");
+        if (PaneroRc::writeHtpasswd(rc, htpasswd)) {
+            m->rc = rc;
+            args << QStringLiteral("--rc") << QStringLiteral("--rc-addr") << (QLatin1String("unix://") + socket) << QStringLiteral("--rc-htpasswd")
+                 << htpasswd;
+        }
+    }
     PaneroRclone::prepare(*m->process, args);
     m->process->start();
     m->poll->start();
@@ -898,6 +1136,8 @@ void PaneroCloud::pollMount(const QString &id)
         m->mounted = true;
         m->poll->stop();
         rebuildEntries();
+        addPlace(id);
+        readTree(id);
         emit mounted(id, QUrl::fromLocalFile(m->dir));
         return;
     }
@@ -956,6 +1196,11 @@ void PaneroCloud::finishMount(const QString &id)
         }
     }
     m->process->deleteLater();
+    removePlace(m->dir);
+    if (m->rc.isValid()) {
+        QFile::remove(m->rc.socket);
+        QFile::remove(m->rc.socket.left(m->rc.socket.length() - 5) + QLatin1String(".htpasswd"));
+    }
     if (isMountPoint(m->dir))
         runFusermountUnmount(m->dir, true);
     QDir().rmdir(m->dir); // only removes it when empty, i.e. not mounted

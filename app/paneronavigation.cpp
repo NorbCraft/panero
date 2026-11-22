@@ -38,6 +38,8 @@
 #include <KCoreAddons/KUrlMimeData>
 #include <QLabel>
 #include <QListWidget>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QMenu>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -337,7 +339,8 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
     auto *cloud = PaneroCloud::instance();
     const PaneroCloud::Entry entry = item ? cloud->entry(item->data(UrlRole).toString()) : PaneroCloud::Entry();
     QMenu menu(this);
-    QAction *open = nullptr, *disconnect = nullptr, *remove = nullptr, *offlineFiles = nullptr, *openOffline = nullptr;
+    QAction *open = nullptr, *disconnect = nullptr, *remove = nullptr, *offlineFiles = nullptr, *openOffline = nullptr, *rename = nullptr,
+            *ownClient = nullptr;
     if (!entry.id.isEmpty()) {
         open = menu.addAction(Icon(QStringLiteral("document-open-folder")), i18n("Open in Active Panel"));
         if (entry.isRclone()) {
@@ -347,6 +350,9 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
         }
         if (entry.isRclone() && cloud->isMounted(entry.id))
             disconnect = menu.addAction(Icon(QStringLiteral("media-eject")), i18n("Disconnect"));
+        rename = menu.addAction(Icon(QStringLiteral("edit-rename")), i18n("Rename..."));
+        if (entry.isRclone() && entry.rcloneType == QLatin1String("drive"))
+            ownClient = menu.addAction(Icon(QStringLiteral("speedometer")), i18n("Use Own Google Client ID (Faster)..."));
         menu.addSeparator();
         remove = menu.addAction(Icon(QStringLiteral("list-remove")), entry.isRclone() ? i18n("Sign Out and Remove...") : i18n("Remove..."));
         menu.addSeparator();
@@ -368,6 +374,24 @@ void PaneroNavigationDock::cloudContextMenu(const QPoint &pos)
         openCloudEntry(entry);
     } else if (chosen == disconnect) {
         cloud->unmount(entry.id);
+    } else if (chosen && chosen == ownClient) {
+        if (PaneroAddCloudDialog::useOwnGoogleClient(this, entry))
+            KMessageBox::information(this, i18n("%1 now uses your own Google client ID.", entry.label));
+    } else if (chosen && chosen == rename) {
+        // only the name shown in Panero: the account, its files and the
+        // offline copies are not touched
+        bool ok = false;
+        const QString name = QInputDialog::getText(this, i18n("Rename"), i18n("Name shown for this cloud:"), QLineEdit::Normal,
+                                                   entry.label, &ok).trimmed();
+        if (ok && !name.isEmpty() && name != entry.label) {
+            cloud->setLabel(entry, name);
+            // panels showing the drive pick up the new name (drive button)
+            if (ACTIVE_PANEL) {
+                ACTIVE_FUNC->refresh();
+                if (OTHER_PANEL)
+                    OTHER_FUNC->refresh();
+            }
+        }
     } else if (chosen && chosen == openOffline) {
         openUrlInActivePanel(QUrl::fromLocalFile(PaneroOffline::mirrorRoot(entry.rcloneRemote)));
     } else if (chosen && chosen == offlineFiles) {

@@ -166,11 +166,35 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   full-disk encryption if it could be lost or stolen. Panero cannot protect
   sign-ins from malicious programs that already run under your user account.
 
+## Browsing cloud drives
+
+- After a drive connects, Panero reads its **whole folder list** in the
+  background (like OneDrive on Windows). From then on opening any folder is
+  instant; Panero checks the folder you open for changes in the background and
+  updates it when something changed.
+- Panero **never waits** for the cloud while you browse: a folder that still
+  has to come from the cloud shows ">> Reading..." and you can go elsewhere
+  meanwhile.
+- The drive's top folder is the top of the path bar (*Google Drive › Documents*)
+  and of the folder tree; **Up** and Backspace stop there.
+- Right-click a drive in the sidebar > **Rename...** changes the name Panero
+  shows (for example *Work OneDrive* and *Private OneDrive*). The account and
+  its files are not touched.
+- **Google Drive slow?** Google limits the sign-in ID that rclone shares with
+  all its users ("quota exceeded"), so listing a folder can take 20 seconds or
+  more; that ID is also being retired during 2026. Use your **own Google
+  client ID**: create it once in Google's console (free, about 10 minutes:
+  <https://rclone.org/drive/#making-your-own-client-id>), then tick *Use my
+  own Google client ID* when adding Google Drive, or right-click an existing
+  Google Drive > **Use Own Google Client ID (Faster)...** and sign in once
+  more. The client secret is stored encrypted like your sign-in.
+
 ## Offline files
 
 - Files you open from a cloud drive stay **available on this device**
   (green check outline) for up to 30 days, within a size limit; others are
-  **online-only** (cloud badge) and are downloaded when you open them.
+  **online-only** (cloud badge) and are downloaded when you open them. A
+  **folder** gets the green check when everything inside it is on this device.
 - Right-click files or folders of a cloud drive:
   - **Make Available Offline**: downloads them now (folders: everything
     inside), in the background with a progress window.
@@ -186,8 +210,8 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   their state, *Synchronise Now*, *Repair*, the space for opened files, and
   whether offline files are deleted when you remove the drive (default: yes).
 - **Ctrl+R** (Reload) on a cloud drive fetches the folder again from the cloud.
-  Changes made elsewhere also appear by themselves within about a minute on
-  Google Drive, OneDrive, Dropbox and Box.
+  Changes made elsewhere also appear by themselves: the folder you look at is
+  checked in the background when you open it and every 30 seconds.
 - **Google Docs, Sheets and Slides** have no file size on the drive (shown as
   0 B). Opening one opens it in Google's editor in your browser. Right-click >
   **Save a Copy as Office File in Other Panel** saves a .docx/.xlsx/.pptx copy.

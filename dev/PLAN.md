@@ -295,3 +295,24 @@ decisions before implementation.
 - [x] Release v0.1.0-preview.6.
 - [ ] Tests with disposable accounts (owner signs in in the browser).
 - [ ] Owner signs in with real accounts.
+
+## Phase 13 — Smooth cloud browsing (owner request 2026-11-22, preview 9)
+
+Owner: still slow compared with OneDrive on Windows, must never freeze;
+folder badge stays "cloud" after Make Available Offline; rename clouds;
+navigation must stop at the cloud's top folder.
+
+- [x] Whole folder tree read in the background after mounting (rclone rc on a
+      private unix socket, hashed random credentials, vfs/refresh recursive per
+      top folder); long --dir-cache-time; Ctrl+R / revisit -> vfs/refresh dir.
+- [x] Cloud folders listed in a worker thread (panel stays usable, a new
+      navigation cancels the listing); revalidate the shown folder in the
+      background and update it when it changed (also every 30 s).
+- [x] Parallel prefetch of the next level; folder tree root without statfs.
+- [x] Folder badge: green when everything inside is in the cache (computed in
+      the background).
+- [x] Rename... for clouds (display name).
+- [x] Cloud top folder is the root: no "..", Up stops, breadcrumb starts with
+      the cloud name (place with OnlyInApp=panero while mounted).
+- [x] Google Drive own client ID (shared client measured rate limited).
+- [ ] Tests, docs, release v0.1.0-preview.9.

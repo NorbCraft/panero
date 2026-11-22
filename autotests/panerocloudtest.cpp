@@ -8,6 +8,7 @@
 #include "panerocloudrevoke.h"
 #include "panerocloudsetup.h"
 #include "panerocloudutils.h"
+#include "panerorcclient.h"
 #include "paneroslowpaths.h"
 
 #include <QDir>
@@ -62,6 +63,8 @@ private slots:
     void callbackPort();
     void slowPaths();
     void cacheMeta();
+    void rcProtocol();
+    void folderCache();
 
 private:
     QTemporaryDir m_tmp;
@@ -545,6 +548,12 @@ void PaneroCloudTest::slowPaths()
     QCOMPARE(PaneroSlowPaths::mountRoot(run + QStringLiteral("/panero-cloud/OneDrive/Docs/a.txt")), run + QStringLiteral("/panero-cloud/OneDrive"));
     QCOMPARE(PaneroSlowPaths::mountRoot(run + QStringLiteral("/panero-cloud/OneDrive")), run + QStringLiteral("/panero-cloud/OneDrive"));
     QVERIFY(PaneroSlowPaths::mountRoot(QStringLiteral("/home/x")).isEmpty());
+    QVERIFY(PaneroSlowPaths::isCloudRoot(run + QStringLiteral("/panero-cloud/OneDrive")));
+    QVERIFY(PaneroSlowPaths::isCloudRoot(run + QStringLiteral("/panero-cloud/OneDrive/")));
+    QVERIFY(!PaneroSlowPaths::isCloudRoot(run + QStringLiteral("/panero-cloud/OneDrive/Docs")));
+    QVERIFY(!PaneroSlowPaths::isCloudRoot(run + QStringLiteral("/panero-cloud")));
+    QVERIFY(!PaneroSlowPaths::isCloudRoot(run + QStringLiteral("/gvfs/smb-share:server=x")));
+    QVERIFY(!PaneroSlowPaths::isCloudRoot(QStringLiteral("/")));
     // listing by extension only never needs the file
     const QMimeDatabase db;
     QCOMPARE(db.mimeTypeForFile(QStringLiteral("/nonexistent/x.xlsx"), QMimeDatabase::MatchExtension).name(),
@@ -566,6 +575,66 @@ void PaneroCloudTest::cacheMeta()
     f.close();
     QVERIFY(!isDirtyMeta(meta));
     QVERIFY(!isDirtyMeta(m_tmp.path() + QStringLiteral("/missing.json")));
+}
+
+void PaneroCloudTest::rcProtocol()
+{
+    PaneroRc::Credentials c = PaneroRc::newCredentials(QStringLiteral("/x/s.sock"));
+    QVERIFY(c.isValid());
+    QCOMPARE(c.user.size(), 32);
+    QVERIFY(c.password != PaneroRc::newCredentials(QStringLiteral("/x/s.sock")).password);
+    const QByteArray req = PaneroRc::buildRequest(c, QStringLiteral("vfs/refresh"), QJsonObject{{QStringLiteral("dir"), QStringLiteral("a b/c")}});
+    QVERIFY(req.startsWith("POST /vfs/refresh HTTP/1.1\r\n"));
+    QVERIFY(req.contains("Authorization: Basic " + (c.user + ':' + c.password).toBase64() + "\r\n"));
+    QVERIFY(req.endsWith("\r\n\r\n{\"dir\":\"a b/c\"}"));
+    // header injection through the method name is not possible
+    QVERIFY(!PaneroRc::buildRequest(c, QStringLiteral("x\r\nEvil: 1"), QJsonObject()).contains("\r\nEvil"));
+
+    int status = 0;
+    QJsonObject body;
+    QVERIFY(PaneroRc::parseResponse("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 16\r\n\r\n{\"jobid\": 7}\n", &status, &body));
+    QCOMPARE(status, 200);
+    QCOMPARE(body.value(QStringLiteral("jobid")).toInt(), 7);
+    QVERIFY(PaneroRc::parseResponse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\n{\"a\":\r\n2\r\n1}\r\n0\r\n\r\n", &status, &body));
+    QCOMPARE(body.value(QStringLiteral("a")).toInt(), 1);
+    QVERIFY(PaneroRc::parseResponse("HTTP/1.1 401 Unauthorized\r\n\r\n401 Unauthorized\n", &status, &body));
+    QCOMPARE(status, 401);
+    QVERIFY(!PaneroRc::parseResponse("garbage", &status, &body));
+    QVERIFY(!PaneroRc::parseResponse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nzz\r\n", &status, &body));
+}
+
+void PaneroCloudTest::folderCache()
+{
+    const QString mnt = m_tmp.path() + QStringLiteral("/fc/mnt");
+    const QString cache = m_tmp.path() + QStringLiteral("/fc/cache");
+    QDir().mkpath(mnt + QStringLiteral("/sub/deeper"));
+    QDir().mkpath(mnt + QStringLiteral("/emptydir"));
+    auto write = [](const QString &path, const QByteArray &data) {
+        QDir().mkpath(QFileInfo(path).absolutePath());
+        QFile f(path);
+        QVERIFY(f.open(QIODevice::WriteOnly));
+        f.write(data);
+    };
+    write(mnt + QStringLiteral("/a.txt"), "hello");
+    write(mnt + QStringLiteral("/sub/deeper/b.txt"), "world!");
+    write(mnt + QStringLiteral("/sub/zero.gdoc"), QByteArray()); // e.g. a Google Doc: nothing to download
+    // nothing in the cache yet
+    QCOMPARE(int(folderCacheState(mnt, cache)), int(FolderCache::Incomplete));
+    write(cache + QStringLiteral("/a.txt"), "hello");
+    QCOMPARE(int(folderCacheState(mnt, cache)), int(FolderCache::Incomplete));
+    QCOMPARE(int(folderCacheState(mnt + QStringLiteral("/emptydir"), cache + QStringLiteral("/emptydir"))), int(FolderCache::Incomplete));
+    write(cache + QStringLiteral("/sub/deeper/b.txt"), "world");
+    QCOMPARE(int(folderCacheState(mnt, cache)), int(FolderCache::Incomplete)); // shorter than the file
+    write(cache + QStringLiteral("/sub/deeper/b.txt"), "world!");
+    QCOMPARE(int(folderCacheState(mnt, cache)), int(FolderCache::Complete));
+    QCOMPARE(int(folderCacheState(mnt + QStringLiteral("/sub"), cache + QStringLiteral("/sub"))), int(FolderCache::Complete));
+    QCOMPARE(int(folderCacheState(mnt, cache, 3)), int(FolderCache::TooLarge));
+    // a sparse (partly downloaded) cache file is not complete
+    QFile sparse(cache + QStringLiteral("/a.txt"));
+    QVERIFY(sparse.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QVERIFY(sparse.resize(5));
+    sparse.close();
+    QCOMPARE(int(folderCacheState(mnt, cache)), int(FolderCache::Incomplete));
 }
 
 void PaneroCloudTest::callbackPort()

@@ -7,6 +7,8 @@
 #include "panerocloudsetup.h"
 #include "panerorclone.h"
 #include "panerosecretstore.h"
+#include "panerocloudutils.h"
+#include "panerorcclient.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -17,6 +19,11 @@
 #include <QJsonObject>
 #include <QProcess>
 #include <QRandomGenerator>
+#include <QRegularExpression>
+#include <QEventLoop>
+#include <QElapsedTimer>
+#include <QThread>
+#include <QTimer>
 #include <QStandardPaths>
 #include <QTcpServer>
 
@@ -419,5 +426,93 @@ QStringList interactiveConfigCommand()
 {
     return QStringList{QStringLiteral("x-terminal-emulator"), QStringLiteral("-e"), PaneroRclone::program()} + PaneroRclone::globalArgs()
         + QStringList{QStringLiteral("config")};
+}
+bool validGoogleClientId(const QString &id)
+{
+    static const QRegularExpression re(QStringLiteral("^[0-9]{5,20}-[a-z0-9]{8,64}\\.apps\\.googleusercontent\\.com$"));
+    return re.match(id).hasMatch();
+}
+
+bool validGoogleClientSecret(const QString &secret)
+{
+    static const QRegularExpression re(QStringLiteral("^[A-Za-z0-9_\\-]{10,100}$"));
+    return re.match(secret).hasMatch();
+}
+
+bool setRemoteOptionsPrivately(const QString &remote, const QJsonObject &options, QString *error)
+{
+    const QString control = PaneroCloudUtils::mountBaseDir() + QLatin1String("/.control");
+    if (!QDir().mkpath(control)) {
+        if (error)
+            *error = i18n("Could not create the folder %1.", control);
+        return false;
+    }
+    QFile::setPermissions(control, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
+    const QString socket = control + QStringLiteral("/setup-%1.sock").arg(QRandomGenerator::system()->generate(), 8, 16, QLatin1Char('0'));
+    QFile::remove(socket);
+    const PaneroRc::Credentials rc = PaneroRc::newCredentials(socket);
+    const QString htpasswd = socket.left(socket.length() - 5) + QLatin1String(".htpasswd");
+    if (!PaneroRc::writeHtpasswd(rc, htpasswd)) {
+        if (error)
+            *error = i18n("Could not create the folder %1.", control);
+        return false;
+    }
+    QProcess rcd;
+    PaneroRclone::prepare(rcd, {QStringLiteral("rcd"), QStringLiteral("--rc-addr"), QLatin1String("unix://") + socket, QStringLiteral("--rc-htpasswd"),
+                                htpasswd});
+    rcd.setStandardOutputFile(QProcess::nullDevice());
+    rcd.setStandardErrorFile(QProcess::nullDevice());
+    rcd.start();
+    const auto stop = [&rcd, &socket, &htpasswd]() {
+        rcd.terminate();
+        if (!rcd.waitForFinished(3000)) {
+            rcd.kill();
+            rcd.waitForFinished(1000);
+        }
+        QFile::remove(socket);
+        QFile::remove(htpasswd);
+    };
+    if (!rcd.waitForStarted(10000)) {
+        QFile::remove(htpasswd);
+        if (error)
+            *error = i18n("rclone could not be started.");
+        return false;
+    }
+    QElapsedTimer timer;
+    timer.start();
+    while (!QFileInfo::exists(socket) && timer.elapsed() < 15000 && rcd.state() == QProcess::Running)
+        QThread::msleep(50);
+    if (!QFileInfo::exists(socket)) {
+        stop();
+        if (error)
+            *error = i18n("rclone did not answer in time.");
+        return false;
+    }
+    QJsonObject params{{QStringLiteral("name"), remote},
+                       {QStringLiteral("parameters"), options},
+                       {QStringLiteral("opt"), QJsonObject{{QStringLiteral("nonInteractive"), true}, {QStringLiteral("obscure"), false}}}};
+    // no new sign-in: only store the values
+    QJsonObject parameters = options;
+    parameters.insert(QStringLiteral("config_refresh_token"), QStringLiteral("false"));
+    params.insert(QStringLiteral("parameters"), parameters);
+    int status = -1;
+    QJsonObject answer;
+    QEventLoop loop;
+    QObject context;
+    PaneroRc::call(rc, QStringLiteral("config/update"), params, &context, [&](int st, const QJsonObject &a) {
+        status = st;
+        answer = a;
+        loop.quit();
+    }, 30000);
+    if (status == -1)
+        loop.exec();
+    stop();
+    if (status != 200) {
+        if (error)
+            *error = answer.value(QStringLiteral("error")).toString().isEmpty() ? i18n("rclone could not store the setting.")
+                                                                               : answer.value(QStringLiteral("error")).toString();
+        return false;
+    }
+    return true;
 }
 } // namespace PaneroCloudSetup
