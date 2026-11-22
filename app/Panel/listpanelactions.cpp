@@ -108,9 +108,13 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     action(i18n("History"), nullptr, Qt::CTRL + Qt::Key_H, _gui, SLOT(openHistory()), "history");
     action(i18n("Left History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Left, this, SLOT(openLeftHistory()), "left history");
     action(i18n("Right History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Right, this, SLOT(openRightHistory()), "right history");
-    action(i18n("Media"), nullptr, Qt::CTRL + Qt::Key_M, _gui, SLOT(openMedia()), "media");
-    action(i18n("Left Media"), nullptr, Qt::CTRL + Qt::SHIFT + Qt::Key_Left, this, SLOT(openLeftMedia()), "left media");
-    action(i18n("Right Media"), nullptr, Qt::CTRL + Qt::SHIFT + Qt::Key_Right, this, SLOT(openRightMedia()), "right media");
+    // Panero (D-019): Ctrl+M is Multi-Rename; the drive lists open with Total
+    // Commander's Alt+F1 / Alt+F2 (left / right) and Ctrl+Shift+Left/Right
+    action(i18n("Media"), nullptr, QKeySequence(), _gui, SLOT(openMedia()), "media");
+    action(i18n("Left Media"), nullptr, {QKeySequence(Qt::ALT + Qt::Key_F1), QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Left)},
+           this, SLOT(openLeftMedia()), "left media");
+    action(i18n("Right Media"), nullptr, {QKeySequence(Qt::ALT + Qt::Key_F2), QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Right)},
+           this, SLOT(openRightMedia()), "right media");
 
     // quick search bar
     action(i18n("Find in folder..."), nullptr, Qt::CTRL + Qt::Key_F, _gui, SLOT(showSearchBar()), "search bar");

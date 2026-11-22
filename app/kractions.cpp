@@ -298,6 +298,8 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actSavePosition, i18n("Save &Position"), nullptr, 0, krusaderApp, SLOT(savePosition()), "save position");
     NEW_KACTION(actCompare, i18n("Compare b&y Content..."), "kr_comparedirs", 0, SLOTS, SLOT(compareContent()), "compare");
     NEW_KACTION(actMultiRename, i18n("Multi &Rename..."), "edit-rename", Qt::SHIFT + Qt::Key_F2, SLOTS, SLOT(multiRename()), "multirename");
+    // Panero: Ctrl+M as in Total Commander (D-019); Shift+F2 stays
+    krusaderApp->actionCollection()->setDefaultShortcuts(actMultiRename, {QKeySequence(Qt::CTRL + Qt::Key_M), QKeySequence(Qt::SHIFT + Qt::Key_F2)});
 
     NEW_KACTION(actAddBookmark, i18n("Add Bookmark"), "bookmark-new", KStandardShortcut::addBookmark(), SLOTS, SLOT(addBookmark()), "add bookmark");
     NEW_KACTION(actVerticalMode, i18n("Vertical Mode"), "view-split-top-bottom", Qt::ALT + Qt::CTRL + Qt::Key_R, MAIN_VIEW, SLOT(toggleVerticalMode()), "toggle vertical mode");

@@ -246,11 +246,15 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
         auto *fileItemActions = new KFileItemActions(this);
         fileItemActions->setItemListProperties(KFileItemListProperties(_items));
         fileItemActions->setParentWidget(MAIN_VIEW);
+        const int before = actions().count();
 #if KIO_VERSION >= QT_VERSION_CHECK(5, 79, 0)
         fileItemActions->addActionsTo(this);
 #else
         fileItemActions->addServiceActionsTo(this);
 #endif
+        // Panero: Panero has its own Copy Path; installed service menus doing
+        // the same would show it twice (D-019)
+        hideCopyPathDuplicates(actions().mid(before));
     }
 
     addSeparator();
@@ -380,6 +384,38 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- properties
     addAction(panel->gui->actions()->actProperties);
+}
+
+bool PanelContextMenu::isCopyPathText(const QString &text)
+{
+    QString t = text;
+    t.remove(QLatin1Char('&'));
+    t = t.simplified().toLower();
+    while (t.endsWith(QLatin1Char('.')) || t.endsWith(QChar(0x2026)))
+        t.chop(1);
+    static const QStringList same{QStringLiteral("copy path"), QStringLiteral("copy paths"), QStringLiteral("copy location"),
+                                  QStringLiteral("copy full path"), QStringLiteral("copy file path"), QStringLiteral("copy file paths"),
+                                  QStringLiteral("copy path to clipboard"), QStringLiteral("copy file path to clipboard")};
+    return same.contains(t.trimmed());
+}
+
+bool PanelContextMenu::hideCopyPathDuplicates(const QList<QAction *> &added)
+{
+    bool anyVisible = false;
+    for (QAction *a : added) {
+        if (a->isSeparator()) {
+            continue;
+        }
+        if (QMenu *sub = a->menu()) {
+            // KFileItemActions puts most service menus into an "Actions" submenu
+            if (!hideCopyPathDuplicates(sub->actions()))
+                a->setVisible(false);
+        } else if (isCopyPathText(a->text())) {
+            a->setVisible(false);
+        }
+        anyVisible = anyVisible || a->isVisible();
+    }
+    return anyVisible;
 }
 
 void PanelContextMenu::addEmptyMenuEntries()
