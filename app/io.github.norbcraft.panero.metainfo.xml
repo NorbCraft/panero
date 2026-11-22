@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.7" date="2026-11-22" type="development">
+      <description>
+        <p>OneDrive sign-in works for personal accounts where Microsoft lists a drive that cannot be opened ("ObjectHandle is Invalid"): Panero uses the account's main drive.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.6" date="2026-11-21" type="development">
       <description>
         <p>Fixes the OneDrive sign-in that stayed at "Waiting for the sign-in to finish", asks OneDrive only for the access shown, and shows the Google Drive and OneDrive icons.</p>

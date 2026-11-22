@@ -104,7 +104,7 @@ private:
 class SignInDialog : public QDialog
 {
 public:
-    SignInDialog(const QString &service, const QStringList &args, QWidget *parent)
+    SignInDialog(const QString &service, const QString &type, const QStringList &args, QWidget *parent)
         : QDialog(parent)
     {
         setWindowTitle(i18n("Sign in to %1", service));
@@ -148,17 +148,21 @@ public:
         PaneroRclone::prepare(m_process, args);
         // stdout carries rclone's progress messages and, at the end, the new
         // configuration: only failure lines are looked at, nothing is kept
-        connect(&m_process, &QProcess::readyReadStandardOutput, this, [this, service]() {
+        connect(&m_process, &QProcess::readyReadStandardOutput, this, [this, type]() {
             QByteArray chunk = m_process.readAllStandardOutput();
             const bool stuck = m_watcher.feed(chunk);
             PaneroSecretStore::wipe(chunk);
             if (stuck && !m_finished) {
                 m_error = i18n("The sign-in worked, but rclone could not set up the drive:\n\n%1", m_watcher.error());
-                if (service == QLatin1String("OneDrive"))
-                    m_error += QLatin1String("\n\n")
-                        + i18n("If this Microsoft account has never used OneDrive, open https://onedrive.live.com once in the browser "
-                               "and try again. For a work or school account, ask whether OneDrive is enabled.");
                 stop();
+                if (type == QLatin1String("onedrive") && m_gotCode) {
+                    // rclone has already stored the sign-in; it only took a drive
+                    // from Microsoft's list that cannot be opened. The caller
+                    // switches the remote to the account's main drive.
+                    m_driveRecovery = true;
+                    accept();
+                    return;
+                }
                 QDialog::reject();
             }
         });
@@ -229,6 +233,8 @@ public:
 
     QString error() const { return m_error; }
     bool cancelled() const { return m_cancelled; }
+    /// OneDrive: signed in, but rclone's drive choice failed (see above).
+    bool driveRecovery() const { return m_driveRecovery; }
 
     void reject() override
     {
@@ -262,6 +268,7 @@ private:
     bool m_finished = false;
     bool m_cancelled = false;
     bool m_gotCode = false;
+    bool m_driveRecovery = false;
     PaneroCloudSetup::SetupOutputWatcher m_watcher;
     QTimer m_finishTimer;
 };
@@ -515,9 +522,14 @@ bool PaneroAddCloudDialog::createRemote(const Provider &p, const QString &remote
         const bool scoped = p.type == QLatin1String("drive") || p.type == QLatin1String("onedrive");
         QStringList args{QStringLiteral("config"), QStringLiteral("create"), remote, p.type};
         args << PaneroCloudSetup::oauthOptions(p.type, scoped && m_readOnly->isChecked(), m_shared->isChecked());
-        SignInDialog dlg(p.title, args, this);
-        if (dlg.exec() == QDialog::Accepted)
+        SignInDialog dlg(p.title, p.type, args, this);
+        m_driveRecovery = false;
+        m_setupError.clear();
+        if (dlg.exec() == QDialog::Accepted) {
+            m_driveRecovery = dlg.driveRecovery();
+            m_setupError = dlg.error();
             return true;
+        }
         if (error)
             *error = dlg.cancelled() ? QString() : dlg.error();
         return false;
@@ -646,9 +658,24 @@ void PaneroAddCloudDialog::connectClicked()
     }
 
     if (p.type == QLatin1String("onedrive")) {
+        // rclone takes the first drive Microsoft lists; for some personal
+        // accounts that one cannot be opened - use the account's main drive
         QString driveError;
-        if (!PaneroCloudRevoke::ensureOneDriveMainDrive(remote, &driveError))
+        if (!PaneroCloudRevoke::ensureOneDriveMainDrive(remote, &driveError)) {
+            if (m_driveRecovery) {
+                PaneroCloudRevoke::revoke(remote, p.type);
+                PaneroCloudSetup::deleteRemote(remote);
+                cloud->refreshNow();
+                m_error->setText(i18n("Could not add %1: %2", p.title, m_setupError)
+                                 + QLatin1String("\n\n") + i18n("Finding the main drive failed too: %1", driveError)
+                                 + QLatin1String("\n\n")
+                                 + i18n("If this Microsoft account has never used OneDrive, open https://onedrive.live.com once in the "
+                                        "browser and try again. For a work or school account, ask whether OneDrive is enabled."));
+                m_error->animatedShow();
+                return;
+            }
             qWarning("OneDrive: could not check the main drive: %s", qPrintable(driveError));
+        }
     }
 
     QString verifyError;

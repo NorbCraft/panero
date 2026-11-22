@@ -84,6 +84,8 @@ QString accountIdentity(const QString &remote, const QString &type, QString *err
 /// the remote uses the account's own main drive (/me/drive) and correct it if
 /// not. True when the remote is (now) on the main drive.
 bool ensureOneDriveMainDrive(const QString &remote, QString *error = nullptr);
+/// Stores the OneDrive drive of a remote without running rclone's drive wizard.
+bool setOneDriveDrive(const QString &remote, const QString &driveId, const QString &driveType, QString *error = nullptr);
 /// Main drive id and type from the answer of GET /me/drive.
 bool parseMainDrive(const QByteArray &body, QString *driveId, QString *driveType);
 }

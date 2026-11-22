@@ -85,6 +85,8 @@ private:
     KMessageWidget *m_error;
     QDialogButtonBox *m_buttons;
     bool m_nameEdited = false;
+    bool m_driveRecovery = false; ///< OneDrive signed in, rclone's drive choice failed
+    QString m_setupError;
     PaneroCloud::Entry m_created;
 };
 
