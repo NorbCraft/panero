@@ -486,3 +486,16 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Released v0.1.0-preview.10: PR #15 (CI green), tag on 1099ea025, release
   run 45044078622; SHA256SUMS verified, Version 0.1.0~preview.10-1; .deb
   copied to ~/Downloads.
+
+## 2026-11-22 — Preview 11 planning
+
+- Owner plan: remove legacy sidebar, cloud selection, drive buttons, TC-like
+  Multi-Rename (Ctrl+M), Windows version up to date, duplicate Copy path.
+- Done on feature/preview11 (not released): per-panel sidebar unreachable
+  (button, Alt+Down, restore); cloud highlight follows the active panel
+  (GUI test screenshots 09/10).
+- Facts gathered: Krusader's HideSquashFS is off by default (snaps listed);
+  KRename 5.0.2 (Ubuntu, not installed) features read from its binary (no
+  handbook shipped, docs.kde.org pages 404); experiment/windows is 21 ahead,
+  27 behind main; Windows CI screenshot shows "?" + grey close (dialog flags).
+- Waiting for the owner's decisions before implementing the rest.

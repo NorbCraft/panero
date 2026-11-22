@@ -336,3 +336,19 @@ next mount by isMountPoint()).
       no longer leaves its accessibility bus running.
 - [x] Tests: ctest 7/7, security 16/16, GUI test 2/2, freeze test passed.
 - [x] Release v0.1.0-preview.10 (PR #15, tag on 1099ea025, run 45044078622).
+
+## Phase 15 — Preview 11 (owner plan 2026-11-22; waiting for owner decisions)
+
+Owner asked to clarify the proposals before implementing. Proposal page with
+a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
+
+- [x] Remove Krusader's per-panel sidebar (branch feature/preview11).
+- [x] Cloud entry selected only while the active panel is inside it.
+- [x] Second "Copy path": the owner's own KDE service menu
+      (~/.local/share/kservices5/ServiceMenus/copy-path.desktop), not Panero.
+- [ ] Owner decisions: drive buttons (placement, default, labels; Linux
+      filter: no squashfs/loop/boot/tmpfs/AppImage/portal), Multi-Rename
+      (native, Total Commander masks; KRename 5.0.2 compared), Ctrl+M vs
+      Alt+F1/F2, Copy path duplicate, Windows (one code base, fixes, Explorer
+      menu, cloud via OneDrive/Google Drive app folders), timing.
+- [ ] Implement, test, release v0.1.0-preview.11.
