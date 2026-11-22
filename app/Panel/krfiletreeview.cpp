@@ -13,6 +13,7 @@
 #include "../krglobal.h"
 #include "../icon.h"
 #include "../FileSystem/filesystemprovider.h"
+#include "../FileSystem/paneroslowpaths.h"
 #include "../compat.h"
 
 #include <QAction>
@@ -44,6 +45,37 @@ class KrDirModel : public KDirModel
 public:
     KrDirModel(QWidget *parent) : KDirModel(parent) {}
 
+    /// Panero: KDirModel answers some questions by reading the disk in the GUI
+    /// thread (KFileItem::iconName() stats the folder and looks for .directory,
+    /// hasChildren() lists unopened folders, the type column sniffs the mime
+    /// type). On a cloud/network mount each of them waits for the drive and
+    /// freezes the window while rclone is busy; answer from memory there.
+    bool hasChildren(const QModelIndex &parent = QModelIndex()) const override
+    {
+        if (parent.isValid() && isSlow(parent))
+            return rowCount(parent) > 0 || canFetchMore(parent);
+        return KDirModel::hasChildren(parent);
+    }
+
+    QVariant data(const QModelIndex &index, int role) const override
+    {
+        if (index.isValid() && (role == Qt::DecorationRole || role == Qt::ToolTipRole || role == ChildCountRole
+                                || (role == Qt::DisplayRole && index.column() == Type))
+            && isSlow(index)) {
+            switch (role) {
+            case Qt::DecorationRole:
+                return index.column() == Name ? QVariant(QIcon::fromTheme(QStringLiteral("folder"))) : QVariant();
+            case Qt::ToolTipRole:
+                return itemForIndex(index).text();
+            case ChildCountRole:
+                return int(ChildCountUnknown);
+            default:
+                return i18n("Folder"); // the tree lists folders only
+            }
+        }
+        return KDirModel::data(index, role);
+    }
+
 protected:
     Qt::ItemFlags flags(const QModelIndex &index) const override
     {
@@ -51,6 +83,13 @@ protected:
         if (index.column() != KDirModel::Name)
             itflags &= ~Qt::ItemIsDropEnabled;
         return itflags;
+    }
+
+private:
+    bool isSlow(const QModelIndex &index) const
+    {
+        const KFileItem item = itemForIndex(index);
+        return !item.isNull() && item.isLocalFile() && PaneroSlowPaths::isSlowPath(item.localPath());
     }
 };
 
@@ -379,6 +418,9 @@ void KrFileTreeView::setTreeRoot(const QUrl &rootBase)
         return;
 
     mCurrentTreeBase = rootBase;
+    // Panero: no KDirWatch on a cloud/network mount (it stats, statfs()es and
+    // adds inotify watches there in the GUI thread, each waiting for the drive)
+    mSourceModel->dirLister()->setAutoUpdate(!(rootBase.isLocalFile() && PaneroSlowPaths::isSlowPath(rootBase.toLocalFile())));
     mSourceModel->dirLister()->openUrl(mCurrentTreeBase);
 }
 

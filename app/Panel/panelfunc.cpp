@@ -82,6 +82,7 @@
 #include "../compat.h"
 #include "../Cloud/panerocloud.h"
 #include "../Cloud/panerooffline.h"
+#include "../FileSystem/paneroslowpaths.h"
 
 QPointer<ListPanelFunc> ListPanelFunc::copyToClipboardOrigin;
 
@@ -357,9 +358,10 @@ void ListPanelFunc::doRefresh()
 
     panel->setCursor(Qt::ArrowCursor);
 
-    // on local file system change the working directory
+    // on local file system change the working directory (Panero: not into a
+    // cloud/network mount, where chdir() can freeze the window)
     if (files()->isLocal())
-        QDir::setCurrent(KrServices::urlToLocalPath(files()->currentDirectory()));
+        PaneroSlowPaths::setCurrentDir(KrServices::urlToLocalPath(files()->currentDirectory()));
 
     // see if the open url operation failed, and if so,
     // put the attempted url in the navigator bar and let the user change it

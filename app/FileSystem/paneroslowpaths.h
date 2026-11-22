@@ -31,6 +31,11 @@ QString mountRoot(const QString &path);
 /// True for the top folder of one of Panero's own cloud drive mounts: browsing
 /// a cloud never goes above it (no "..", Up stops there).
 bool isCloudRoot(const QString &path);
+/// Sets the process's working directory to @p path - except on a slow path:
+/// chdir() there waits for the drive (a frozen window while rclone is busy,
+/// e.g. downloading) and keeps the mount busy; the home folder is used then.
+/// Commands Panero starts get their folder explicitly, not from this.
+void setCurrentDir(const QString &path);
 /// Lists @p dirs (only names, no file access) in background threads, a few in
 /// parallel, so a network file system has them ready. At most @p max folders;
 /// a new call replaces folders of an earlier call that are still waiting.

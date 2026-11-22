@@ -459,3 +459,27 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   build/cloud-shots, not committed).
 - Released v0.1.0-preview.9: PR #14, tag on ef284a136, release run 45028537532;
   assets verified (SHA256SUMS); .deb copied to ~/Downloads.
+
+## 2026-11-22 — Preview 10: cloud freeze
+
+- Owner: Panero froze, force quit. Journal: Evince opened three PDFs from
+  OneDrive (16:45:06–16:45:29), a second Panero start at 16:45:59 (window
+  already unresponsive), scope killed 16:46:51. rclone stderr is only kept in
+  memory, no coredump (SIGKILL); OneDrive mount left "Transport endpoint is
+  not connected" (Panero lazily unmounts it at the next mount). BambuStudio
+  messages in the same journal stream belong to VS Code's scope.
+- Cleaned my own leftovers from the preview 9 GUI test: a dead TestDrive
+  mount under build/dev-cloud and six at-spi dbus-daemons (gui-cloud-test.sh
+  now kills its accessibility bus).
+- Stopped-rclone hunt (scratch script, now dev/scripts/gui-cloud-freeze-test.sh):
+  "up" froze in chdir (ListPanelFunc::doRefresh -> QDir::setCurrent); after
+  that fix the sidebar repaint froze in KFileItem::iconName (KDirModel).
+- A fully stopped rclone never finishes a listing, so code after a listing
+  (startWatching) is invisible to that hunt -> strace -f -b execve -k of a
+  normal session (-b execve: a traced setuid fusermount3 cannot mount).
+  163 GUI-thread accesses: FileItem::getMime reading .directory per folder
+  (panel icons, status bar), tree KDirLister (realpath, KDirWatch inotify,
+  KFileSystemType statfs, .hidden), context menu.
+- Fixed (D-018); 5 accesses left. Revalidation no longer forces vfs/refresh
+  on polling providers (rclone holds the folder lock during the listing).
+- Tests: ctest 7/7, security 16/16, gui-cloud-test 2/2, freeze test passed.

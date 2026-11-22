@@ -1,3 +1,17 @@
+panero (0.1.0~preview.10-1) noble; urgency=medium
+
+  * Tenth preview (git tag v0.1.0-preview.10).
+  * Fix: the window could freeze while browsing a cloud drive when rclone was
+    busy (for example opening files for another program): Panero touched the
+    drive from its GUI thread (working directory, folder watcher, custom
+    folder icons, the folder tree). It no longer does.
+  * Google Drive, OneDrive, Dropbox, Box: no forced re-read of the shown
+    folder every 30 s (rclone polls these providers; the re-read locked the
+    folder for the whole network listing).
+  * New freeze test with a stopped rclone (dev/scripts/gui-cloud-freeze-test.sh).
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sun, 22 Nov 2026 19:00:00 +0100
+
 panero (0.1.0~preview.9-1) noble; urgency=medium
 
   * Ninth preview (git tag v0.1.0-preview.9).

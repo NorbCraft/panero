@@ -171,10 +171,13 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
 - After a drive connects, Panero reads its **whole folder list** in the
   background (like OneDrive on Windows). From then on opening any folder is
   instant; Panero checks the folder you open for changes in the background and
-  updates it when something changed.
+  updates it when something changed. Changes made elsewhere (in the browser,
+  on another computer, by another program) appear within about 30 seconds;
+  **Ctrl+R** reads the folder from the cloud right away.
 - Panero **never waits** for the cloud while you browse: a folder that still
   has to come from the cloud shows ">> Reading..." and you can go elsewhere
-  meanwhile.
+  meanwhile. Custom folder icons (`.directory` files) are not read on cloud
+  drives: reading them would wait for the cloud.
 - The drive's top folder is the top of the path bar (*Google Drive › Documents*)
   and of the folder tree; **Up** and Backspace stop there.
 - Right-click a drive in the sidebar > **Rename...** changes the name Panero

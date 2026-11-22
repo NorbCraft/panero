@@ -603,7 +603,11 @@ bool DefaultFileSystem::refreshSlow(const QUrl &directory, const QString &path, 
         // list the next level ahead so opening a subfolder does not wait for
         // the network
         PaneroSlowPaths::prefetchListings(subDirs);
-        startWatching();
+        // no KDirWatch here: addDir(WatchFiles) resolves the path and stats
+        // every file in the GUI thread, each waiting for the drive (a frozen
+        // window while rclone is busy, e.g. opening a file for another app).
+        // Panero's own file operations refresh through fileSystemChanged
+        // (hasAutoUpdate() is false), other changes show up by the check below.
         // show what is there now, then ask the provider for changes
         QTimer::singleShot(0, this, &DefaultFileSystem::revalidateSlowFolder);
         if (!_slowTimer) {

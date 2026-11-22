@@ -170,6 +170,7 @@ private:
         bool stopping = false;
         bool readingTree = false;
         bool treeRead = false;
+        bool notifies = false; ///< the provider reports changes (rclone polls it)
         QStringList stderrTail;
         PaneroRc::Credentials rc;
     };
