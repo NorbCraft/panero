@@ -120,3 +120,7 @@ unchanged):
 - **Windows words and first run**: see above. GUI test:
   `toolbar-recycle-bin-menu`, `f8-confirm`, `context-menu-recycle-bin`,
   `settings-window`, `first-run-main-window`.
+
+Screenshots from the CI run that verified these fixes are in
+`dev/windows/screenshots/p11-*.png` (the older ones there show the
+experiment, including the dialog-style title bar it fixed).

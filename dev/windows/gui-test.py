@@ -742,7 +742,7 @@ try:
         # Panero's right button selects (Total Commander style); the menu key opens the menu
         win.set_focus()
         go_to('alpha.txt')
-        keys('{APPS}', 1.5)
+        keys('{VK_APPS}', 1.5)
         shot('context-menu-recycle-bin')
         items = []
         for w in Desktop(backend='uia').windows(process=proc.pid):
