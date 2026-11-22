@@ -547,6 +547,18 @@ void PaneroCloudSecurityTest::oauthSetupFinishesOrStops()
     QVERIFY2(onedrive.stuck(), "rclone's endless retry was not detected");
     QVERIFY(onedrive.error().startsWith(QLatin1String("Failed to query available drives")));
     QVERIFY(!onedrive.error().contains(QString::fromLatin1(fakeToken)));
+    // the sign-in is stored at that point, and the drive can be set without
+    // running rclone's drive wizard again (which would loop)
+    QVERIFY(dumpValue(QStringLiteral("odfake"), QStringLiteral("token")).contains(fakeToken));
+    QElapsedTimer setTimer;
+    setTimer.start();
+    QString setError;
+    QVERIFY2(PaneroCloudRevoke::setOneDriveDrive(QStringLiteral("odfake"), QStringLiteral("abc123"), QStringLiteral("personal"), &setError),
+             qPrintable(setError));
+    QVERIFY(setTimer.elapsed() < 20000);
+    QCOMPARE(dumpValue(QStringLiteral("odfake"), QStringLiteral("drive_id")), QByteArray("abc123"));
+    QCOMPARE(dumpValue(QStringLiteral("odfake"), QStringLiteral("drive_type")), QByteArray("personal"));
+    QCOMPARE(filesContaining(fakeToken), QStringList());
     PaneroCloudSetup::deleteRemote(QStringLiteral("odfake"));
     server.kill();
     server.waitForFinished(3000);

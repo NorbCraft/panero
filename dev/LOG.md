@@ -377,3 +377,20 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   change (sidebar keeps Panero's folder-cloud icon for the rest).
 - Released v0.1.0-preview.6: PR #11, tag on 3e1b45dd9; assets verified
   (SHA256SUMS, bundled rclone unchanged 1.76.0); .deb copied to ~/Downloads.
+
+## 2026-11-22 — preview 7: OneDrive "ObjectHandle is Invalid"
+
+- Owner's preview 6 test showed the real error: after sign-in, rclone's wizard
+  picked the first drive from /me/drives ("b!…") and GET /drives/{id}/root
+  failed with 400 invalidRequest "ObjectHandle is Invalid". Known Microsoft
+  change for some personal accounts (forum.rclone.org/t/54170: /me/drive works,
+  set the drive id manually).
+- Verified with rclone 1.76 + fake OAuth: the token is already in the config
+  when the drive step loops, and `config update <r> drive_id=… drive_type=…
+  config_refresh_token=false --non-interactive` stores values without running
+  the wizard. Preview 6's ensureOneDriveMainDrive used a plain `config update`
+  (would loop): fixed via PaneroCloudRevoke::setOneDriveDrive.
+- SignInDialog: a stuck OneDrive setup after "Got code" is handed back for
+  recovery (main drive from /me/drive), else revoke + delete with both errors.
+- Tests: 42 unit, 16 security (new: drive set without loop after the stuck
+  setup).

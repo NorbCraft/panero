@@ -354,11 +354,22 @@ bool ensureOneDriveMainDrive(const QString &remote, QString *error)
     }
     if (id.compare(stored, Qt::CaseInsensitive) == 0)
         return true;
-    QStringList args{QStringLiteral("config"), QStringLiteral("update"), remote, QStringLiteral("drive_id=") + id};
-    if (!type.isEmpty())
-        args << QStringLiteral("drive_type=") + type;
-    QByteArray err;
-    if (PaneroRclone::run(args, nullptr, &err, 30000) != 0) {
+    return setOneDriveDrive(remote, id, type, error);
+}
+
+bool setOneDriveDrive(const QString &remote, const QString &driveId, const QString &driveType, QString *error)
+{
+    // --non-interactive and no token refresh: rclone stores the values and
+    // returns its first question instead of running the drive wizard again
+    // (which would retry the failing drive endlessly)
+    QStringList args{QStringLiteral("config"), QStringLiteral("update"), remote, QStringLiteral("drive_id=") + driveId};
+    if (!driveType.isEmpty())
+        args << QStringLiteral("drive_type=") + driveType;
+    args << QStringLiteral("config_refresh_token=false") << QStringLiteral("--non-interactive");
+    QByteArray out, err;
+    const int rc = PaneroRclone::run(args, &out, &err, 30000);
+    PaneroSecretStore::wipe(out);
+    if (rc != 0) {
         if (error)
             *error = PaneroCloudUtils::rcloneErrorSummary(QString::fromUtf8(err));
         return false;

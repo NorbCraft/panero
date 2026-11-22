@@ -1,3 +1,13 @@
+panero (0.1.0~preview.7-1) noble; urgency=medium
+
+  * Seventh preview (git tag v0.1.0-preview.7).
+  * OneDrive: when rclone's setup picks a drive Microsoft lists but cannot
+    open ("ObjectHandle is Invalid"), Panero keeps the sign-in and switches the
+    cloud drive to the account's main drive (/me/drive).
+  * Correcting the drive no longer restarts rclone's drive wizard.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sun, 22 Nov 2026 11:00:00 +0100
+
 panero (0.1.0~preview.6-1) noble; urgency=medium
 
   * Sixth preview (git tag v0.1.0-preview.6).
