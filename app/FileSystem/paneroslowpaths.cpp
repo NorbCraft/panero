@@ -109,6 +109,11 @@ bool isCloudRoot(const QString &path)
     return false;
 }
 
+void setCurrentDir(const QString &path)
+{
+    QDir::setCurrent(isSlowPath(path) ? QDir::homePath() : path);
+}
+
 void prefetchListings(const QStringList &dirs, int max)
 {
     const int generation = ++s_generation;

@@ -316,3 +316,23 @@ navigation must stop at the cloud's top folder.
       the cloud name (place with OnlyInApp=panero while mounted).
 - [x] Google Drive own client ID (shared client measured rate limited).
 - [x] Tests, docs, release v0.1.0-preview.9 (PR #14, tag on ef284a136).
+
+## Phase 14 — Cloud freeze fix (owner report 2026-11-22, preview 10)
+
+Owner: "panero just froze and I had to force quit it" (preview 9, right after
+opening three PDFs from OneDrive in Evince; journal: a second Panero start
+30 s later, scope killed 16:46:51; OneDrive mount left dead, cleaned at the
+next mount by isMountPoint()).
+
+- [x] Reproduce with a stopped rclone (SIGSTOP) under Xvfb + gdb: chdir in
+      ListPanelFunc::doRefresh, then KFileItem::iconName in the folder tree.
+- [x] strace -k of a normal session: 163 GUI-thread accesses to the mount
+      (FileItem .directory icons, tree's KDirLister/KDirWatch, context menu).
+- [x] Fixes (D-018): setCurrentDir, no KDirWatch on cloud folders, no
+      .directory icons there, tree answers from memory / no auto-update, no
+      forced vfs/refresh for polling providers. Now 5 accesses left (context
+      menu on a file, KIO's tree lister once per folder).
+- [x] dev/scripts/gui-cloud-freeze-test.sh (regression check); gui-cloud-test
+      no longer leaves its accessibility bus running.
+- [x] Tests: ctest 7/7, security 16/16, GUI test 2/2, freeze test passed.
+- [ ] Release v0.1.0-preview.10.

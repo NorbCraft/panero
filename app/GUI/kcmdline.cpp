@@ -37,6 +37,7 @@
 #include "../ActionMan/addplaceholderpopup.h"
 #include "kcmdmodebutton.h"
 #include "../compat.h"
+#include "../FileSystem/paneroslowpaths.h"
 
 CmdLineCombo::CmdLineCombo(QWidget *parent) : KrHistoryComboBox(parent), _handlingLineEditResize(false)
 {
@@ -214,7 +215,8 @@ void KCMDLine::setCurrent(const QString &path)
     completion.setDir(QUrl::fromLocalFile(path));
     // make sure our command is executed in the right directory
     // This line is important for Krusader overall functions -> do not remove !
-    QDir::setCurrent(path);
+    // (Panero: not into a cloud/network mount, where chdir() can freeze)
+    PaneroSlowPaths::setCurrentDir(path);
 }
 
 void KCMDLine::slotRun()

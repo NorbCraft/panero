@@ -265,3 +265,37 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   signs in with the stored client.
 - Rename = Panero's display label (existing "Remote Labels"), not the rclone
   remote name (mount folder, cache, offline copies and bisync state would move).
+
+## D-018 — No drive access from the GUI thread on cloud drives (2026-11-22, preview 10, owner report: "panero just froze and I had to force quit it")
+
+- Rule: on a cloud/network mount (`PaneroSlowPaths::isSlowPath`) the GUI
+  thread does not touch the file system. While rclone is busy (a file being
+  opened for another program, a folder being re-read from the provider under
+  rclone's directory lock) any stat/chdir/inotify there waits, and the window
+  freezes. Found with a stopped rclone (gdb: `chdir` in
+  `ListPanelFunc::doRefresh`; `KFileItem::iconName` in the tree) and strace
+  stacks of a normal session (163 GUI-thread accesses).
+- Working directory: `PaneroSlowPaths::setCurrentDir` uses the home folder on
+  slow paths (doRefresh, KCMDLine). Commands get their folder explicitly
+  (runCommand, command line `startpath()`), so nothing relied on it; it also
+  stops Panero's own working directory from keeping the mount busy.
+- No KDirWatch on cloud folders (supersedes D-017's implicit watcher):
+  `addDir(WatchFiles)` resolves the path and stats every file in the GUI
+  thread. `hasAutoUpdate()` is then false, so Panero's own file operations
+  refresh through `fileSystemChanged`; external changes come from the
+  background check (worker thread).
+- No `.directory` custom folder icons on slow paths (FileItem::getMime).
+- Folder tree: KrDirModel answers icon, tooltip, child count, type and
+  hasChildren from memory on slow paths; the tree's KDirLister runs without
+  auto-update there. Left: KCoreDirLister resolves the folder (realpath) and
+  checks `.hidden` once per listed folder, inside KIO, after its listing
+  arrived (so normally answered from rclone's fresh cache). An own model for
+  cloud trees would remove it; not worth it now.
+- Revalidation (supersedes part of D-017): no forced `vfs/refresh` for
+  providers rclone polls (drive, onedrive, dropbox, box). A non-recursive
+  refresh holds rclone's directory lock for the whole network listing, so
+  everything in that folder waited every 30 s (Google: 17–35 s). Changes there
+  arrive by polling and the worker-thread signature check. Ctrl+R still
+  forces a re-read; other providers keep the throttled background refresh.
+- Regression check: `dev/scripts/gui-cloud-freeze-test.sh` (stopped rclone,
+  /proc wchan of the main thread after each step, gdb stack on a freeze).

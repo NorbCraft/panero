@@ -127,6 +127,16 @@ PaneroCloud::PaneroCloud(QObject *parent)
     // cloud folders shown in a panel are re-read from the provider in the
     // background (DefaultFileSystem, stale-while-revalidate)
     PaneroSlowPaths::setRevalidator([this](const QString &dir, QObject *context, std::function<void()> done) {
+        // Providers that report changes are polled by rclone every 30 s; a
+        // forced re-read is not needed there and would hold rclone's lock on
+        // the folder for the whole network listing (17-35 s seen on Google
+        // Drive), so everything in it - listings, files other programs open -
+        // waits meanwhile. Ctrl+R still forces one (reloadByUser()).
+        for (auto it = m_mounts.constBegin(); it != m_mounts.constEnd(); ++it) {
+            const Mount *m = it.value();
+            if (m->notifies && (dir == m->dir || dir.startsWith(m->dir + QLatin1Char('/'))))
+                return false;
+        }
         return refreshFolder(dir, context, done);
     });
     PaneroSlowPaths::setNameProvider([this](const QString &mountRoot) {
@@ -1091,11 +1101,12 @@ void PaneroCloud::mount(const Entry &e)
     QStringList args{QStringLiteral("mount"), e.rcloneRemote + QLatin1Char(':'), dir};
     args << PaneroOffline::instance()->mountCacheArgs(e.rcloneRemote);
     // Folder listings stay in memory: the whole tree is read after mounting
-    // (readTree()), a folder shown in Panero is re-read in the background
-    // (refreshFolder()), and providers that report changes are polled every
-    // 30 s. So opening a folder normally needs no network at all.
+    // (readTree()), providers that report changes are polled every 30 s, and
+    // on the others a folder shown in Panero is re-read in the background
+    // (refreshFolder()). So opening a folder normally needs no network at all.
     const bool notifies = e.rcloneType == QLatin1String("drive") || e.rcloneType == QLatin1String("onedrive")
         || e.rcloneType == QLatin1String("dropbox") || e.rcloneType == QLatin1String("box");
+    m->notifies = notifies;
     args << QStringLiteral("--dir-cache-time") << (notifies ? QStringLiteral("168h") : QStringLiteral("24h"));
     if (notifies)
         args << QStringLiteral("--poll-interval") << QStringLiteral("30s");

@@ -84,5 +84,7 @@ shot 08-photos-offline
 kill $APID 2>/dev/null; sleep 3; kill -9 $APID 2>/dev/null
 fusermount3 -u "$MNT" 2>/dev/null
 kill $XPID 2>/dev/null
+# the accessibility bus Qt starts for the session outlives it
+for p in $(pgrep -f "^/usr/bin/dbus-daemon .*$XDG_RUNTIME_DIR/"); do kill "$p" 2>/dev/null; done
 echo "passed $PASS, failed $FAIL (screenshots: $SHOTS)"
 [[ $FAIL == 0 ]]

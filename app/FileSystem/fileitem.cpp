@@ -153,7 +153,11 @@ const QString &FileItem::getMime()
 
         if (m_isDir && userDefinedFolderIcons) {
             const QUrl url = getUrl();
-            if (url.isLocalFile()) {
+            // Panero: not on a cloud/network mount - reading .directory there
+            // (several file accesses per folder, in the GUI thread while
+            // painting) waits for the drive and freezes the window while rclone
+            // is busy
+            if (url.isLocalFile() && !PaneroSlowPaths::isSlowPath(url.toLocalFile())) {
                 const QString file = url.toLocalFile() + "/.directory";
                 const KDesktopFile cfg(file);
                 const QString iconName = cfg.readIcon();
