@@ -22,7 +22,18 @@ specific to Panero.
 - Each panel is a rounded card; the **active panel** has a coloured outline and
   a coloured bottom row (selection count and free space). Next to the path, the
   **drive button** ("System (/)", USB sticks, network locations) opens the list
-  of devices.
+  of devices (**Alt+F1** left panel, **Alt+F2** right panel; also
+  Ctrl+Shift+Left/Right). Snap images, /boot and other system mounts are not
+  listed. On GNOME desktops (Zorin OS) Alt+F1 and Alt+F2 belong to the desktop
+  unless you free them in its keyboard settings.
+- **Drive buttons** (Quick Settings > *Show drive buttons above each panel*,
+  off by default): a row of buttons above each panel, like Total Commander's
+  drive bar: System, Home, disks and USB drives (also unmounted ones: a click
+  mounts), network shares and your cloud drives. A click opens the drive in
+  that panel; the drive the panel is on is highlighted. Right-click: Open in
+  Other Panel, Safely Remove / Eject, Hide This Button, Show Hidden Buttons.
+- Column headers: **^** sorted ascending (A to Z, small to large, old to new),
+  **v** descending; click a header to sort or to turn the order round.
 - **Copying, moving and deleting** show their progress in the bottom row of the
   panel that receives the files ("Copying photo.jpg to Projects — 45 %"), with
   a button for the details window and a Cancel button.
@@ -53,7 +64,7 @@ specific to Panero.
 | short right-click on a file | toggles its mark |
 | **hold** the right button ~0.6 s on a file | a small pie next to the pointer fills up, then the normal context menu opens (Open With, Properties, service menus, ...). If files are marked, the menu works on the marked files and says "Marked: N items" at the top. Marks are not changed. |
 | hold on empty space or on ".." | opens the folder menu (Create New, Paste) |
-| context menu extras | **Copy Path** (full path of the files, or of the folder on empty space) and **Open Terminal Here** |
+| context menu extras | **Copy Path** (full path of the files, or of the folder on empty space) and **Open Terminal Here**; installed service menus that also copy the path are not shown twice |
 | right-click a **column header** | immediately opens the column chooser (show/hide columns such as Ext, Type, Owner) |
 | Menu key or **Shift+F10** | context menu from the keyboard |
 
@@ -90,7 +101,37 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
     files are loaded on demand). Right-click: Open Offline Files, Offline
     Files..., Disconnect, Sign Out and Remove, Sign Out of All Clouds. Cloud
     drives are disconnected when Panero closes.
+- A cloud drive or server stays highlighted while the active panel is inside
+  it, and only then.
 - Drag the handles between Pinned, Cloud and Folders to give a part more room.
+
+## Multi-Rename (Ctrl+M)
+
+Select the files (or folders) and press **Ctrl+M** (or Shift+F2, File menu >
+Multi Rename). The patterns are Total Commander's:
+
+| Pattern | Gives |
+|---|---|
+| `[N]` / `[E]` | old name without extension / old extension |
+| `[N3]`, `[N2-5]`, `[N2,3]`, `[N2-]`, `[N-3-]` | 3rd character, characters 2–5, 3 characters from the 2nd, from the 2nd to the end, the last 3 (also for `[E]`) |
+| `[C]` | counter: start, step and digits on the right; `[C10+5:3]` sets them in the pattern |
+| `[P]` / `[G]` | name of the folder / the folder above |
+| `[YMD]` `[hms]`, `[Y]` `[y]` `[M]` `[D]` `[h]` `[n]` `[s]` | date and time of the last change |
+| `[[]` / `[]]` | a literal `[` / `]` |
+
+- **Search & replace**: several terms separated by `|` (`IMG_|DSC_`), one
+  replacement or one per term (`1|2`). **Aa** upper/lower case must match,
+  **1×** only the first match, **[E]** also in the extension, **RegEx** regular
+  expressions with `$1`, `$2` ... in the replacement.
+- **Upper/lower case** for name and extension separately.
+- The list shows every new name before anything happens; problems are red
+  (two files would get the same name, the name exists already, empty or
+  invalid names) and **Start** waits until there are none. Swapping names
+  (a↔b) works.
+- **Undo Last Rename** gives the last batch its old names back, also after the
+  dialog was closed. **Save...** keeps the settings under a name.
+- With **KRename** installed, *Open in KRename* hands the files over for its
+  extras (photo, music and PDF data, copy or move while renaming).
 
 ## Views
 
@@ -123,6 +164,7 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
   toolbar and sidebar). **Folder color**: keep the icon theme's folders or pick
   a colour (or a custom one).
 - **Menus**: Menu button or the classic menu bar. **Cloud** section on or off.
+  **Drive buttons** above each panel on or off.
 - **Hold feedback** while the right button is held: pie, ring, bar or off.
 - Changing the appearance, icons or folder colour asks to **restart** Panero
   (Restart / Later); folders and tabs are kept.

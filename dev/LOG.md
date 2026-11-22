@@ -499,3 +499,14 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   handbook shipped, docs.kde.org pages 404); experiment/windows is 21 ahead,
   27 behind main; Windows CI screenshot shows "?" + grey close (dialog flags).
 - Waiting for the owner's decisions before implementing the rest.
+- Owner decisions (D-019): all recommendations; plus sort arrow ^/v.
+- Done on feature/preview11: sort arrow drawn by KrStyleProxy (Fusion/Breeze
+  drew v for ascending, Windows ^); Copy Path duplicates hidden; Ctrl+M =
+  Multi-Rename, Alt+F1/F2 = drive lists (GNOME binds Alt+F1 panel-main-menu
+  and Alt+F2 panel-run-dialog on this desktop: they reach Panero only when
+  freed); drive buttons (no file access in the GUI thread, mountinfo
+  notifier, Solid); Multi-Rename (TC rules, KIO renames, swap-safe plan,
+  rollback on error, undo, presets). Tests: 9 suites incl. panerodrivestest
+  and paneromultirenametest (2 real bugs found: literal brackets, plain
+  replace doubled backslashes); gui-rename-test.sh rename+undo on disk.
+- Windows merge running in a separate worktree (feature/windows-main).
