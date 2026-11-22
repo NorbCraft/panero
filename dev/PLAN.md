@@ -335,4 +335,4 @@ next mount by isMountPoint()).
 - [x] dev/scripts/gui-cloud-freeze-test.sh (regression check); gui-cloud-test
       no longer leaves its accessibility bus running.
 - [x] Tests: ctest 7/7, security 16/16, GUI test 2/2, freeze test passed.
-- [ ] Release v0.1.0-preview.10.
+- [x] Release v0.1.0-preview.10 (PR #15, tag on 1099ea025, run 45044078622).

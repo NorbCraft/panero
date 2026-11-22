@@ -483,3 +483,6 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Fixed (D-018); 5 accesses left. Revalidation no longer forces vfs/refresh
   on polling providers (rclone holds the folder lock during the listing).
 - Tests: ctest 7/7, security 16/16, gui-cloud-test 2/2, freeze test passed.
+- Released v0.1.0-preview.10: PR #15 (CI green), tag on 1099ea025, release
+  run 45044078622; SHA256SUMS verified, Version 0.1.0~preview.10-1; .deb
+  copied to ~/Downloads.
