@@ -394,3 +394,5 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   recovery (main drive from /me/drive), else revoke + delete with both errors.
 - Tests: 42 unit, 16 security (new: drive set without loop after the stuck
   setup).
+- Released v0.1.0-preview.7: PR #12, tag on 9775192b8; assets verified;
+  .deb copied to ~/Downloads.
