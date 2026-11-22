@@ -423,3 +423,4 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   identical read-back; cleaned up without trash; folder removed.
 - rclone warns: the shared Google Drive client id is being retired during 2026
   -> owner decision needed (own client id).
+- Released v0.1.0-preview.8: PR #13, tag on 36b51f366; assets verified; .deb copied to ~/Downloads.
