@@ -207,10 +207,11 @@ def click_title_button(w, names):
     try:
         for tb in w.descendants(control_type='TitleBar'):
             for b in tb.descendants(control_type='Button'):
-                if b.window_text() in names:
+                name = b.window_text()
+                if name in names:
                     b.click_input()
                     time.sleep(1.2)
-                    return b.window_text()
+                    return name
     except Exception as e:  # noqa: BLE001
         print('title bar click failed:', e)
     return None
@@ -457,44 +458,58 @@ if title() != 'left':
     keys('{TAB}', 0.8)
 
 # (b) pins use the Windows shell icons, like the panels and the folder tree
+PIN_NAMES = ('left', 'Desktop', 'Documents', 'Downloads', 'Home')
+
+
+def visible_pins(scroll_to=None):
+    items = {}
+    for li in main_w.descendants(control_type='ListItem'):
+        if li.window_text() in PIN_NAMES or ':)' in li.window_text():
+            if li.window_text() == scroll_to:
+                try:
+                    li.iface_scroll_item.ScrollIntoView()
+                    time.sleep(0.5)
+                except Exception:  # noqa: BLE001
+                    pass
+            items.setdefault(li.window_text(), li)
+    rects = {n: li.rectangle() for n, li in items.items()}   # positions after scrolling
+    lst = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
+    if lst:   # only rows that are visible in the list
+        rects = {n: r for n, r in rects.items() if r.top >= lst[0].top - 1 and r.bottom <= lst[0].bottom + 1}
+    return rects
+
+
+def pin_colours(rects, name):
+    if rects:
+        first = min(rects.values(), key=lambda r: r.top)
+        crop_shot(name, (first.left, first.top - 4, first.left + 230, max(r.bottom for r in rects.values()) + 4), 3)
+    return {n: icon_colour((r.left + 2, (r.top + r.bottom) // 2 - 9, r.left + 26, (r.top + r.bottom) // 2 + 9))
+            for n, r in rects.items()}
+
+
 try:
+    colours = pin_colours(visible_pins(), 'pins-default-shell-icons')
+    home = colours.get('Home')
+    record('Default pins use the Windows shell icons (Home: yellow user folder; none monochrome)',
+           bool(home) and home['yellow'] > 0.08 and all(c['dark'] < 0.25 for n, c in colours.items() if n in PIN_NAMES),
+           f'icon colours: {colours}', must=True)
     for b in main_w.descendants(control_type='Button'):
         if b.window_text() == 'Pin current folder':
             b.click_input()
             time.sleep(1.0)
             break
-    pins = {}
-    for li in main_w.descendants(control_type='ListItem'):
-        if li.window_text() in ('left', 'Desktop', 'Documents', 'Downloads', 'Home') or ':)' in li.window_text():
-            if li.window_text() == 'left':
-                try:
-                    li.iface_scroll_item.ScrollIntoView()   # the new pin is the last one
-                    time.sleep(0.5)
-                except Exception:  # noqa: BLE001
-                    pass
-            pins.setdefault(li.window_text(), li)
-    pins = {n: li.rectangle() for n, li in pins.items()}   # positions after scrolling
-    lst = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
-    if lst:   # only rows that are visible in the list
-        pins = {n: r for n, r in pins.items() if r.top >= lst[0].top - 1 and r.bottom <= lst[0].bottom + 1}
+    keys('{BACKSPACE}', 1.5)              # leave the folder: its pin is not highlighted then
+    rects = visible_pins(scroll_to='left')
     shot('pins-shell-icons')
-    side = main_w.rectangle()
-    tops = [r.top for r in pins.values()]
-    if tops:
-        first = min(pins.values(), key=lambda r: r.top)
-        crop_shot('pins-shell-icons-zoom', (first.left, min(tops) - 4, first.left + 230, max(tops) + 30), 3)
-    colours = {}
-    for name, r in pins.items():
-        cy = (r.top + r.bottom) // 2
-        colours[name] = icon_colour((r.left + 2, cy - 9, r.left + 26, cy + 9))
+    colours = pin_colours(rects, 'pins-shell-icons-zoom')
     left_pin = colours.get('left')
-    record('Pinned folder uses the Windows shell folder icon (yellow, as in the panel and tree)',
-           bool(left_pin) and left_pin['yellow'] > 0.08, f'icon colours of the pins: {colours}', must=True)
-    record('Default pins (Home, Desktop, Documents, Downloads) are not the monochrome theme icons', all(
-        c['dark'] < 0.25 for n, c in colours.items() if n in ('Home', 'Desktop', 'Documents', 'Downloads')),
-        f'{colours}')
+    record('A new pin of a plain folder uses the Windows shell folder icon (yellow, as in the panel and tree)',
+           bool(left_pin) and left_pin['yellow'] > 0.08, f'icon colours: {colours}', must=True)
+    keys('{ENTER}', 1.5)                  # back into "left" (the cursor is on it)
 except Exception as e:  # noqa: BLE001
-    record('Pinned folder uses the Windows shell folder icon', False, f'automation error: {e}', must=True)
+    record('Pins use the Windows shell icons', False, f'automation error: {e}', must=True)
+if not title().startswith('left'):
+    record('Back in the left folder after the pin check', False, f'title "{title()}"')
 
 # (d) Windows words: the toolbar's Recycle Bin menu
 try:
@@ -724,9 +739,10 @@ keys('{ESC}', 0.5)
 try:
     rows = sorted((w for w in win.descendants() if w.window_text() == 'alpha'), key=lambda w: w.rectangle().left)
     if rows:
-        r = rows[0].rectangle()   # left panel
-        mouse.right_click(coords=(r.left + 10, (r.top + r.bottom) // 2))
-        time.sleep(1.2)
+        # Panero's right button selects (Total Commander style); the menu key opens the menu
+        win.set_focus()
+        go_to('alpha.txt')
+        keys('{APPS}', 1.5)
         shot('context-menu-recycle-bin')
         items = []
         for w in Desktop(backend='uia').windows(process=proc.pid):
