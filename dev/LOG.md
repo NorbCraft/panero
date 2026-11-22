@@ -516,3 +516,6 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   QIcons in a worker thread on Windows; AA_DisableWindowContextHelpButton on
   Windows. Open: the owner's "right panel without outline" was not
   reproduced on the runner (fixed what differed: 0 px to the window edge).
+- Released v0.1.0-preview.11: PR #16 (Linux + Windows checks green), tag on
+  6e82a2bfe, release run 45061474829; assets .deb, Windows ZIP, source,
+  licenses; SHA256SUMS verified; .deb and ZIP copied to ~/Downloads.

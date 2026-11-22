@@ -363,5 +363,6 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       45/45; dev/windows/screenshots/p11-*.
 - [x] Drive bar on Windows: icons created in the GUI thread (shell icons);
       no "?" in Windows dialog title bars.
-- [ ] Release v0.1.0-preview.11 (.deb + Windows ZIP).
+- [x] Release v0.1.0-preview.11 (.deb + Windows ZIP): PR #16, tag on
+      6e82a2bfe, release run 45061474829.
 - Preview 12: Explorer right-click menu; Windows cloud via app folders.
