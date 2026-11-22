@@ -457,3 +457,5 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   dev/scripts/gui-cloud-test.sh (Xvfb, stand-in alias drive): path bar,
   no "..", Up stops, Rename, folder badge - all as expected (screenshots
   build/cloud-shots, not committed).
+- Released v0.1.0-preview.9: PR #14, tag on ef284a136, release run 45028537532;
+  assets verified (SHA256SUMS); .deb copied to ~/Downloads.

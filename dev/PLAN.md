@@ -315,4 +315,4 @@ navigation must stop at the cloud's top folder.
 - [x] Cloud top folder is the root: no "..", Up stops, breadcrumb starts with
       the cloud name (place with OnlyInApp=panero while mounted).
 - [x] Google Drive own client ID (shared client measured rate limited).
-- [ ] Tests, docs, release v0.1.0-preview.9.
+- [x] Tests, docs, release v0.1.0-preview.9 (PR #14, tag on ef284a136).
