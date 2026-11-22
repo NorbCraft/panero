@@ -69,6 +69,10 @@ private:
         CLOUD_KEEP_ID,       // Panero: keep a cloud folder on this device (R10)
         CLOUD_FREE_ID,       // Panero: free up space (remove the local copy)
         CLOUD_SYNC_ID,       // Panero: synchronise the local copy now
+        CLOUD_AVAILABLE_ID,  // Panero: download files/folders into the drive's cache
+        CLOUD_UNPIN_ID,      // Panero: stop keeping a synced copy of a folder
+        CLOUD_GDOC_OPEN_ID,  // Panero: open a native Google document in the browser
+        CLOUD_GDOC_SAVE_ID,  // Panero: save an Office copy of a Google document
         SERVICE_LIST_ID // ALWAYS KEEP THIS ONE LAST!!!
     };
 

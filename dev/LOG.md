@@ -396,3 +396,30 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   setup).
 - Released v0.1.0-preview.7: PR #12, tag on 9775192b8; assets verified;
   .deb copied to ~/Downloads.
+
+## 2026-11-22 (midday) — preview 8: fast cloud browsing, offline per file
+
+- Owner: browsing is laggy; wants Make Available Offline / Free Up Space for
+  files and folders, explanation of 0 B Google files, a progress window after
+  adding a drive. Tests allowed only in <drive>:test-panero, files removed after.
+- Measured (read-only, live mounts): Google root 8.6 s first / 0.45 s again,
+  statfs 0.3 s each; fresh rclone listing 0.7 s. Panero on a temp read-only
+  mount opened 48 files (QMimeDatabase content sniffing) per listing -> each
+  open starts a download in --vfs-cache-mode full.
+- Fixes: extension-only MIME on cloud/gvfs paths (app/FileSystem/
+  paneroslowpaths), cached async free space, prefetch of the next level,
+  --dir-cache-time 1h + --poll-interval 30s for notifying backends (5m others),
+  --vfs-fast-fingerprint, Ctrl+R -> SIGHUP flush, badge state cache.
+  After: 0 file opens while listing.
+- 0 B Google files: native Docs/Sheets/Slides (rclone "Limitations of Google
+  Docs": size unknown, unreadable via mount). Now opened in the browser
+  (lsjson --metadata content-type + ID), Save a Copy via rclone copyto.
+- Offline per file/folder: Make Available Offline (background read through
+  the mount into the VFS cache, progress), Free Up Space (remove non-dirty cache
+  files; rclone re-downloads, vfscache item.open checks existence).
+- Progress windows: Add Cloud setup steps, "Connecting to ..." on mount;
+  PaneroRclone::run keeps the GUI painted.
+- Real-drive test (GoogleDrive + OneDrive, test-panero only): upload, free-up,
+  identical read-back; cleaned up without trash; folder removed.
+- rclone warns: the shared Google Drive client id is being retired during 2026
+  -> owner decision needed (own client id).

@@ -45,6 +45,8 @@
 #include "../FileSystem/filesystem.h"
 #include "../FileSystem/krtrashhandler.h"
 #include "../MountMan/kmountman.h"
+#include "../Cloud/panerocloud.h"
+#include "../krglobal.h"
 #include "../Cloud/panerooffline.h"
 #include "../UserAction/useractionpopupmenu.h"
 
@@ -332,22 +334,38 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
 
     // --------- copy/paste
     addSeparator();
-    // Panero: offline files of cloud drives (R10)
-    if (!multipleSelections && file->isDir() && file->getUrl().isLocalFile()) {
-        QString remote, rel;
-        bool inMirror = false;
+    // Panero: offline files of cloud drives (R10), for files and folders
+    {
         PaneroOffline *offline = PaneroOffline::instance();
-        if (offline->cloudPath(file->getUrl().toLocalFile(), &remote, &rel, &inMirror) && !rel.isEmpty()) {
-            const QString pin = offline->pinFor(remote, rel);
-            if (pin.isNull()) {
-                if (!inMirror)
-                    addAction(Icon("folder-download"), i18n("Keep on This Device"))->setData(QVariant(CLOUD_KEEP_ID));
-            } else if (pin == rel) {
-                addAction(Icon("view-refresh"), i18n("Synchronise Now"))->setData(QVariant(CLOUD_SYNC_ID));
-                addAction(Icon("edit-clear"), i18n("Free Up Space"))->setData(QVariant(CLOUD_FREE_ID));
-            }
-            addSeparator();
+        int inDrive = 0, inMirror = 0;
+        for (FileItem *f : files) {
+            QString remote, rel;
+            bool mirror = false;
+            if (f->getUrl().isLocalFile() && offline->cloudPath(f->getUrl().toLocalFile(), &remote, &rel, &mirror) && !rel.isEmpty())
+                ++(mirror ? inMirror : inDrive);
         }
+        if (inDrive > 0 && inDrive == files.size()) {
+            addAction(Icon("folder-download"), i18n("Make Available Offline"))->setData(QVariant(CLOUD_AVAILABLE_ID));
+            addAction(Icon("edit-clear"), i18n("Free Up Space"))->setData(QVariant(CLOUD_FREE_ID));
+        }
+        if (!multipleSelections && (inDrive + inMirror) == 1) {
+            QString remote, rel;
+            bool mirror = false;
+            offline->cloudPath(file->getUrl().toLocalFile(), &remote, &rel, &mirror);
+            const QString pin = offline->pinFor(remote, rel);
+            if (file->isDir() && pin.isNull() && !mirror) {
+                addAction(Icon("folder-sync"), i18n("Always Keep on This Device (Synced Copy)"))->setData(QVariant(CLOUD_KEEP_ID));
+            } else if (file->isDir() && pin == rel) {
+                addAction(Icon("view-refresh"), i18n("Synchronise Now"))->setData(QVariant(CLOUD_SYNC_ID));
+                addAction(Icon("edit-clear"), i18n("Stop Keeping on This Device"))->setData(QVariant(CLOUD_UNPIN_ID));
+            }
+            if (!file->isDir() && PaneroCloud::instance()->mayBeGoogleDocument(file->getUrl().toLocalFile(), qint64(file->getSize()))) {
+                addAction(Icon("internet-web-browser"), i18n("Open in Google Docs"))->setData(QVariant(CLOUD_GDOC_OPEN_ID));
+                addAction(Icon("document-save-as"), i18n("Save a Copy as Office File in Other Panel"))->setData(QVariant(CLOUD_GDOC_SAVE_ID));
+            }
+        }
+        if (inDrive + inMirror > 0)
+            addSeparator();
     }
 
     addAction(panel->gui->actions()->actCut);
@@ -472,8 +490,39 @@ void PanelContextMenu::performAction(int id)
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
         break;
     }
+    case CLOUD_AVAILABLE_ID : {
+        QStringList paths;
+        for (const KFileItem &item : _items)
+            if (item.url().isLocalFile())
+                paths << item.url().toLocalFile();
+        // not the menu as parent: it is gone when the download runs
+        PaneroOffline::instance()->makeAvailableOffline(krMainWindow, paths);
+        break;
+    }
+    case CLOUD_FREE_ID : {
+        QStringList paths;
+        for (const KFileItem &item : _items)
+            if (item.url().isLocalFile())
+                paths << item.url().toLocalFile();
+        const QString summary = PaneroOffline::instance()->freeUpCache(paths);
+        panel->func->refresh();
+        KMessageBox::information(krMainWindow, summary + QLatin1String("\n\n")
+                                     + i18n("The files stay in the cloud and are downloaded again when you open them."),
+                                 i18n("Free Up Space"));
+        break;
+    }
+    case CLOUD_GDOC_OPEN_ID :
+        if (singleURL.isLocalFile() && !PaneroCloud::instance()->openGoogleDocument(krMainWindow, singleURL.toLocalFile(), 0))
+            KMessageBox::information(krMainWindow, i18n("This is not a Google Docs, Sheets or Slides file."), i18n("Open in Google Docs"));
+        break;
+    case CLOUD_GDOC_SAVE_ID :
+        if (singleURL.isLocalFile() && panel->otherPanel()->virtualPath().isLocalFile()
+            && PaneroCloud::instance()->saveGoogleDocumentCopy(krMainWindow, singleURL.toLocalFile(),
+                                                                panel->otherPanel()->virtualPath().toLocalFile()))
+            panel->otherPanel()->func->refresh();
+        break;
     case CLOUD_KEEP_ID :
-    case CLOUD_FREE_ID :
+    case CLOUD_UNPIN_ID :
     case CLOUD_SYNC_ID : {
         QString remote, rel;
         PaneroOffline *offline = PaneroOffline::instance();
@@ -482,16 +531,16 @@ void PanelContextMenu::performAction(int id)
         if (id == CLOUD_KEEP_ID) {
             QString error;
             if (!offline->pin(remote, rel, &error))
-                KMessageBox::error(this, error, i18n("Keep on This Device"));
+                KMessageBox::error(krMainWindow, error, i18n("Always Keep on This Device"));
         } else if (id == CLOUD_SYNC_ID) {
             offline->syncNow(remote, rel);
         } else {
             const auto answer = KMessageBox::questionTwoActions(
-                this, i18n("<p>Free up space for <b>%1</b>?</p><p>Changes are uploaded first, then the local copy is deleted. The folder "
-                           "stays in the cloud and is downloaded again when you open files.</p>", rel.toHtmlEscaped()),
-                i18n("Free Up Space"), KGuiItem(i18n("Free Up Space"), QStringLiteral("edit-clear")), KStandardGuiItem::cancel());
-            if (answer == KMessageBox::PrimaryAction && offline->unpin(this, remote, rel))
-                panel->func->refresh();
+                krMainWindow, i18n("<p>Stop keeping <b>%1</b> on this device?</p><p>Changes are uploaded first, then the synced copy is "
+                                   "deleted. The folder stays in the cloud.</p>", rel.toHtmlEscaped()),
+                i18n("Stop Keeping on This Device"), KGuiItem(i18n("Stop Keeping"), QStringLiteral("edit-clear")), KStandardGuiItem::cancel());
+            if (answer == KMessageBox::PrimaryAction)
+                offline->unpin(krMainWindow, remote, rel);
         }
         panel->func->refresh();
         break;

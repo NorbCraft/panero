@@ -80,6 +80,7 @@
 #include "../KViewer/krviewer.h"
 #include "../MountMan/kmountman.h"
 #include "../compat.h"
+#include "../Cloud/panerocloud.h"
 #include "../Cloud/panerooffline.h"
 
 QPointer<ListPanelFunc> ListPanelFunc::copyToClipboardOrigin;
@@ -132,6 +133,11 @@ void ListPanelFunc::openFileNameInternal(const QString &name, bool externallyExe
         openUrl(url);
         return;
     }
+
+    // Panero: native Google Docs/Sheets/Slides on a Google Drive open in the browser
+    if (externallyExecutable && url.isLocalFile()
+        && PaneroCloud::instance()->openGoogleDocument(krMainWindow, url.toLocalFile(), qint64(fileitem->getSize())))
+        return;
 
     QString mime = fileitem->getMime();
 
@@ -243,6 +249,14 @@ void ListPanelFunc::openUrlInternal(const QUrl &url, const QString& nameToMakeCu
         doRefresh();
     else
         refresh();
+}
+
+void ListPanelFunc::reloadByUser()
+{
+    const QUrl dir = files()->currentDirectory();
+    if (dir.isLocalFile())
+        PaneroCloud::instance()->flushDirectoryCache(dir.toLocalFile());
+    refresh();
 }
 
 void ListPanelFunc::refresh()

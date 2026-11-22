@@ -606,6 +606,45 @@ void PaneroCloudSecurityTest::mountAndOfflineFiles()
     QVERIFY(through.readAll().startsWith("content of photos/p.jpg"));
     through.close();
     QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(photo, size, false)), int(PaneroOffline::State::Available), 10000);
+
+    // Free Up Space on a file: the cached copy goes, the cloud file stays
+    QString summary = offline->freeUpCache({photo});
+    QVERIFY2(summary.startsWith(QLatin1String("Removed the local copy of 1 file")), qPrintable(summary));
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(photo, size, false)), int(PaneroOffline::State::OnlineOnly), 5000);
+    QVERIFY(QFileInfo::exists(data + QStringLiteral("/photos/p.jpg")));
+    // reading again works (rclone downloads it again)
+    QFile again(photo);
+    QVERIFY(again.open(QIODevice::ReadOnly));
+    QVERIFY(again.readAll().startsWith("content of photos/p.jpg"));
+    again.close();
+
+    // Make Available Offline on folders: everything inside is downloaded
+    offline->freeUpCache({photo});
+    offline->makeAvailableOffline(nullptr, {dir + QStringLiteral("/photos"), dir + QStringLiteral("/docs")});
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(photo, size, false)), int(PaneroOffline::State::Available), 20000);
+    const QString aTxt = dir + QStringLiteral("/docs/sub/b.txt");
+    QTRY_COMPARE_WITH_TIMEOUT(int(offline->state(aTxt, QFileInfo(aTxt).size(), false)), int(PaneroOffline::State::Available), 20000);
+
+    // a file with a pending upload is never removed
+    const QString cacheRoot = PaneroRclone::cacheDir(QStringLiteral("lc"));
+    QString pendingMeta;
+    QDirIterator metas(cacheRoot + QStringLiteral("/vfsMeta"), {QStringLiteral("b.txt")}, QDir::Files, QDirIterator::Subdirectories);
+    if (metas.hasNext())
+        pendingMeta = metas.next();
+    QVERIFY(!pendingMeta.isEmpty());
+    QFile pm(pendingMeta);
+    QVERIFY(pm.open(QIODevice::ReadOnly));
+    QByteArray metaJson = pm.readAll();
+    pm.close();
+    QVERIFY(pm.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    pm.write(QByteArray(metaJson).replace("\"Dirty\": false", "\"Dirty\": true"));
+    pm.close();
+    summary = offline->freeUpCache({dir + QStringLiteral("/docs")});
+    QVERIFY2(summary.contains(QLatin1String("not been uploaded")), qPrintable(summary));
+    QCOMPARE(int(offline->state(aTxt, QFileInfo(aTxt).size(), false)), int(PaneroOffline::State::Available));
+    QVERIFY(pm.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    pm.write(metaJson);
+    pm.close();
     QVERIFY(QDir(PaneroRclone::cacheDir(QStringLiteral("lc")) + QStringLiteral("/vfs")).exists()); // Panero's own cache folder
 
     // keep "docs" on this device

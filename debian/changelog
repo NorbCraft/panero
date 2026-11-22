@@ -1,3 +1,15 @@
+panero (0.1.0~preview.8-1) noble; urgency=medium
+
+  * Eighth preview (git tag v0.1.0-preview.8).
+  * Cloud drives browse much faster: no file is opened to guess its type,
+    free space is cached, folder listings are kept (with change polling) and
+    the next folder level is listed ahead; Ctrl+R fetches a folder again.
+  * Make Available Offline and Free Up Space for files and folders.
+  * Google Docs/Sheets/Slides open in the browser; save an Office copy.
+  * Progress windows while a cloud drive is set up and while it connects.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Sun, 22 Nov 2026 14:00:00 +0100
+
 panero (0.1.0~preview.7-1) noble; urgency=medium
 
   * Seventh preview (git tag v0.1.0-preview.7).

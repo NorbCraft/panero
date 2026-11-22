@@ -44,6 +44,9 @@ public slots:
     void historyForward();
     void dirUp();
     void refresh();
+    /// Reload asked for by the user (Ctrl+R, toolbar): on a cloud drive the
+    /// drive's folder cache is dropped first, so remote changes appear.
+    void reloadByUser();
     void home();
     void root();
     void cdToOtherPanel();

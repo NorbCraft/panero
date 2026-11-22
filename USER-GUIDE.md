@@ -171,14 +171,26 @@ modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
 - Files you open from a cloud drive stay **available on this device**
   (green check outline) for up to 30 days, within a size limit; others are
   **online-only** (cloud badge) and are downloaded when you open them.
-- Right-click a folder of a cloud drive > **Keep on This Device**: the folder
-  is copied to `~/Cloud Offline/<drive>/...` (green filled check) and kept in
-  sync both ways, also without internet. Opening the folder opens the local
-  copy. **Free Up Space** uploads changes and deletes the local copy.
-  Conflicting changes are kept side by side as `*.conflict1/2` files.
-- Right-click the cloud drive > **Offline Files...**: the kept folders and
-  their state, *Synchronise Now*, the space for opened files, and whether
-  offline files are deleted when you remove the drive (default: yes).
+- Right-click files or folders of a cloud drive:
+  - **Make Available Offline**: downloads them now (folders: everything
+    inside), in the background with a progress window.
+  - **Free Up Space**: removes the downloaded copies from this computer; the
+    files stay in the cloud. Files with changes that are not uploaded yet are
+    never removed.
+  - **Always Keep on This Device (Synced Copy)** (folders): a copy in
+    `~/Cloud Offline/<drive>/...` (green filled check) kept in sync both ways,
+    also without internet. Opening the folder opens the copy. **Stop Keeping on
+    This Device** uploads changes and deletes the copy. Conflicting changes are
+    kept side by side as `*.conflict1/2` files.
+- Right-click the cloud drive > **Offline Files...**: the synced folders and
+  their state, *Synchronise Now*, *Repair*, the space for opened files, and
+  whether offline files are deleted when you remove the drive (default: yes).
+- **Ctrl+R** (Reload) on a cloud drive fetches the folder again from the cloud.
+  Changes made elsewhere also appear by themselves within about a minute on
+  Google Drive, OneDrive, Dropbox and Box.
+- **Google Docs, Sheets and Slides** have no file size on the drive (shown as
+  0 B). Opening one opens it in Google's editor in your browser. Right-click >
+  **Save a Copy as Office File in Other Panel** saves a .docx/.xlsx/.pptx copy.
 
 ## Comparing files (KDiff3)
 

@@ -8,8 +8,10 @@
 #include "panerocloudrevoke.h"
 #include "panerocloudsetup.h"
 #include "panerocloudutils.h"
+#include "paneroslowpaths.h"
 
 #include <QDir>
+#include <QMimeDatabase>
 #include <QHostAddress>
 #include <QJsonObject>
 #include <QTcpServer>
@@ -58,6 +60,8 @@ private slots:
     void identityRequests();
     void oneDriveMainDrive();
     void callbackPort();
+    void slowPaths();
+    void cacheMeta();
 
 private:
     QTemporaryDir m_tmp;
@@ -527,6 +531,41 @@ void PaneroCloudTest::oneDriveMainDrive()
     PaneroCloudSetup::SetupOutputWatcher ok;
     QVERIFY(!ok.feed("[od]\ntype = onedrive\ntoken = {\"access_token\":\"SECRET\"}\ndrive_type = personal\n"));
     QVERIFY(ok.error().isEmpty());
+}
+
+void PaneroCloudTest::slowPaths()
+{
+    // XDG_RUNTIME_DIR is <tmp>/run (initTestCase)
+    const QString run = m_tmp.path() + QStringLiteral("/run");
+    QVERIFY(PaneroSlowPaths::isSlowPath(run + QStringLiteral("/panero-cloud/OneDrive/Docs/a.txt")));
+    QVERIFY(PaneroSlowPaths::isSlowPath(run + QStringLiteral("/gvfs/smb-share:server=x/f")));
+    QVERIFY(!PaneroSlowPaths::isSlowPath(m_tmp.path() + QStringLiteral("/home/Cloud Offline/OneDrive/a.txt")));
+    QVERIFY(!PaneroSlowPaths::isSlowPath(QStringLiteral("/usr/share")));
+    QVERIFY(!PaneroSlowPaths::isSlowPath(run + QStringLiteral("/panero-cloudX/a")));
+    QCOMPARE(PaneroSlowPaths::mountRoot(run + QStringLiteral("/panero-cloud/OneDrive/Docs/a.txt")), run + QStringLiteral("/panero-cloud/OneDrive"));
+    QCOMPARE(PaneroSlowPaths::mountRoot(run + QStringLiteral("/panero-cloud/OneDrive")), run + QStringLiteral("/panero-cloud/OneDrive"));
+    QVERIFY(PaneroSlowPaths::mountRoot(QStringLiteral("/home/x")).isEmpty());
+    // listing by extension only never needs the file
+    const QMimeDatabase db;
+    QCOMPARE(db.mimeTypeForFile(QStringLiteral("/nonexistent/x.xlsx"), QMimeDatabase::MatchExtension).name(),
+             QStringLiteral("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+}
+
+void PaneroCloudTest::cacheMeta()
+{
+    QCOMPARE(vfsMetaFile(QStringLiteral("/c/gd"), QStringLiteral("gd"), QStringLiteral("Docs/a.txt")), QStringLiteral("/c/gd/vfsMeta/gd/Docs/a.txt"));
+    QVERIFY(vfsMetaFile(QStringLiteral("/c/gd"), QStringLiteral("gd"), QStringLiteral("../x")).isEmpty());
+    const QString meta = m_tmp.path() + QStringLiteral("/meta.json");
+    QFile f(meta);
+    QVERIFY(f.open(QIODevice::WriteOnly));
+    f.write("{\"Size\": 3, \"Dirty\": true}");
+    f.close();
+    QVERIFY(isDirtyMeta(meta));
+    QVERIFY(f.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    f.write("{\"Size\": 3, \"Dirty\": false}");
+    f.close();
+    QVERIFY(!isDirtyMeta(meta));
+    QVERIFY(!isDirtyMeta(m_tmp.path() + QStringLiteral("/missing.json")));
 }
 
 void PaneroCloudTest::callbackPort()
