@@ -1,8 +1,11 @@
-# Panero on Windows (experiment)
+# Panero on Windows
 
-Branch `experiment/windows`. A native Windows x64 build of Panero that keeps the
-twin-panel layout and the Panero look, with Windows drive, folder and file icons.
-It is an experiment, not a supported platform. See `dev/DECISIONS.md` D-015.
+A native Windows x64 build of Panero that keeps the twin-panel layout and the
+Panero look, with Windows drive, folder and file icons. Since preview 11 it is
+built from the same code base as the Linux version (D-019): Windows-specific
+code sits behind `Q_OS_WIN` / CMake `WIN32`, and every pull request and every
+push to `main` is built and tested on Windows. The experiment that started it
+is D-015 (branch `experiment/windows`, merged through `feature/windows-main`).
 
 ## Toolchain
 
@@ -39,26 +42,74 @@ every DLL the executables and plugins import (followed recursively with
 
 ## CI
 
-`.github/workflows/ci.yml`:
+`.github/workflows/windows.yml` (the Linux workflow `ci.yml` is separate and
+unchanged):
 
-- `windows-build`: build, `ctest`, package, upload the ZIP artifact
-  `panero-windows-x64`.
-- `windows-launch`: a fresh runner. It renames `C:\msys64`, strips `PATH` to
+- Triggers: every pull request, pushes to `main` (and to `feature/windows-main`),
+  manual runs (`workflow_dispatch`), and `workflow_call` from the release
+  workflow.
+- `windows-build`: build, `ctest` (5 suites; the two cloud suites are
+  Linux-only), package, upload the ZIP artifact `panero-windows-x64`.
+- `windows-gui-test`: a fresh runner. It renames `C:\msys64`, strips `PATH` to
   the Windows folders, starts `panero.exe` and checks that every module loaded
   by Panero and its KIO workers comes from the ZIP or `C:\Windows`. Then it runs
-  `gui-test.py` (pywinauto) on disposable files: the Total Commander habits
-  (F5–F8, F2, Insert, Del, Tab, Enter/Backspace, Alt+F1, Shift+F6, Ctrl+click).
-  Screenshots, logs and `gui-results.md` are uploaded as
-  `panero-windows-test-results`.
+  `gui-test.py` (pywinauto) on disposable files: first run straight to the
+  panels, the title bar buttons (minimize, maximize, restore, close), the active
+  panel's outline with each panel active (keyboard and mouse, normal and
+  maximized), the shell icons of the pins, the Windows words (Recycle Bin,
+  Panero Settings) and the Total Commander habits (F5–F8, F2, Insert, Del, Tab,
+  Enter/Backspace, Alt+F1/F2, Shift+F6, Ctrl+click, F3/F4/F9). Screenshots, logs
+  and `gui-results.md` are uploaded as `panero-windows-test-results`.
+- Release (`release.yml`, tags `v*`): its `windows` job calls `windows.yml` on
+  the tag; the ZIP is added to the release as
+  `panero-<version>-windows-x64.zip`, next to the `.deb`, and listed in
+  `SHA256SUMS`. A failing Windows build or GUI test stops the release.
 
 ## Windows-specific code
 
 - `app/compat/panero_win32_compat.h`: POSIX names that MinGW lacks (uid/gid,
   `lstat`, mode bits). Force-included on Windows only.
 - `app/Panel/panerowinshell.*`: Explorer drive names and the shell icons for
-  drives, folders and files (cached per extension).
-- `app/GUI/mediabutton.cpp`: the drive menu lists drive letters, with Alt+F1 and
-  Alt+F2 as on Total Commander.
+  drives, folders and files (cached per extension), used by the file list, the
+  folder tree, the drive button and the pins.
+- `app/panerowording.h`: `PANERO_TEXT(linux, windows)` for the words Windows
+  uses: Recycle Bin (toolbar, menus, F8/Del question and button, progress,
+  settings), "Panero Settings" for the Konfigurator window and in messages,
+  Windows Terminal / PowerShell and Notepad in the F9/F4 tooltips.
+- `app/GUI/mediabutton.cpp`: the drive menu lists drive letters. On Windows
+  Alt+F1 / Alt+F2 open the left / right drive list (Total Commander), in
+  addition to Ctrl+Shift+Left/Right (`listpanelactions.cpp`); Ctrl+M stays.
 - `app/main.cpp`: no D-Bus on Windows, so no single-instance mode or remote
   control. Plugins are found through `qt.conf`.
-- Not built on Windows: the ISO worker (Linux CD-ROM ioctls) and the handbook.
+- `app/krusader.cpp`: the main window is a plain `Qt::Window` on Windows (see
+  below); no welcome box, no first-run Konfigurator / tool search; the default
+  window size also applies on the first run.
+- Not built on Windows: the cloud backend `app/Cloud` (rclone mounts need FUSE;
+  Secret Service keyring, `panero-cloud-key`, rclone's unix-socket remote
+  control) and its two test suites, the ISO worker (Linux CD-ROM ioctls) and the
+  handbook. The sidebar has no Cloud section on Windows and Quick Settings hides
+  "Show the Cloud section". Cloud on Windows (preview 12) will use the OneDrive /
+  Google Drive app folders, not rclone. `PaneroSlowPaths` is still built (it has
+  no cloud mounts to find there).
+- Linux keeps its behaviour: experiment changes that would alter it (first-run
+  window size, job error dialogs, the internal-editor warning, viewer and lister
+  captions as local paths) are Windows-only.
+
+## Preview 11 fixes (owner reports)
+
+- **Window buttons**: the main window showed only "?" and a grey ×. Upstream
+  creates it with `Qt::Window | Qt::WindowTitleHint |
+  Qt::WindowContextHelpButtonHint`; any explicit title-bar hint makes Qt use
+  exactly the hints given, so Windows got a title, a help button and a disabled
+  close button, and UI Automation even reported the window as a dialog. X11 and
+  Wayland window managers ignore these hints. Windows now gets a plain
+  `Qt::Window` (minimize, maximize, close). GUI test: `title-bar-*`,
+  `window-maximized`, `window-minimized`.
+- **Pin icons**: pins used the theme icons (only drive pins had the shell
+  icon). They now use the shell icons when Icons = System, like the file list
+  and the tree. GUI test: `pins-shell-icons*`.
+- **Right panel outline**: see the notes in the GUI test results
+  (`outline-*`).
+- **Windows words and first run**: see above. GUI test:
+  `toolbar-recycle-bin-menu`, `f8-confirm`, `context-menu-recycle-bin`,
+  `settings-window`, `first-run-main-window`.

@@ -143,7 +143,8 @@ def windows_of(pid):
     return out
 
 
-DIALOG_TITLES = ('Information', 'Search results', 'Konfigurator', 'Missing Plugin', 'Warning', 'Error')
+DIALOG_TITLES = ('Information', 'Search results', 'Konfigurator', 'Panero Settings', 'Missing Plugin', 'Warning',
+                 'Error', 'Import Krusader Settings', 'Quick Settings')
 
 
 def is_main(w):
@@ -183,9 +184,120 @@ def module_audit(proc, label):
            must=True)
 
 
+def crop_shot(name, box, scale=3):
+    """Screenshot of a screen area, enlarged (proof images for small details)."""
+    shot_no[0] += 1
+    img = ImageGrab.grab(bbox=box)
+    img.resize((img.width * scale, img.height * scale)).save(OUT / f'{shot_no[0]:02d}-{name}.png')
+    return img
+
+
+def title_bar_buttons(w):
+    """Names of the buttons UI Automation finds in the window's title bar."""
+    names = []
+    try:
+        for tb in w.descendants(control_type='TitleBar'):
+            names += [b.window_text() for b in tb.descendants(control_type='Button')]
+    except Exception:  # noqa: BLE001
+        pass
+    return names
+
+
+def click_title_button(w, names):
+    try:
+        for tb in w.descendants(control_type='TitleBar'):
+            for b in tb.descendants(control_type='Button'):
+                if b.window_text() in names:
+                    b.click_input()
+                    time.sleep(1.2)
+                    return b.window_text()
+    except Exception as e:  # noqa: BLE001
+        print('title bar click failed:', e)
+    return None
+
+
+def show_cmd(hwnd):
+    return win32gui.GetWindowPlacement(hwnd)[1]
+
+
+def check_window_frame(w, label):
+    """(a) a normal main window: minimize, maximize and an enabled close button, no '?'."""
+    hwnd = w.handle
+    style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+    exstyle = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+    close_state = -1
+    try:
+        close_state = win32gui.GetMenuState(win32gui.GetSystemMenu(hwnd, False), win32con.SC_CLOSE,
+                                            win32con.MF_BYCOMMAND)
+    except Exception as e:  # noqa: BLE001
+        print('GetMenuState failed:', e)
+    close_ok = close_state != -1 and not close_state & (win32con.MF_GRAYED | win32con.MF_DISABLED)
+    buttons = title_bar_buttons(w)
+    ok = bool(style & win32con.WS_MINIMIZEBOX) and bool(style & win32con.WS_MAXIMIZEBOX) \
+        and not exstyle & win32con.WS_EX_CONTEXTHELP and close_ok
+    record(f'Main window has minimize, maximize and an enabled close button, no "?" ({label})', ok,
+           f'title bar buttons: {buttons}; WS_MINIMIZEBOX={bool(style & win32con.WS_MINIMIZEBOX)}, '
+           f'WS_MAXIMIZEBOX={bool(style & win32con.WS_MAXIMIZEBOX)}, '
+           f'WS_EX_CONTEXTHELP={bool(exstyle & win32con.WS_EX_CONTEXTHELP)}, close enabled={close_ok}; '
+           f'UI Automation type {w.element_info.control_type}', must=True)
+    r = w.rectangle()
+    crop_shot(f'title-bar-{label}', (max(r.right - 260, r.left), r.top, r.right, r.top + 40))
+
+
+def is_accent(px):
+    r, g, b = px[:3]
+    return b > 150 and b - r > 60   # Panero's highlight (accent) colour, not the grey inactive outline
+
+
+def panel_outlines(w, label):
+    """(c) the active panel's card outline: accent pixels at both sides of each panel."""
+    shot(f'outline-{label}')
+    img = ImageGrab.grab()
+    handles = []
+    try:
+        handles = [t.rectangle() for t in w.descendants(control_type='Thumb')
+                   if t.rectangle().height() > 150 and t.rectangle().width() < 12]
+    except Exception:  # noqa: BLE001
+        pass
+    if not handles:
+        return None
+    h = max(handles, key=lambda r: r.height())
+    wr = w.rectangle()
+    cl, ct, cr, cb = win32gui.GetClientRect(w.handle)
+    client_right = win32gui.ClientToScreen(w.handle, (cr, cb))[0]   # first pixel outside the client area
+    y = h.top + int(h.height() * 0.62)
+    left_x = h.left - 330
+    try:   # the left panel's own box ends at the splitter handle
+        boxes = [g.rectangle() for g in w.descendants(control_type='Group')
+                 if abs(g.rectangle().right - h.left) <= 2 and abs(g.rectangle().top - h.top) <= 2]
+        if boxes:
+            left_x = max(r.left for r in boxes)
+    except Exception:  # noqa: BLE001
+        pass
+    res = {}
+    for side, (x0, x1) in (('left', (max(left_x, wr.left), h.left)), ('right', (h.right, client_right))):
+        xs = [x for x in range(x0, x1) if is_accent(img.getpixel((x, y)))]
+        res[side] = {'accent_left': xs[0] if xs else None, 'accent_right': xs[-1] if xs else None,
+                     'area': (x0, x1)}
+    res['client_right'] = client_right
+    res['y'] = y
+    crop_shot(f'outline-{label}-right-edge', (client_right - 60, h.top, min(client_right + 20, img.width), h.top + 120))
+    return res
+
+
+def icon_colour(box):
+    """Share of yellow (Windows folder) and of blue pixels in a 16 px icon area."""
+    img = ImageGrab.grab(bbox=box).convert('RGB')
+    px = list(img.getdata())
+    yellow = sum(1 for r, g, b in px if r > 190 and g > 140 and b < 120) / len(px)
+    blue = sum(1 for r, g, b in px if b > 150 and b - r > 50) / len(px)
+    dark = sum(1 for r, g, b in px if r < 90 and g < 90 and b < 90) / len(px)
+    return {'yellow': round(yellow, 2), 'blue': round(blue, 2), 'dark': round(dark, 2)}
+
+
 # --- phase A: first run, as a new user would start it (double-click, no arguments) ----
 proc = start([], 'first-run')
-seen_titles, main = [], None
+seen_titles, main, first_run_dialogs = [], None, []
 deadline = time.time() + 120
 while time.time() < deadline and proc.poll() is None:
     time.sleep(1)
@@ -199,6 +311,8 @@ while time.time() < deadline and proc.poll() is None:
     dialogs = [w for w in wins if not is_main(w)]
     if dialogs:
         d = dialogs[0]
+        if d.window_text() not in first_run_dialogs:
+            first_run_dialogs.append(d.window_text())
         d.set_focus()
         # Welcome box: OK. Konfigurator (opened by the first run): close it, keep defaults.
         if d.window_text().startswith('Konfigurator'):
@@ -218,17 +332,47 @@ time.sleep(3)
 main.set_focus()
 shot('first-run-main-window')
 record('First run reaches the main window', True, 'windows on the way: ' + ' → '.join(seen_titles))
+record('First run goes straight to the panels (no welcome box, tool search or Konfigurator)',
+       not first_run_dialogs, f'dialogs: {first_run_dialogs}', must=True)
 r = main.rectangle()
 record('Main window size on first run', True, f'{r.width()}×{r.height()} on a {ImageGrab.grab().size[0]}×'
        f'{ImageGrab.grab().size[1]} screen; title "{main.window_text()}"')
 module_audit(proc, 'first-run')
+
+# (a) title bar: minimize, maximize, close - and they work
+check_window_frame(main, 'first-run')
+hwnd = main.handle
+pressed = click_title_button(main, ('Maximize',))
+shot('window-maximized')
+record('Title bar Maximize button maximizes the window', pressed is not None and show_cmd(hwnd) == win32con.SW_SHOWMAXIMIZED,
+       f'pressed {pressed}; showCmd {show_cmd(hwnd)}', must=True)
+if pressed:
+    panel_outlines(main, 'maximized-first-run')
+pressed = click_title_button(main, ('Restore',))
+record('Title bar Restore button restores the window', pressed is not None and show_cmd(hwnd) == win32con.SW_SHOWNORMAL,
+       f'pressed {pressed}; showCmd {show_cmd(hwnd)}')
+pressed = click_title_button(main, ('Minimize',))
+time.sleep(0.5)
+shot('window-minimized')
+record('Title bar Minimize button minimizes the window', pressed is not None and show_cmd(hwnd) == win32con.SW_SHOWMINIMIZED,
+       f'pressed {pressed}; showCmd {show_cmd(hwnd)}', must=True)
+win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+time.sleep(1.0)
 try:
-    main.close()
+    main.set_focus()
+except Exception:  # noqa: BLE001
+    pass
+pressed = click_title_button(main, ('Close',))
+try:
     proc.wait(15)
-    record('Panero closes cleanly (window close button)', True)
+    record('Title bar Close button closes Panero', pressed is not None, f'pressed {pressed}', must=True)
 except Exception as e:  # noqa: BLE001
-    proc.kill()
-    record('Panero closes cleanly (window close button)', False, str(e))
+    try:
+        main.close()
+        proc.wait(15)
+    except Exception:  # noqa: BLE001
+        proc.kill()
+    record('Title bar Close button closes Panero', False, f'pressed {pressed}; {e}', must=True)
 for p in psutil.process_iter(['name']):
     if p.info['name'] in ('kioslave5.exe', 'kiod5.exe'):
         p.kill()
@@ -258,6 +402,125 @@ record('Window title shows the active folder', title() in ('left', 'right'), f't
 if title() != 'left':                    # Panero restores the panel that was active last time
     keys('{TAB}', 0.8)
     record('Tab switches to the other panel', title() == 'left', f'title "{title()}"')
+main_w = Desktop(backend='uia').window(handle=win.handle).wrapper_object()
+check_window_frame(main_w, 'gui-test')
+
+
+def outline_check(label, active):
+    res = panel_outlines(main_w, label)
+    if res is None:
+        record(f'Active panel outline ({label})', False, 'panel splitter not found in UI Automation')
+        return
+    a, o = res[active], res['left' if active == 'right' else 'right']
+    both_sides = a['accent_left'] is not None and a['accent_right'] is not None \
+        and a['accent_left'] - a['area'][0] < 30 and a['area'][1] - a['accent_right'] < 30
+    gap = res['client_right'] - 1 - res['right']['accent_right'] if res['right']['accent_right'] is not None else None
+    other_plain = o['accent_left'] is None
+    note = (f"{active} panel accent outline x={a['accent_left']}..{a['accent_right']} in {a['area']}; "
+            f"other panel accent: {o['accent_left']}..{o['accent_right']}; right panel's right outline "
+            f"{gap if gap is not None else '-'} px inside the window's right edge (x={res['client_right'] - 1})")
+    record(f'Active panel has its outline on both sides, the other none ({label})', both_sides and other_plain,
+           note, must=True)
+    if active == 'right':
+        record(f'Right panel outline is not on the window edge ({label})', gap is not None and gap >= 3, note,
+               must=True)
+
+
+# (c) the active panel's outline, left and right, keyboard and mouse, normal and maximized
+outline_check('left-active-tab', 'left')
+keys('{TAB}', 1.0)
+outline_check('right-active-tab', 'right')
+keys('{TAB}', 1.0)
+outline_check('left-active-again', 'left')
+win32gui.ShowWindow(win.handle, win32con.SW_MAXIMIZE)
+time.sleep(1.5)
+outline_check('left-active-maximized', 'left')
+keys('{TAB}', 1.0)
+outline_check('right-active-maximized', 'right')
+try:                                     # mouse: click an empty spot of each panel
+    res = panel_outlines(main_w, 'click-probe')
+    if res:
+        lx = (res['left']['area'][0] + res['left']['area'][1]) // 2
+        mouse.click(button='left', coords=(lx, res['y']))
+        time.sleep(1.0)
+        outline_check('left-active-click-maximized', 'left')
+        rx = (res['right']['area'][0] + res['right']['area'][1]) // 2
+        mouse.click(button='left', coords=(rx, res['y']))
+        time.sleep(1.0)
+        outline_check('right-active-click-maximized', 'right')
+except Exception as e:  # noqa: BLE001
+    record('Active panel outline after a mouse click', False, f'automation error: {e}')
+win32gui.ShowWindow(win.handle, win32con.SW_RESTORE)
+time.sleep(1.5)
+win.set_focus()
+if title() != 'left':
+    keys('{TAB}', 0.8)
+
+# (b) pins use the Windows shell icons, like the panels and the folder tree
+try:
+    for b in main_w.descendants(control_type='Button'):
+        if b.window_text() == 'Pin current folder':
+            b.click_input()
+            time.sleep(1.0)
+            break
+    pins = {}
+    for li in main_w.descendants(control_type='ListItem'):
+        if li.window_text() in ('left', 'Desktop', 'Documents', 'Downloads', 'Home') or ':)' in li.window_text():
+            if li.window_text() == 'left':
+                try:
+                    li.iface_scroll_item.ScrollIntoView()   # the new pin is the last one
+                    time.sleep(0.5)
+                except Exception:  # noqa: BLE001
+                    pass
+            pins.setdefault(li.window_text(), li)
+    pins = {n: li.rectangle() for n, li in pins.items()}   # positions after scrolling
+    lst = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
+    if lst:   # only rows that are visible in the list
+        pins = {n: r for n, r in pins.items() if r.top >= lst[0].top - 1 and r.bottom <= lst[0].bottom + 1}
+    shot('pins-shell-icons')
+    side = main_w.rectangle()
+    tops = [r.top for r in pins.values()]
+    if tops:
+        first = min(pins.values(), key=lambda r: r.top)
+        crop_shot('pins-shell-icons-zoom', (first.left, min(tops) - 4, first.left + 230, max(tops) + 30), 3)
+    colours = {}
+    for name, r in pins.items():
+        cy = (r.top + r.bottom) // 2
+        colours[name] = icon_colour((r.left + 2, cy - 9, r.left + 26, cy + 9))
+    left_pin = colours.get('left')
+    record('Pinned folder uses the Windows shell folder icon (yellow, as in the panel and tree)',
+           bool(left_pin) and left_pin['yellow'] > 0.08, f'icon colours of the pins: {colours}', must=True)
+    record('Default pins (Home, Desktop, Documents, Downloads) are not the monochrome theme icons', all(
+        c['dark'] < 0.25 for n, c in colours.items() if n in ('Home', 'Desktop', 'Documents', 'Downloads')),
+        f'{colours}')
+except Exception as e:  # noqa: BLE001
+    record('Pinned folder uses the Windows shell folder icon', False, f'automation error: {e}', must=True)
+
+# (d) Windows words: the toolbar's Recycle Bin menu
+try:
+    rb = [b for b in main_w.descendants() if b.window_text() == 'Recycle Bin'
+          and b.element_info.control_type in ('Button', 'MenuItem', 'SplitButton')]
+    trash_words = [b.window_text() for b in main_w.descendants() if 'Trash' in b.window_text()]
+    if rb:
+        rb[0].click_input()
+        time.sleep(1.0)
+        shot('toolbar-recycle-bin-menu')
+        items = []
+        for w in Desktop(backend='uia').windows(process=proc.pid):
+            try:
+                items += [i.window_text() for i in w.descendants(control_type='MenuItem')]
+            except Exception:  # noqa: BLE001
+                pass
+        keys('{ESC}', 0.5)
+        record('Toolbar says Recycle Bin (Open / Empty Recycle Bin), not Trash',
+               'Open Recycle Bin' in items and 'Empty Recycle Bin' in items and not trash_words,
+               f'menu: {items}; "Trash" texts in the window: {trash_words}', must=True)
+    else:
+        record('Toolbar says Recycle Bin, not Trash', False, f'no Recycle Bin button; "Trash" texts: {trash_words}',
+               must=True)
+except Exception as e:  # noqa: BLE001
+    record('Toolbar says Recycle Bin, not Trash', False, f'automation error: {e}', must=True)
+win.set_focus()
 
 # UI Automation dump for later calibration (what Qt exposes to screen readers)
 try:
@@ -349,14 +612,23 @@ go_to('omega.txt')
 before = recycle_bin_names()
 keys('{F8}', 1.5)
 shot('f8-confirm')
-how = press_button(proc.pid, 'Trash')
+dlg_texts = []
+for w in windows_of(proc.pid):
+    if not is_main(w):
+        try:
+            dlg_texts += [t.window_text() for t in w.descendants(control_type='Text')]
+        except Exception:  # noqa: BLE001
+            pass
+how = press_button(proc.pid, 'Move to Recycle Bin')
+record('F8 confirmation button says "Move to Recycle Bin"', how == 'clicked', f'button {how}', must=True)
+record('F8 question speaks of the Recycle Bin', any('Recycle Bin' in t for t in dlg_texts), f'text: {dlg_texts}')
 gone = wait_for(lambda: not (LEFT / 'omega.txt').exists())
 time.sleep(1)
 shot('f8-result')
 errors = [w.window_text() for w in windows_of(proc.pid) if not is_main(w)]
 in_bin = wait_for(lambda: 'omega.txt' in recycle_bin_names() or
                   any(n.startswith('omega') for n in set(recycle_bin_names()) - set(before)), 8)
-record('F8 removes the file', gone, f'Trash button {how}; dialogs after: {errors}', must=True)
+record('F8 removes the file', gone, f'Recycle Bin button {how}; dialogs after: {errors}', must=True)
 record('F8 sends the file to the Recycle Bin', gone and in_bin, must=True)
 shot('after-f8')
 
@@ -365,7 +637,7 @@ ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'beta.txt', 'renamed.txt']
 go_to('beta.txt')
 keys('{DELETE}', 1.5)
 shot('del-confirm')
-press_button(proc.pid, 'Trash')
+press_button(proc.pid, 'Move to Recycle Bin')
 ok = wait_for(lambda: not (LEFT / 'beta.txt').exists())
 binned = any(n.startswith('beta') for n in recycle_bin_names())
 record('Del key deletes to the Recycle Bin (TC habit)', ok and binned,
@@ -447,6 +719,51 @@ dlg = [w.window_text() for w in windows_of(proc.pid) if not is_main(w)]
 record('Shift+F6 renames in place (TC habit)', False,
        f'Panero opens the "Move ... to" dialog with a Queue option (Move delayed) instead: {dlg}')
 keys('{ESC}', 0.5)
+
+# --- (d) Windows words in the right-click menu and the settings window ------------------------
+try:
+    rows = sorted((w for w in win.descendants() if w.window_text() == 'alpha'), key=lambda w: w.rectangle().left)
+    if rows:
+        r = rows[0].rectangle()   # left panel
+        mouse.right_click(coords=(r.left + 10, (r.top + r.bottom) // 2))
+        time.sleep(1.2)
+        shot('context-menu-recycle-bin')
+        items = []
+        for w in Desktop(backend='uia').windows(process=proc.pid):
+            try:
+                items += [i.window_text() for i in w.descendants(control_type='MenuItem')]
+            except Exception:  # noqa: BLE001
+                pass
+        keys('{ESC}', 0.5)
+        record('Right-click menu says "Move to Recycle Bin"', 'Move to Recycle Bin' in items
+               and not any('Trash' in i for i in items), f'menu: {items}', must=True)
+    else:
+        record('Right-click menu says "Move to Recycle Bin"', False, 'file row not exposed to UI Automation')
+except Exception as e:  # noqa: BLE001
+    record('Right-click menu says "Move to Recycle Bin"', False, f'automation error: {e}')
+keys('{ESC}', 0.3)
+win.set_focus()
+before_wins = {w.handle for w in windows_of(proc.pid)}
+keys('^+,', 2.5)                       # Configure Panero (KDE's Preferences shortcut)
+new_wins = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+shot('settings-window')
+names = [w.window_text() for w in new_wins]
+record('The settings window is called "Panero Settings" (not Konfigurator)', any(n.startswith('Panero Settings') for n in names)
+       and not any('Konfigurator' in n for n in names), f'windows: {names}', must=True)
+for w in new_wins:
+    try:
+        w.close()
+    except Exception:  # noqa: BLE001
+        pass
+time.sleep(1)
+for w in windows_of(proc.pid):           # "apply changes?" or similar
+    if not is_main(w):
+        try:
+            w.set_focus()
+            keys('{ESC}', 0.5)
+        except Exception:  # noqa: BLE001
+            pass
+win.set_focus()
 
 # --- F3 view, F4 edit, F9 terminal (TC habits) ------------------------------------------------
 def new_processes(before, names):

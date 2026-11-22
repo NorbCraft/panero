@@ -1,8 +1,9 @@
-Panero for Windows (experimental preview)
-==========================================
+Panero for Windows (preview)
+============================
 
 Panero is a twin-panel file manager, an independent fork of Krusader.
-This Windows build is an experiment: it is not a release and has known gaps.
+This is a preview of the Windows version, built from the same source code as
+the Linux version. It has known gaps (see below).
 
 Run
 ---
