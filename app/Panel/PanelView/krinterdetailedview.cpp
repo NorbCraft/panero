@@ -68,6 +68,7 @@ KrInterDetailedView::KrInterDetailedView(QWidget *parent, KrViewInstance &instan
     style->setParent(this);
     setStyle(style);
     viewport()->setStyle(style); // for custom tooltip delay
+    header()->setStyle(style);   // Panero: same sort arrow on every platform
 
     setItemDelegate(new KrViewItemDelegate(this));
 

@@ -14,6 +14,7 @@
 #include <QPen>
 #include <QPainter>
 // QtWidgets
+#include <QStyleOption>
 #include <QStyleOptionViewItem>
 
 #include <KConfigCore/KSharedConfig>
@@ -23,6 +24,32 @@
 void KrStyleProxy::drawPrimitive(PrimitiveElement element, const QStyleOption *option,
                                  QPainter *painter, const QWidget *widget) const
 {
+    if (element == QStyle::PE_IndicatorHeaderArrow) {
+        // Panero: the same sort arrow on every platform: ^ ascending, v descending.
+        // QHeaderView passes SortDown for ascending order and each style draws
+        // that its own way (Fusion/Breeze: v, Windows: ^).
+        if (const auto *header = qstyleoption_cast<const QStyleOptionHeader *>(option)) {
+            if (header->sortIndicator == QStyleOptionHeader::None)
+                return;
+            const bool ascending = header->sortIndicator == QStyleOptionHeader::SortDown;
+            const QRectF r = QRectF(option->rect).adjusted(0.5, 0.5, -0.5, -0.5);
+            const qreal w = qMin<qreal>(qMin(r.width(), r.height() * 1.6), 10.0);
+            const qreal h = w / 2.0;
+            const QPointF c = r.center();
+            QPolygonF chevron;
+            if (ascending)
+                chevron << QPointF(c.x() - w / 2, c.y() + h / 2) << QPointF(c.x(), c.y() - h / 2) << QPointF(c.x() + w / 2, c.y() + h / 2);
+            else
+                chevron << QPointF(c.x() - w / 2, c.y() - h / 2) << QPointF(c.x(), c.y() + h / 2) << QPointF(c.x() + w / 2, c.y() - h / 2);
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing);
+            painter->setPen(QPen(option->palette.color(QPalette::ButtonText), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter->setBrush(Qt::NoBrush);
+            painter->drawPolyline(chevron);
+            painter->restore();
+            return;
+        }
+    }
     if (element == QStyle::PE_FrameFocusRect && widget && PaneroTheme::usePaneroColors()
             && (qobject_cast<const QAbstractItemView *>(widget)
                 || qobject_cast<const QAbstractItemView *>(widget->parentWidget()))) {

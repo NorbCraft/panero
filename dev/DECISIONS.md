@@ -299,3 +299,29 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   forces a re-read; other providers keep the throttled background refresh.
 - Regression check: `dev/scripts/gui-cloud-freeze-test.sh` (stopped rclone,
   /proc wchan of the main thread after each step, gdb stack on a freeze).
+
+## D-019 — Preview 11 scope (2026-11-22, owner, from the proposal page)
+
+- Per-panel (Krusader) sidebar removed; a cloud entry is selected only while
+  the active panel is inside it.
+- Drive buttons: one bar above each panel, off by default (Quick Settings),
+  icon and name. Linux shows System, Home, removable and other data
+  partitions, network shares, Panero servers and clouds; never squashfs/loop
+  images, /boot, swap, memory file systems, containers, AppImage mounts, the
+  portal, partitions the system marks hidden. The drive list uses the same
+  filter. Windows: letters, network drives, cloud folders.
+- Multi-Rename built into Panero with Total Commander's pattern rules
+  ([N] [E] [C] ranges, date/time, folder, counter start/step/digits, search &
+  replace with | and regex, case, live preview, conflicts, undo, presets),
+  plus "Open in KRename" when KRename is installed.
+- Shortcuts: Ctrl+M = Multi-Rename; Alt+F1 / Alt+F2 = drive list of the left
+  / right panel (the upstream Ctrl+M media menu moves there).
+- Service-menu entries that duplicate Panero's own Copy Path are hidden.
+- Windows: one code base (Windows in main, built and tested on every change,
+  portable ZIP in each release). Preview 11: Windows fixes (window buttons,
+  pin icons, right panel frame, Windows wording). Preview 12: Explorer
+  right-click menu with Panero's few extras at the top; cloud through the
+  OneDrive / Google Drive app folders with the same badges and actions.
+- Sort arrow (owner addition): ^ ascending, v descending on every platform;
+  Panero draws it itself (QHeaderView passes SortDown for ascending and the
+  styles disagree on how to draw it).

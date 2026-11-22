@@ -83,6 +83,9 @@ shot 08-photos-offline
 # the drive stays selected in the sidebar only while the active panel is in it
 xdotool key Tab; sleep 1.5; shot 09-other-panel-active
 xdotool key Tab; sleep 1.5; shot 10-drive-panel-active
+# sort arrow: ^ ascending (default), v descending after a click on "Name"
+xdotool mousemove $((X+797)) $((Y+107)) click 1; sleep 1.5; shot 11-name-descending
+xdotool mousemove $((X+797)) $((Y+107)) click 1; sleep 1
 
 kill $APID 2>/dev/null; sleep 3; kill -9 $APID 2>/dev/null
 fusermount3 -u "$MNT" 2>/dev/null

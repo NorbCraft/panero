@@ -346,9 +346,15 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - [x] Cloud entry selected only while the active panel is inside it.
 - [x] Second "Copy path": the owner's own KDE service menu
       (~/.local/share/kservices5/ServiceMenus/copy-path.desktop), not Panero.
-- [ ] Owner decisions: drive buttons (placement, default, labels; Linux
-      filter: no squashfs/loop/boot/tmpfs/AppImage/portal), Multi-Rename
-      (native, Total Commander masks; KRename 5.0.2 compared), Ctrl+M vs
-      Alt+F1/F2, Copy path duplicate, Windows (one code base, fixes, Explorer
-      menu, cloud via OneDrive/Google Drive app folders), timing.
-- [ ] Implement, test, release v0.1.0-preview.11.
+- [x] Owner decisions (D-019): all recommendations taken; plus sort arrow
+      ^ ascending / v descending on every platform.
+- [x] Sort arrow drawn by KrStyleProxy (panel headers).
+- [ ] Hide service-menu duplicates of Copy Path.
+- [ ] Ctrl+M = Multi-Rename, Alt+F1/F2 = drive lists.
+- [ ] Drive buttons (Linux filter; Windows letters after the merge).
+- [ ] Multi-Rename dialog (TC masks, preview, undo, presets, KRename button).
+- [ ] Windows in main: merge experiment/windows, platform guards, CI on every
+      change, ZIP in the release; fixes: window buttons, pin icons, right
+      panel frame, Windows wording.
+- [ ] Tests, docs, release v0.1.0-preview.11 (.deb + Windows ZIP).
+- Preview 12: Explorer right-click menu; Windows cloud via app folders.

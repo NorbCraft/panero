@@ -130,6 +130,7 @@ void KrInterBriefView::setup()
     _header->setSectionResizeMode(QHeaderView::Fixed);
     _header->setSectionsClickable(true);
     _header->setSortIndicatorShown(true);
+    _header->setStyle(style()); // Panero: same sort arrow on every platform
     connect(_header, &QHeaderView::sortIndicatorChanged, _model, QOverload<int, Qt::SortOrder>::of(&ListModel::sort));
     _header->installEventFilter(this);
 
