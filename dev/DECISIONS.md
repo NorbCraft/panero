@@ -363,3 +363,11 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   (GPL-3.0; closest to Windows 11, ~11 MB) rather than vinceliuice/Fluent
   (larger, not Windows-yellow folders). Bundled at a pinned commit, checked
   by SHA-256 at build time.
+
+## D-021 — Explorer right-click menu moves to preview 13 (2026-11-23)
+
+- D-019 planned the Explorer menu for preview 12; it was not in the D-020
+  work and needs its own round of Windows runner tests. Preview 12 ships the
+  owner's D-020 list as soon as it is tested; the Explorer menu (shell
+  IContextMenu with Panero's extras at the top, D-019 unchanged) follows in
+  preview 13.

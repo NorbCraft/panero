@@ -519,3 +519,15 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Released v0.1.0-preview.11: PR #16 (Linux + Windows checks green), tag on
   6e82a2bfe, release run 45061474829; assets .deb, Windows ZIP, source,
   licenses; SHA256SUMS verified; .deb and ZIP copied to ~/Downloads.
+
+## 2026-11-23 — Preview 12
+
+- Drive bar label option and Network button (f3d4f49fa); Win11 icon theme
+  for Linux (26532ddcc; grey outlined folders at panel sizes fixed by linking
+  places/devices and inode-directory to the coloured artwork).
+- Windows helper (feature/preview12-windows, d33ba1f4e): icons, no hydration,
+  Cloud section, installer; Windows run 45161131550 and CI 45161110498 green.
+  Merged into feature/preview12 (f66d0a8e2). Screenshots reviewed.
+- Explorer menu not done; moved to preview 13 (D-021), helper started on
+  feature/explorer-menu.
+- Version bumped to 0.1.0-preview.12; release notes written.

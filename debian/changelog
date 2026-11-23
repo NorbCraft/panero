@@ -1,3 +1,21 @@
+panero (0.1.0~preview.12-1) noble; urgency=medium
+
+  * Twelfth preview (git tag v0.1.0-preview.12).
+  * Windows: cloud folders of OneDrive, Google Drive and Dropbox found
+    automatically and listed in the sidebar's Cloud section; browsing them
+    never downloads files; "Always Keep on This Device" / "Free Up Space" and
+    status badges as in Explorer.
+  * Windows: folder icons for every folder (inetpub, PerfLogs, Windows...),
+    OneDrive no longer drawn faded in the folder tree.
+  * Windows: installer (per user, no administrator rights) that upgrades an
+    installed Panero in place; the portable ZIP stays.
+  * Drive buttons: letter only (Windows) / icon only (Linux) option and a
+    Network button.
+  * Linux: Windows 11 icon theme as an option in Quick Settings (bundled
+    Win11 icon theme, GPL-3.0).
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Mon, 23 Nov 2026 13:00:00 +0100
+
 panero (0.1.0~preview.11-1) noble; urgency=medium
 
   * Eleventh preview (git tag v0.1.0-preview.11).
