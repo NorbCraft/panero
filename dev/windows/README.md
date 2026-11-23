@@ -277,6 +277,21 @@ Rename starts Panero's rename in place; the shell's Delete moves the folder to
 the Recycle Bin; Properties opens the Windows properties; Open on a folder
 enters it; "Panero Menu" opens Panero's menu with "Move to Recycle Bin".
 
+Screenshots (CI run 45169504569), `dev/windows/screenshots/p12-explorer-menu-*.png`:
+`file`, `folder`, `several`, `background`, `copy-dialog` (Copy to other panel),
+`new-submenu` (New > Folder, Shortcut, ... from the shell's New handler),
+`rename` (Panero's rename in place after the shell's Rename), `after-delete`,
+`properties`, `open-folder`, `panero-menu` (Panero's previous menu),
+`cloud-several` (three placeholders: the offline actions on top),
+`cloud-background`.
+
+Needs the owner's PC: that OneDrive's own "Always keep on this device" / "Free
+up space" show and Panero's are not added in a OneDrive folder (also with a
+non-English Windows); third-party extensions with owner-drawn items (TortoiseGit,
+WinRAR, ...); the menu position at display scaling above 100 % (the runner
+runs at 100 %); and that releasing a held right button on a real mouse never
+picks an item (the menu opens at the pointer).
+
 ### Needs the owner's PC (real OneDrive)
 
 - Whether the OneDrive folder in the owner's tree carries the hidden attribute
