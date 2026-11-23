@@ -337,22 +337,43 @@ def wait_menu(pid, want=('panero menu',), timeout=12):
     return texts
 
 
-def click_any_menu(text, pause=1.5):
-    """Clicks a menu item of any process's open menus (a native submenu may not be
-    listed under Panero's process)."""
-    want = norm(text)
-    for w in Desktop(backend='uia').windows():
-        try:
-            if w.element_info.control_type != 'Menu' and w.class_name() != '#32768':
-                continue
-            for i in w.descendants(control_type='MenuItem'):
-                if norm(i.window_text()) == want:
-                    i.click_input()
-                    time.sleep(pause)
-                    return True
-        except Exception:  # noqa: BLE001
-            pass
-    return False
+def click_native_submenu_item(text, parent_text):
+    """Clicks an item of an open native submenu (UI Automation does not list the
+    submenus of shell extensions): finds the #32768 menu windows, asks each for its
+    HMENU (MN_GETHMENU) and clicks the item by text, else the submenu's first item."""
+    import ctypes
+    from ctypes import wintypes
+    u32 = ctypes.windll.user32
+    menus = []
+
+    def found(h, _):
+        if win32gui.GetClassName(h) == '#32768' and win32gui.IsWindowVisible(h):
+            menus.append(h)
+        return True
+    win32gui.EnumWindows(found, None)
+    want, parent, fallback = norm(text), norm(parent_text), None
+    for h in menus:
+        hmenu = win32gui.SendMessage(h, 0x01E1, 0, 0)   # MN_GETHMENU
+        if not hmenu:
+            continue
+        texts = []
+        for i in range(u32.GetMenuItemCount(wintypes.HMENU(hmenu))):
+            buf = ctypes.create_unicode_buffer(256)
+            u32.GetMenuStringW(wintypes.HMENU(hmenu), i, buf, 256, 0x400)   # MF_BYPOSITION
+            texts.append(norm(buf.value))
+        if parent in texts:                 # the parent menu
+            continue
+        pos = texts.index(want) if want in texts else 0
+        r = wintypes.RECT()
+        if u32.GetMenuItemRect(None, wintypes.HMENU(hmenu), pos, ctypes.byref(r)):
+            fallback = (pos, texts, ((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            if want in texts:
+                break
+    if fallback:
+        mouse.click(button='left', coords=fallback[2])
+        time.sleep(1.5)
+        return f'item {fallback[0]} of {fallback[1]}'
+    return None
 
 
 def close_menus():
@@ -908,12 +929,9 @@ try:
     ok_new = click_menu(proc.pid, 'New', close_on_fail=False, pause=1.5)
     sub = menu_texts(proc.pid)
     shot('p12-explorer-menu-new-submenu')
-    ok_folder = click_menu(proc.pid, 'Folder', close_on_fail=False) or click_any_menu('Folder')
-    if not ok_folder and ok_new:          # the submenu is open: its first item is "Folder"
-        keys('{RIGHT}', 0.4)
-        keys('{ENTER}', 1.0)
-        ok_folder = 'keyboard'
-    if not ok_new:
+    ok_folder = click_menu(proc.pid, 'Folder', close_on_fail=False) \
+        or (ok_new and click_native_submenu_item('Folder', 'New'))
+    if not ok_new or not ok_folder:
         close_menus()
     created = []
     wait_for(lambda: created.extend(sorted({p.name for p in LEFT.iterdir() if p.is_dir()} - before)) or created, 8)
