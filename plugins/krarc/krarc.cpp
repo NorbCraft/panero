@@ -1390,6 +1390,14 @@ bool kio_krarcProtocol::setArcFile(const QUrl &url)
         arcType = arcFile->mimetype();
         arcType = getShortTypeFromMime(arcType);
     }
+#ifdef Q_OS_WIN
+    // Panero (Windows): no unzip, unrar, tar, gzip, ... there; the 7-Zip bundled in
+    // the Panero folder lists and extracts these (7z output and exit codes)
+    static const QStringList by7z = {QStringLiteral("zip"), QStringLiteral("rar"), QStringLiteral("tar"), QStringLiteral("gzip"),
+                                     QStringLiteral("bzip2"), QStringLiteral("lzma"), QStringLiteral("xz")};
+    if (by7z.contains(arcType) && !find7zExecutable().isEmpty())
+        arcType = QStringLiteral("7z");
+#endif
 
     return initArcParameters();
 }

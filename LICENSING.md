@@ -47,6 +47,7 @@ bundled assets and runtime dependencies is in
 | Panero tests, packaging, CI, scripts, user guide, development documents | `autotests/`, `debian/`, `.github/`, `dev/`, `*.md` (incl. `USER-GUIDE.md`) | GPL-2.0-or-later | Panero contributors |
 | Development hand-off material | `dev/handoff/` | GPL-2.0-or-later | Panero project owner (the icon concept image in it is AI generated) |
 | rclone (bundled program for cloud drives, unmodified upstream build) | not in the source tree; pinned in `dev/rclone/` | MIT (`LICENSES/MIT.txt`); the Go modules compiled into it carry their own free licenses (see note 4) | Nick Craig-Wood and the rclone contributors |
+| 7-Zip (Windows ZIP and installer only: `7z.exe`, `7z.dll`, unmodified official release) | not in the source tree; version and SHA-256 pinned in `dev/windows/package.sh` | GNU LGPL 2.1 or later, the unRAR restriction for some code, BSD 2-/3-clause for some code (`dev/windows/7-Zip/`, see note 5) | Igor Pavlov |
 
 Notes:
 
@@ -86,6 +87,16 @@ Notes:
    in `/usr/share/doc/panero/rclone/dependencies.txt` and in the licenses
    archive of each release. Its complete source code is at
    <https://github.com/rclone/rclone> under the pinned tag.
+
+5. **Bundled 7-Zip (Windows only).** The Windows ZIP and installer contain the
+   official 7-Zip x64 release (`7z.exe`, `7z.dll`, `License.txt`, version and
+   SHA-256 pinned in `dev/windows/package.sh`) in the folder `7-Zip`; Panero
+   runs it as a separate program to pack, unpack and browse archives. Its
+   license (`License.txt`: GNU LGPL, with the unRAR license restriction for the
+   RAR decompression code, BSD licenses for some code) and the LGPL 2.1 text are
+   in `dev/windows/7-Zip/`, in the `licenses` folder of the Windows package and
+   in the licenses archive of each release. Source code:
+   <https://www.7-zip.org/download.html>. The Linux package does not contain it.
 
 ## License texts
 

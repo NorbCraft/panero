@@ -1131,6 +1131,9 @@ void ListPanelFunc::pack()
         return ; // the user canceled
     }
 
+#ifdef Q_OS_WIN
+    PackGUI::destination = QDir::fromNativeSeparators(PackGUI::destination); // "C:\x" is not a partial path
+#endif
     // check for partial URLs
     if (!PackGUI::destination.contains(":/") && !PackGUI::destination.startsWith('/')) {
         PackGUI::destination = panel->virtualPath().toDisplayString() + '/' + PackGUI::destination;
@@ -1143,7 +1146,7 @@ void ListPanelFunc::pack()
     bool packToOtherPanel = (destDir == FileSystem::ensureTrailingSlash(panel->otherPanel()->virtualPath()).toDisplayString(QUrl::PreferLocalFile));
 
     QUrl destURL = QUrl::fromUserInput(destDir + PackGUI::filename + '.' + PackGUI::type, QString(), QUrl::AssumeLocalFile);
-    if (destURL.isLocalFile() && QFile::exists(destURL.path())) {
+    if (destURL.isLocalFile() && QFile::exists(destURL.toLocalFile())) { // Panero: toLocalFile, "/C:/..." on Windows
         QString msg = i18n("<qt><p>The archive <b>%1.%2</b> already exists. Do you want to overwrite it?</p><p>All data in the previous archive will be lost.</p></qt>", PackGUI::filename, PackGUI::type);
         if (PackGUI::type == "zip") {
             msg = i18n("<qt><p>The archive <b>%1.%2</b> already exists. Do you want to overwrite it?</p><p>Zip will replace identically named entries in the zip archive or add entries for new names.</p></qt>", PackGUI::filename, PackGUI::type);
