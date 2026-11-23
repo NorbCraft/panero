@@ -142,15 +142,18 @@ The folders without an icon were exactly the plain ones: `Program Files` and
 shared one cache entry, "folder". That entry held the `QIcon` that
 `QFileIconProvider` made for the *first* plain folder Panero painted: a lazy
 icon engine bound to that folder's path, which asks the shell (in Qt's helper
-thread, with a time-out) only when a pixmap is drawn. When that one call gave no
-icon (time-out at start-up, a folder the shell cannot read), the panel cached
-the empty pixmap for every plain folder, and the tree asked the same failing
-path again. Fix (`panerowinshell.cpp`): Panero calls `SHGetFileInfo` itself;
-the shared folder and file-type icons come from the name only
-(`SHGFI_USEFILEATTRIBUTES`, nothing is read from disk), per-path icons are made
-at once and checked, an empty result falls back to the kind's icon and then to
-the theme icon, and the panel never caches an empty pixmap. CI:
-`p12-c-drive-*.png`.
+thread, with a time-out) only when a pixmap is drawn, with the shell's overlay
+handlers (OneDrive installs several). When that call gave no icon (time-out
+while the shell extensions load, a folder the shell cannot read), the panel
+cached the empty pixmap for every plain folder, and the tree asked the same
+path again. The runner does not show the failure (the baseline run of the old
+code, `test/p12-icon-baseline`, draws all icons), so this is the mechanism
+that fits the report, not a reproduction. Fix (`panerowinshell.cpp`): Panero
+calls `SHGetFileInfo` itself; the shared folder and file-type icons come from
+the name only (`SHGFI_USEFILEATTRIBUTES`, nothing is read from disk, no
+overlays), per-path icons are made at once and checked, an empty result falls
+back to the kind's icon and then to the theme icon, and the panel never caches
+an empty pixmap. CI: `p12-c-drive-*.png`.
 
 ### Cloud folders
 
