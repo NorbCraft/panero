@@ -715,7 +715,7 @@ PaneroWinShell::MenuExtra extra(unsigned id, const QString &text, const QIcon &i
 
 bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool background)
 {
-    if (qEnvironmentVariableIsSet("PANERO_NO_EXPLORER_MENU"))
+    if (!PaneroWinShell::explorerMenuEnabled()) // Quick Settings > Right-click menu
         return false;
     // only items of a local folder (not archives, the Recycle Bin, search results, FTP, ...)
     const QUrl dir = panel->virtualPath();

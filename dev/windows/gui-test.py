@@ -1127,6 +1127,11 @@ else:
     keys('{ESC}', 0.5)
     record('Alt+F2 + Enter switches the right panel to another drive', False, f'menu items: {items}')
 keys('{TAB}', 0.8)                      # back to the left panel
+for _ in range(2):                      # a slow second drive (a VM's CD drive) may swallow the Tab
+    if title().startswith('left'):
+        break
+    time.sleep(1.5)
+    keys('{TAB}', 0.8)
 
 # --- Shift+F6, TC's rename in place ----------------------------------------------------------
 ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'renamed.txt']

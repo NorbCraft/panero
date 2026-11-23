@@ -212,6 +212,15 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_holdFeedback->addItem(i18n("Off"), QStringLiteral("none"));
     m_holdFeedback->setToolTip(i18n("Shown while the right button is held, until the context menu opens."));
     mouseForm->addRow(i18n("Hold feedback:"), m_holdFeedback);
+#ifdef Q_OS_WIN
+    // Windows: Explorer's menu with Panero's items on top, or Panero's own menu (D-019)
+    m_rightClickMenu = new QComboBox(mouseBox);
+    m_rightClickMenu->addItem(i18n("Explorer menu (default)"), true);
+    m_rightClickMenu->addItem(i18n("Panero menu"), false);
+    m_rightClickMenu->setToolTip(i18n("The menu of files, folders and drives. The Explorer menu has Panero's items "
+                                      "on top and \"Panero Menu\" for the rest."));
+    mouseForm->addRow(i18n("Right-click menu:"), m_rightClickMenu);
+#endif
     layout->addWidget(mouseBox);
 
     // ---- colours (light and dark sets)
@@ -311,6 +320,8 @@ void PaneroViewColorsDialog::load()
     m_driveLabels->setEnabled(m_showDrives->isChecked());
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
+    if (m_rightClickMenu)
+        m_rightClickMenu->setCurrentIndex(KConfigGroup(krConfig, "Look&Feel").readEntry("Explorer Menu", true) ? 0 : 1);
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
     m_showHidden->setChecked(KrActions::actToggleHidden && KrActions::actToggleHidden->isChecked());
     const QString mode = KConfigGroup(krConfig, "Look&Feel").readEntry("Mouse Selection", QString::number(_MouseSelection));
@@ -391,6 +402,8 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_showDrives->setChecked(false);
     m_driveLabels->setCurrentIndex(0);
     m_holdFeedback->setCurrentIndex(0);
+    if (m_rightClickMenu)
+        m_rightClickMenu->setCurrentIndex(0);
     for (QCheckBox *box : qAsConst(m_transparentFill))
         box->setChecked(false);
     m_classicColors->setChecked(false);
@@ -424,6 +437,8 @@ void PaneroViewColorsDialog::apply()
     g.writeEntry("Show Drive Buttons", m_showDrives->isChecked());
     g.writeEntry("Drive Button Labels", m_driveLabels->currentData().toString());
     KConfigGroup(krConfig, "Look&Feel").writeEntry("Hold Indicator", m_holdFeedback->currentData().toString());
+    if (m_rightClickMenu)
+        KConfigGroup(krConfig, "Look&Feel").writeEntry("Explorer Menu", m_rightClickMenu->currentData().toBool());
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar))) {
         if (menubar->isChecked() != m_menuMode->currentData().toBool())
             menubar->trigger();

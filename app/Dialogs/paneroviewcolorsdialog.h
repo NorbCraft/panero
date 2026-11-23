@@ -59,6 +59,7 @@ private:
     QComboBox *m_iconTheme = nullptr;
     QComboBox *m_driveLabels = nullptr;
     QComboBox *m_holdFeedback = nullptr;
+    QComboBox *m_rightClickMenu = nullptr; ///< Windows: Explorer's or Panero's menu
     QHash<QString, QCheckBox *> m_transparentFill;
     QCheckBox *m_showHidden;
     QCheckBox *m_classicColors;

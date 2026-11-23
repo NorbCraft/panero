@@ -16,6 +16,8 @@
 #include "../icon.h"
 #ifdef Q_OS_WIN
 #include "../Panel/panerowinshell.h"
+#include "../Panel/panerowinshellmenu.h"
+#include <QTimer>
 #endif
 
 static const QString windowsDrivePrefix = QStringLiteral("windrive:");
@@ -71,6 +73,40 @@ MediaButton::MediaButton(QWidget *parent) : QToolButton(parent),
     connect(notifier, &Solid::DeviceNotifier::deviceRemoved, this, &MediaButton::slotDeviceRemoved);
 
     connect(&mountCheckerTimer, &QTimer::timeout, this, &MediaButton::slotCheckMounts);
+#ifdef Q_OS_WIN
+    // right-click on the button: Explorer's menu of the panel's drive
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(this, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        if (!currentMountPoint.isEmpty())
+            driveShellMenu(currentMountPoint, mapToGlobal(pos));
+    });
+#endif
+}
+
+void MediaButton::driveShellMenu(const QString &root, const QPoint &globalPos)
+{
+#ifdef Q_OS_WIN
+    // Explorer's drive menu (Properties, Format, Eject, BitLocker, ...) with Panero's items on top
+    QMenu menu(this);
+    QAction *other = menu.addAction(Icon(QStringLiteral("view-split-left-right")), i18n("Open in Other Panel"));
+    QAction *tab = menu.addAction(Icon(QStringLiteral("tab-new")), i18n("Open in a New Tab"));
+    QAction open(Icon(QStringLiteral("document-open-folder")), i18n("Open"), &menu);
+    QAction *chosen = nullptr;
+    if (!PaneroWinShell::execItemMenu(this, root, &menu, globalPos, &chosen, &open)) {
+        menu.insertAction(other, &open); // Panero's menu only
+        chosen = menu.exec(globalPos);
+    }
+    const QUrl url = QUrl::fromLocalFile(root);
+    if (chosen == &open)
+        emit openUrl(url);
+    else if (chosen == other)
+        emit openInOtherPanel(url);
+    else if (chosen == tab)
+        emit newTab(url);
+#else
+    Q_UNUSED(root)
+    Q_UNUSED(globalPos)
+#endif
 }
 
 MediaButton::~MediaButton()
@@ -361,8 +397,15 @@ bool MediaButton::eventFilter(QObject *o, QEvent *e)
 
 void MediaButton::rightClickMenu(const QString& udi, QPoint pos)
 {
-    if (udi.startsWith(windowsDrivePrefix))
-        return; // no mount/unmount on Windows
+    if (udi.startsWith(windowsDrivePrefix)) {
+#ifdef Q_OS_WIN
+        // no mount/unmount on Windows: Explorer's drive menu, once the drive list is closed
+        const QString root = udi.mid(windowsDrivePrefix.length());
+        popupMenu->close();
+        QTimer::singleShot(0, this, [this, root, pos]() { driveShellMenu(root, pos); });
+#endif
+        return;
+    }
     if (rightMenu)
         rightMenu->close();
 
