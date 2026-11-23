@@ -388,7 +388,24 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - Needs the owner's PC: OneDrive names/icons, real download/free-up after
   the pin actions, the icon fix on his C:\, Google Drive detection.
 
-## Phase 17 — Preview 13 (owner list 2026-11-23; waiting for decisions)
+## Phase 17 — Preview 13 (owner decisions D-022)
 
-See LOG 2026-11-23 "Preview 13 planning" and the proposal page. Nothing
-implemented yet.
+- [ ] Windows VM over SSH (key ~/.ssh/panero-vm_ed25519 on the host, setup
+      script ~/VM-Share/setup-panero-ssh.ps1 run by the owner); MSYS2,
+      Python, Inno Setup in the VM.
+- [ ] Fixes: drag & drop via the document portal; Cloud section migration
+      (Windows); folder ticks from the provider status (Windows); special
+      folder icons everywhere; icon theme resets folder colour.
+- [ ] Drive right-click (Windows shell menu; Linux Panero drive menu).
+- [ ] Selection cleared after operations; app icon bigger; splitter
+      double-click 50/50; Back/Forward on the toolbar; right-click menu
+      choice; transparent marked background and cursor row; thumbnail frame.
+- [ ] Quick View (Ctrl+Q) with images, text/code, folders, archives, PDF,
+      audio/video.
+- [ ] Copy progress window + toolbar jobs button.
+- [ ] Settings window (Panero pages + Advanced) and short Quick Settings.
+- [ ] Ideas: undo, folder size on Space, first-start assistant, bookmarks
+      into Pinned, Tools menu cleanup, background thumbnails / faster start /
+      cloud listing cache.
+- [ ] Windows: zip/7z/tar packing and unpacking.
+- [ ] Release v0.1.0-preview.13 (Linux + Windows round).
