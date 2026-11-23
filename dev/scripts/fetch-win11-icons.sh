@@ -71,6 +71,9 @@ for t in Win11 Win11-dark; do
 done
 # upstream ships some links to icons that do not exist: drop them
 find "$dest" -xtype l -delete
+# upstream ships many icons executable; package them as plain data files
+find "$dest" -type f -exec chmod 0644 {} +
+find "$dest" -type d -exec chmod 0755 {} +
 for t in Win11 Win11-dark; do
     [ -f "$dest/$t/index.theme" ] || { echo "missing $t" >&2; exit 1; }
 done
