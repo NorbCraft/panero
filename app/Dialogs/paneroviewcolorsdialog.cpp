@@ -143,6 +143,16 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_showDrives->setToolTip(i18n("System, Home, USB drives, network shares and cloud drives as buttons; "
                                   "a click opens the drive in that panel. Alt+F1 / Alt+F2 open the drive list."));
     lookForm->addRow(QString(), m_showDrives);
+    m_driveLabels = new QComboBox(lookBox);
+    m_driveLabels->addItem(i18n("Icon and name"), QString());
+#ifdef Q_OS_WIN
+    m_driveLabels->addItem(i18n("Letter only"), QStringLiteral("short"));
+#else
+    m_driveLabels->addItem(i18n("Icon only"), QStringLiteral("short"));
+#endif
+    m_driveLabels->setToolTip(i18n("The name is always in the button's tooltip."));
+    connect(m_showDrives, &QCheckBox::toggled, m_driveLabels, &QWidget::setEnabled);
+    lookForm->addRow(i18n("Drive buttons:"), m_driveLabels);
     layout->addWidget(lookBox);
 
     // ---- file list
@@ -278,6 +288,8 @@ void PaneroViewColorsDialog::load()
         m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
     m_showCloud->setChecked(g.readEntry("Show Cloud", PANERO_CLOUD_DEFAULT));
     m_showDrives->setChecked(g.readEntry("Show Drive Buttons", false));
+    m_driveLabels->setCurrentIndex(qMax(0, m_driveLabels->findData(g.readEntry("Drive Button Labels", QString()))));
+    m_driveLabels->setEnabled(m_showDrives->isChecked());
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
@@ -358,6 +370,7 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_menuMode->setCurrentIndex(0);
     m_showCloud->setChecked(true);
     m_showDrives->setChecked(false);
+    m_driveLabels->setCurrentIndex(0);
     m_holdFeedback->setCurrentIndex(0);
     for (QCheckBox *box : qAsConst(m_transparentFill))
         box->setChecked(false);
@@ -383,6 +396,7 @@ void PaneroViewColorsDialog::apply()
     g.writeEntry("Folder Color", folderValue);
     g.writeEntry("Show Cloud", m_showCloud->isChecked());
     g.writeEntry("Show Drive Buttons", m_showDrives->isChecked());
+    g.writeEntry("Drive Button Labels", m_driveLabels->currentData().toString());
     KConfigGroup(krConfig, "Look&Feel").writeEntry("Hold Indicator", m_holdFeedback->currentData().toString());
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar))) {
         if (menubar->isChecked() != m_menuMode->currentData().toBool())
