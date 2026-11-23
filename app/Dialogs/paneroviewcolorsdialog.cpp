@@ -150,12 +150,12 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_menuMode->addItem(i18n("Menu bar (Alt+letter works)"), true);
     lookForm->addRow(i18n("Menus:"), m_menuMode);
     m_showCloud = new QCheckBox(i18n("Show the Cloud section in the sidebar"), lookBox);
-    m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
 #ifdef Q_OS_WIN
-    m_showCloud->hide(); // no cloud drives on Windows yet (rclone mounts need FUSE)
+    m_showCloud->setToolTip(i18n("The cloud apps' folders found on this PC (OneDrive, Google Drive, Dropbox...)."));
 #else
-    lookForm->addRow(QString(), m_showCloud);
+    m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
 #endif
+    lookForm->addRow(QString(), m_showCloud);
     m_showDrives = new QCheckBox(i18n("Show drive buttons above each panel"), lookBox);
     m_showDrives->setToolTip(i18n("System, Home, USB drives, network shares and cloud drives as buttons; "
                                   "a click opens the drive in that panel. Alt+F1 / Alt+F2 open the drive list."));
