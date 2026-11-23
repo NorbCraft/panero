@@ -16,10 +16,19 @@ set(FileSystem_SRCS
 add_library(PaneroSlowPaths STATIC paneroslowpaths.cpp)
 target_link_libraries(PaneroSlowPaths Qt5::Core Qt5::Concurrent)
 
+# Panero: Windows cloud folders (OneDrive, Google Drive, Dropbox) and their
+# Cloud Files placeholders (D-020); pure parts are unit-tested on Linux
+add_library(PaneroCloudFiles STATIC panerocloudfiles.cpp)
+target_link_libraries(PaneroCloudFiles Qt5::Core Qt5::Gui)
+if(WIN32)
+    target_link_libraries(PaneroCloudFiles advapi32)
+endif()
+
 add_library(FileSystem STATIC ${FileSystem_SRCS})
 
 target_link_libraries(FileSystem
     PaneroSlowPaths
+    PaneroCloudFiles
     Qt5::Concurrent
     KF5::I18n
     KF5::KIOCore

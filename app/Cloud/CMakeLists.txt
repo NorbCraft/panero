@@ -28,6 +28,7 @@ target_compile_definitions(Cloud PRIVATE PANERO_LIBEXEC_DIR="${PANERO_LIBEXEC_DI
 
 target_link_libraries(Cloud
     PaneroSlowPaths
+    PaneroCloudFiles
     Qt5::Widgets
     Qt5::DBus
     Qt5::Network

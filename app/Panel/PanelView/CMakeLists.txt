@@ -33,3 +33,5 @@ target_link_libraries(PanelView
     KF5::WidgetsAddons
     KF5::XmlGui
 )
+
+target_link_libraries(PanelView PaneroCloudFiles)

@@ -51,3 +51,10 @@ ecm_add_test(paneromultirenametest.cpp ../app/Dialogs/paneromultirenamerules.cpp
     TEST_NAME paneromultirenametest
     LINK_LIBRARIES Qt5::Test Qt5::Core)
 target_include_directories(paneromultirenametest PRIVATE ${CMAKE_SOURCE_DIR}/app/Dialogs)
+
+# Windows cloud folders (D-020): placeholder detection, badges, pin actions, sync folder discovery.
+ecm_add_test(panerocloudfilestest.cpp
+    TEST_NAME panerocloudfilestest
+    LINK_LIBRARIES Qt5::Test Qt5::Gui PaneroCloudFiles)
+target_include_directories(panerocloudfilestest PRIVATE ${CMAKE_SOURCE_DIR}/app/FileSystem)
+set_tests_properties(panerocloudfilestest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
