@@ -7,9 +7,12 @@
 # loaded DLL must come from the ZIP or Windows) and runs the GUI checks
 # (dev/windows/gui-test.py). See dev/windows/README.md.
 #
+# Also builds the Inno Setup installer from the same folder (D-020) and tests
+# it on the fresh runner (install, start, upgrade, uninstall).
+#
 # Runs on pull requests, on pushes to main (and to the Windows integration
 # branch), manually, and from the release workflow (workflow_call), which
-# attaches the ZIP to the release. Read-only token; no secrets are used.
+# attaches the ZIP and the installer to the release. Read-only token; no secrets are used.
 name: Windows
 
 on:
@@ -87,6 +90,29 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # The installer (D-020) packs the same folder as the ZIP.
+      - name: Build the installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+          (Get-Item $iscc).VersionInfo.ProductVersion
+          $ver = (Select-String -Path CMakeLists.txt -Pattern '^set\(VERSION "(.*)"\)').Matches[0].Groups[1].Value
+          $num = ($ver -split '-')[0]
+          $dist = (Resolve-Path dist).Path
+          $src = (Resolve-Path "dist/panero-$ver-windows-x64/Panero").Path
+          & $iscc /Qp "/DSourceDir=$src" "/DAppVersion=$ver" "/DNumericVersion=$num" "/DOutputDir=$dist" dev\windows\panero.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Get-ChildItem dist -Filter '*-setup.exe' | Format-Table Name, Length
+
+      - name: Upload installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: panero-windows-x64-setup
+          path: dist/panero-*-windows-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
   # Start the ZIP on a fresh runner without MSYS2 on PATH, check that every
   # loaded DLL comes from the ZIP or from Windows, and run the GUI checks.
   windows-gui-test:
@@ -111,6 +137,12 @@ jobs:
           name: panero-windows-x64
           path: zip
 
+      - name: Download installer
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: panero-windows-x64-setup
+          path: setup
+
       - name: Set up Python (GUI automation)
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -118,6 +150,11 @@ jobs:
 
       - name: Launch check and GUI test
         run: dev/windows/launch-test.ps1 -ZipDir zip -OutDir results
+
+      # install, start, upgrade, uninstall (per user, no administrator rights)
+      - name: Installer test
+        if: success() || failure()
+        run: dev/windows/installer-test.ps1 -SetupDir setup -OutDir results
 
       - name: Upload screenshots and logs
         if: always()
