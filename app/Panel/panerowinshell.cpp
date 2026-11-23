@@ -89,7 +89,8 @@ QIcon shellIcon(const QString &path, bool generic, unsigned long attributes, boo
     static const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED); // the GUI thread has OLE already
     Q_UNUSED(com)
     const std::wstring native = QDir::toNativeSeparators(path).toStdWString();
-    const UINT base = (generic ? SHGFI_USEFILEATTRIBUTES : 0) | (overlays ? SHGFI_ADDOVERLAYS : SHGFI_LINKOVERLAY);
+    // overlays: the shell's own (shortcut arrow, sharing, ...); never with a generic icon
+    const UINT base = (generic ? SHGFI_USEFILEATTRIBUTES : 0) | (overlays && !generic ? SHGFI_ADDOVERLAYS : 0);
     const DWORD attrs = generic ? DWORD(attributes) : 0;
     for (const UINT size : {UINT(SHGFI_SMALLICON), UINT(SHGFI_LARGEICON)}) {
         SHFILEINFOW info = {};

@@ -958,36 +958,50 @@ else:
     pins_list = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
     side_right = pins_list[0].right if pins_list else win.rectangle().left + 200
 
-    def icon_checks(names, label, tree):
-        """Icon colours of folder rows (panel or tree) by UI Automation name."""
-        found = {}
-        for el in main_w.descendants():
-            try:
-                t = el.window_text()
-                if t not in names or t in found:
-                    continue
-                r = el.rectangle()
-                is_tree = el.element_info.control_type == 'TreeItem'
-                if is_tree != tree or (not tree and not side_right < r.left < mid) or r.height() < 8:
-                    continue
-                cy = (r.top + r.bottom) // 2
-                found[t] = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
-            except Exception:  # noqa: BLE001
-                pass
-        if found:
-            top = min(el.rectangle().top for el in main_w.descendants() if el.window_text() in found)
-            box_left = win.rectangle().left if tree else side_right
-            crop_shot(f'{label}-icons-zoom', (box_left, max(top - 30, 0), (side_right if tree else mid), top + 260), 2)
+    def icon_checks(names, label, tree, found=None):
+        """Icon colours of visible folder rows by UI Automation name: the sidebar's folder
+        tree (left of the panels) or the left panel (both are tree views: TreeItem)."""
+        found = {} if found is None else found
+        wr = win.rectangle()
+        with open(OUT / f'uia-{label}.txt', 'a', encoding='utf-8') as dump:
+            for el in main_w.descendants(control_type='TreeItem'):
+                try:
+                    t = el.window_text()
+                    r = el.rectangle()
+                    dump.write(f'{t}\t{r}\n')
+                    if t not in names or t in found or r.height() < 8 or r.top < wr.top or r.bottom > wr.bottom:
+                        continue
+                    if (tree and r.left >= side_right) or (not tree and not side_right <= r.left < mid):
+                        continue
+                    cy = (r.top + r.bottom) // 2
+                    found[t] = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
+                except Exception:  # noqa: BLE001
+                    pass
+        box = (wr.left, wr.top + 100, side_right, wr.bottom - 40) if tree else (side_right, wr.top + 100, mid, wr.bottom - 40)
+        crop_shot(f'{label}-icons-zoom', box, 2)
         return found
 
     c_names = ['inetpub', 'PerfLogs', 'Program Files', 'Program Files (x86)', 'Users', 'Windows']
     existing = [n for n in c_names if os.path.isdir('C:\\' + n)]
     panel = icon_checks(existing, 'c-drive-panel', tree=False)
+    keys('{END}', 1.5)                    # Users and Windows are at the end of the list
+    shot('c-drive-folders-end')
+    icon_checks(existing, 'c-drive-panel-end', tree=False, found=panel)
+    keys('{HOME}', 0.8)
     missing = [n for n in existing if n not in panel or panel[n]['yellow'] < 0.05]
     record('Every folder on C:\\ has its folder icon in the panel (also Windows, PerfLogs, inetpub)',
            bool(panel) and not missing, f'icon colours: {panel}; without icon: {missing}', must=bool(panel))
     tree_icons = icon_checks(existing, 'c-drive-tree', tree=True)
-    missing = [n for n in existing if n in tree_icons and tree_icons[n]['yellow'] < 0.05]
+    try:                                   # scroll the tree to its end
+        tr = [t.rectangle() for t in main_w.descendants(control_type='Tree') if t.window_text() == 'Folder tree']
+        if tr:
+            mouse.scroll(coords=((tr[0].left + tr[0].right) // 2, (tr[0].top + tr[0].bottom) // 2), wheel_dist=-30)
+            time.sleep(1.0)
+            shot('c-drive-tree-end')
+            icon_checks(existing, 'c-drive-tree-end', tree=True, found=tree_icons)
+    except Exception as e:  # noqa: BLE001
+        print('tree scroll failed:', e)
+    missing = [n for n in existing if n not in tree_icons or tree_icons[n]['yellow'] < 0.05]
     record('Every folder on C:\\ has its folder icon in the folder tree', bool(tree_icons) and not missing,
            f'icon colours: {tree_icons}; without icon: {missing}', must=bool(tree_icons))
 
@@ -1084,11 +1098,14 @@ else:
             time.sleep(1.2)
             texts = [i.window_text() for i in menu_items(proc.pid)]
             shot('cloud-entry-menu')
-            ok = click_menu(proc.pid, 'Pin')
+            pin_clicked = click_menu(proc.pid, 'Pin')
             time.sleep(1)
-            pinned = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME]
-            record('Cloud entry menu: Pin adds it to Pinned', ok and len(pinned) >= 2, f'menu: {texts}; entries: {len(pinned)}',
-                   must=True)
+            try:                               # the new pin is the last one: scroll the pins list down
+                pl = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders'][0]
+                mouse.scroll(coords=((pl.left + pl.right) // 2, (pl.top + pl.bottom) // 2), wheel_dist=-10)
+                time.sleep(0.8)
+            except Exception:  # noqa: BLE001
+                pass
             shot('cloud-pinned')
             mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
             time.sleep(1.2)
@@ -1104,6 +1121,13 @@ else:
         proc.wait(15)
     except Exception:  # noqa: BLE001
         proc.kill()
+    if cloud_ok:
+        # pins are saved in the settings (%LOCALAPPDATA%\panerorc, group "Panero Pins")
+        rc = Path(os.environ['LOCALAPPDATA']) / 'panerorc'
+        text = rc.read_text(encoding='utf-8', errors='replace') if rc.exists() else ''
+        group = text.split('[Panero Pins]', 1)[1].split('\n[', 1)[0] if '[Panero Pins]' in text else ''
+        record('Cloud entry menu: Pin adds it to Pinned (with its name)', 'pin_clicked' in globals() and pin_clicked
+               and 'PaneroTestCloud' in group and CLOUD_NAME in group, f'[Panero Pins]: {group.strip()[:400]}', must=True)
 if provider is not None:
     STOP.write_text('stop')
     try:
