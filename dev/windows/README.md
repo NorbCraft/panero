@@ -147,7 +147,7 @@ handlers (OneDrive installs several). When that call gave no icon (time-out
 while the shell extensions load, a folder the shell cannot read), the panel
 cached the empty pixmap for every plain folder, and the tree asked the same
 path again. The runner does not show the failure (the baseline run of the old
-code, `test/p12-icon-baseline`, draws all icons), so this is the mechanism
+code with this GUI test, run 45155135836, draws all icons), so this is the mechanism
 that fits the report, not a reproduction. Fix (`panerowinshell.cpp`): Panero
 calls `SHGetFileInfo` itself; the shared folder and file-type icons come from
 the name only (`SHGFI_USEFILEATTRIBUTES`, nothing is read from disk, no
@@ -224,3 +224,15 @@ settings kept).
 - The names and icons Panero shows for real OneDrive / Google Drive / Dropbox
   accounts, and that OneDrive downloads / frees files after "Always Keep on
   This Device" / "Free Up Space".
+
+### Screenshots (CI run 45159458206)
+
+`dev/windows/screenshots/p12-*.png`: `c-drive-folders`, `c-drive-folders-end`
+(Windows, Users) and `c-drive-tree` (every folder with its icon, no overlay
+arrows); `cloud-section`, `cloud-entry-menu` (Open in Active / Other Panel,
+Pin); `cloud-folder-badges`, `cloud-badges-zoom` (always kept: filled check,
+downloaded: outline check, online only: cloud); `cloud-context-menu`,
+`cloud-always-keep-folder`; `cloud-f3-download` (F3 downloads, as in
+Explorer); `profile-with-cloud-folder` (the sync folder as a normal folder in
+the panel and the tree); `installed-panero` (started from
+`%LOCALAPPDATA%\Programs\Panero`).
