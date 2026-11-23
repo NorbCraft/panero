@@ -22,10 +22,11 @@ class QFile;
 
 /// One drive button (D-019).
 struct PaneroDrive {
-    enum Kind { System, Home, Volume, Network, Cloud };
+    enum Kind { System, Home, Volume, Network, Cloud, NetworkPlaces };
     Kind kind = Volume;
     QString id;      ///< stable id for "hide this button"
     QString label;
+    QString shortLabel; ///< "C:" on Windows; empty: the short button shows only the icon
     QIcon icon;
     QUrl url;        ///< where a click goes; invalid while not mounted
     QString udi;     ///< Solid device (volumes)
@@ -76,6 +77,8 @@ class PaneroDriveBar : public QWidget
 public:
     explicit PaneroDriveBar(ListPanel *panel);
     static bool enabledInSettings();
+    /// "short": letter only (Windows) / icon only (Linux); else icon and name
+    static bool shortLabelsInSettings();
 
 public slots:
     void setCurrentUrl(const QUrl &url);
@@ -86,6 +89,8 @@ private:
     void updateChecked();
     void open(const PaneroDrive &drive);
     void showMenu(const PaneroDrive &drive, QToolButton *button, const QPoint &pos);
+    /// Windows: network drives, Network Locations and "Open Network Path..."
+    void showNetworkMenu(QToolButton *button);
     ListPanel *m_panel;
     QUrl m_url;
     QList<QPointer<QToolButton>> m_buttons;

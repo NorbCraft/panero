@@ -27,6 +27,17 @@ if(SYNCHRONIZER_ENABLED)
     add_subdirectory(Synchronizer)
 endif(SYNCHRONIZER_ENABLED)
 
+# Icon themes shipped with Panero (D-020): the folder made by
+# dev/scripts/fetch-win11-icons.sh (pinned commit, SHA-256 checked).
+set(PANERO_ICON_THEMES_DIR "" CACHE PATH "Verified icon themes to ship with Panero (dev/scripts/fetch-win11-icons.sh <dir> -> <dir>/icons)")
+if(PANERO_ICON_THEMES_DIR)
+    if(NOT EXISTS "${PANERO_ICON_THEMES_DIR}/Win11/index.theme")
+        message(FATAL_ERROR "PANERO_ICON_THEMES_DIR has no Win11 theme: ${PANERO_ICON_THEMES_DIR}")
+    endif()
+    install(DIRECTORY "${PANERO_ICON_THEMES_DIR}/" DESTINATION ${KDE_INSTALL_DATADIR}/panero/icons USE_SOURCE_PERMISSIONS)
+    message(STATUS "Shipping icon themes from ${PANERO_ICON_THEMES_DIR}")
+endif()
+
 set(krusader_SRCS
     krglobal.cpp
     icon.cpp

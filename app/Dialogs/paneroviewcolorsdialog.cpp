@@ -29,6 +29,8 @@
 #include <QPixmap>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileInfo>
+#include <QStandardPaths>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGridLayout>
@@ -105,6 +107,21 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_iconSet->addItem(i18n("Panero Line"), QStringLiteral("line"));
     m_iconSet->setToolTip(i18n("Panero Line: thin line icons for the toolbar and sidebar. File icons always come from the system."));
     lookForm->addRow(i18n("Icons:"), m_iconSet);
+#ifndef Q_OS_WIN
+    // icon theme for files and folders: the desktop's, or one Panero ships (D-020)
+    m_iconTheme = new QComboBox(lookBox);
+    m_iconTheme->addItem(i18n("The desktop's icon theme"), QString());
+    for (const QString &dir : QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("panero/icons"),
+                                                         QStandardPaths::LocateDirectory)) {
+        if (QFileInfo::exists(dir + QStringLiteral("/Win11/index.theme")) && m_iconTheme->findData(QStringLiteral("Win11")) < 0)
+            m_iconTheme->addItem(i18n("Windows 11 (Win11 icon theme)"), QStringLiteral("Win11"));
+    }
+    m_iconTheme->setToolTip(i18n("Icons of files, folders and drives. The dark variant is used with the dark look."));
+    if (m_iconTheme->count() > 1)
+        lookForm->addRow(i18n("Icon theme:"), m_iconTheme);
+    else
+        m_iconTheme->hide();
+#endif
     m_folderColor = new QComboBox(lookBox);
     m_folderColor->addItem(i18n("As in the icon theme"), QString());
     for (const auto &preset : PaneroIconThemes::folderColorPresets()) {
@@ -133,16 +150,26 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_menuMode->addItem(i18n("Menu bar (Alt+letter works)"), true);
     lookForm->addRow(i18n("Menus:"), m_menuMode);
     m_showCloud = new QCheckBox(i18n("Show the Cloud section in the sidebar"), lookBox);
-    m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
 #ifdef Q_OS_WIN
-    m_showCloud->hide(); // no cloud drives on Windows yet (rclone mounts need FUSE)
+    m_showCloud->setToolTip(i18n("The cloud apps' folders found on this PC (OneDrive, Google Drive, Dropbox...)."));
 #else
-    lookForm->addRow(QString(), m_showCloud);
+    m_showCloud->setToolTip(i18n("Cloud drives and servers you added (Add Cloud..., Connect to Server...)."));
 #endif
+    lookForm->addRow(QString(), m_showCloud);
     m_showDrives = new QCheckBox(i18n("Show drive buttons above each panel"), lookBox);
     m_showDrives->setToolTip(i18n("System, Home, USB drives, network shares and cloud drives as buttons; "
                                   "a click opens the drive in that panel. Alt+F1 / Alt+F2 open the drive list."));
     lookForm->addRow(QString(), m_showDrives);
+    m_driveLabels = new QComboBox(lookBox);
+    m_driveLabels->addItem(i18n("Icon and name"), QString());
+#ifdef Q_OS_WIN
+    m_driveLabels->addItem(i18n("Letter only"), QStringLiteral("short"));
+#else
+    m_driveLabels->addItem(i18n("Icon only"), QStringLiteral("short"));
+#endif
+    m_driveLabels->setToolTip(i18n("The name is always in the button's tooltip."));
+    connect(m_showDrives, &QCheckBox::toggled, m_driveLabels, &QWidget::setEnabled);
+    lookForm->addRow(i18n("Drive buttons:"), m_driveLabels);
     layout->addWidget(lookBox);
 
     // ---- file list
@@ -263,6 +290,8 @@ void PaneroViewColorsDialog::load()
     m_alternating->setChecked(g.readEntry("Alternating Rows", true));
     m_markIndicator->setChecked(g.readEntry("Mark Indicator", false));
     m_iconSet->setCurrentIndex(qMax(0, m_iconSet->findData(g.readEntry("Icon Set", QString()))));
+    if (m_iconTheme)
+        m_iconTheme->setCurrentIndex(qMax(0, m_iconTheme->findData(g.readEntry("Icon Theme", QString()))));
     const QString folder = g.readEntry("Folder Color", QString());
     int folderIndex = m_folderColor->findData(folder);
     if (folderIndex < 0 && QColor(folder).isValid()) {
@@ -278,6 +307,8 @@ void PaneroViewColorsDialog::load()
         m_menuMode->setCurrentIndex(menubar->isChecked() ? 1 : 0);
     m_showCloud->setChecked(g.readEntry("Show Cloud", PANERO_CLOUD_DEFAULT));
     m_showDrives->setChecked(g.readEntry("Show Drive Buttons", false));
+    m_driveLabels->setCurrentIndex(qMax(0, m_driveLabels->findData(g.readEntry("Drive Button Labels", QString()))));
+    m_driveLabels->setEnabled(m_showDrives->isChecked());
     m_holdFeedback->setCurrentIndex(qMax(0, m_holdFeedback->findData(
         KConfigGroup(krConfig, "Look&Feel").readEntry("Hold Indicator", QStringLiteral("pie")))));
     m_classicColors->setChecked(!g.readEntry("Use Panero Colors", true));
@@ -358,6 +389,7 @@ void PaneroViewColorsDialog::restoreDefaults()
     m_menuMode->setCurrentIndex(0);
     m_showCloud->setChecked(true);
     m_showDrives->setChecked(false);
+    m_driveLabels->setCurrentIndex(0);
     m_holdFeedback->setCurrentIndex(0);
     for (QCheckBox *box : qAsConst(m_transparentFill))
         box->setChecked(false);
@@ -378,11 +410,19 @@ void PaneroViewColorsDialog::apply()
     const bool needsRestart = g.readEntry("Theme", 0) != m_theme->currentIndex()
         || g.readEntry("Panero Style", true) != m_paneroStyle->isChecked()
         || g.readEntry("Icon Set", QString()) != m_iconSet->currentData().toString()
+        || (m_iconTheme && g.readEntry("Icon Theme", QString()) != m_iconTheme->currentData().toString())
         || g.readEntry("Folder Color", QString()) != folderValue;
     g.writeEntry("Icon Set", m_iconSet->currentData().toString());
+    if (m_iconTheme) {
+        if (m_iconTheme->currentData().toString().isEmpty())
+            g.deleteEntry("Icon Theme");
+        else
+            g.writeEntry("Icon Theme", m_iconTheme->currentData().toString());
+    }
     g.writeEntry("Folder Color", folderValue);
     g.writeEntry("Show Cloud", m_showCloud->isChecked());
     g.writeEntry("Show Drive Buttons", m_showDrives->isChecked());
+    g.writeEntry("Drive Button Labels", m_driveLabels->currentData().toString());
     KConfigGroup(krConfig, "Look&Feel").writeEntry("Hold Indicator", m_holdFeedback->currentData().toString());
     if (QAction *menubar = krApp->actionCollection()->action(KStandardAction::name(KStandardAction::ShowMenubar))) {
         if (menubar->isChecked() != m_menuMode->currentData().toBool())

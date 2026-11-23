@@ -337,7 +337,7 @@ next mount by isMountPoint()).
 - [x] Tests: ctest 7/7, security 16/16, GUI test 2/2, freeze test passed.
 - [x] Release v0.1.0-preview.10 (PR #15, tag on 1099ea025, run 45044078622).
 
-## Phase 15 — Preview 11 (owner plan 2026-11-22; waiting for owner decisions)
+## Phase 15 — Preview 11 (owner plan 2026-11-22; done)
 
 Owner asked to clarify the proposals before implementing. Proposal page with
 a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
@@ -366,3 +366,23 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - [x] Release v0.1.0-preview.11 (.deb + Windows ZIP): PR #16, tag on
       6e82a2bfe, release run 45061474829.
 - Preview 12: Explorer right-click menu; Windows cloud via app folders.
+
+## Phase 16 — Preview 12 (owner plan 2026-11-23, D-020)
+
+- [x] Drive buttons: "letter only" (Windows) / "icon only" (Linux) option,
+      Network button (smb:/ on Linux, network menu on Windows).
+- [x] Linux: Win11 icon theme option (bundled at a pinned commit, SHA-256
+      checked; coloured places/folder icons at panel sizes).
+- [x] Windows (feature/preview12-windows, merged f66d0a8e2): folder icons via
+      SHGetFileInfo with fallbacks, sync roots drawn normally; no hydration of
+      placeholders (PaneroCloudFiles); Cloud section with auto-detected sync
+      roots, pin, badges, Always Keep / Free Up Space; Inno Setup installer
+      (per user, upgrade in place) + installer test; GUI test with a real
+      Cloud Files sync root.
+- [x] Quick Settings: Cloud section checkbox also on Windows.
+- [ ] Release v0.1.0-preview.12 (.deb, ZIP, setup.exe).
+- [x] Explorer right-click menu (D-019, D-021): shell IContextMenu with
+      Panero's extras on top (panerowinshellmenu.*), merged from
+      feature/explorer-menu (Windows run 45169504569 green).
+- Needs the owner's PC: OneDrive names/icons, real download/free-up after
+  the pin actions, the icon fix on his C:\, Google Drive detection.

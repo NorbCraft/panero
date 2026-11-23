@@ -48,8 +48,10 @@ unchanged):
 - Triggers: every pull request, pushes to `main` (and to `feature/windows-main`),
   manual runs (`workflow_dispatch`), and `workflow_call` from the release
   workflow.
-- `windows-build`: build, `ctest` (5 suites; the two cloud suites are
-  Linux-only), package, upload the ZIP artifact `panero-windows-x64`.
+- `windows-build`: build, `ctest` (every suite except the two rclone cloud
+  suites, which are Linux-only), package, upload the ZIP artifact
+  `panero-windows-x64`; then the Inno Setup installer from the same folder
+  (`panero.iss`, artifact `panero-windows-x64-setup`).
 - `windows-gui-test`: a fresh runner. It renames `C:\msys64`, strips `PATH` to
   the Windows folders, starts `panero.exe` and checks that every module loaded
   by Panero and its KIO workers comes from the ZIP or `C:\Windows`. Then it runs
@@ -58,12 +60,18 @@ unchanged):
   panel's outline with each panel active (keyboard and mouse, normal and
   maximized), the shell icons of the pins, the Windows words (Recycle Bin,
   Panero Settings) and the Total Commander habits (F5–F8, F2, Insert, Del, Tab,
-  Enter/Backspace, Alt+F1/F2, Shift+F6, Ctrl+click, F3/F4/F9). Screenshots, logs
-  and `gui-results.md` are uploaded as `panero-windows-test-results`.
+  Enter/Backspace, Alt+F1/F2, Shift+F6, Ctrl+click, F3/F4/F9) and the Explorer
+  right-click menu (see "Explorer right-click menu"). Phase C (D-020)
+  checks the folder icons on `C:\` (panel and tree), registers a real Cloud
+  Files sync root with `cloud-provider.py` and browses it (see "Cloud
+  folders"). `installer-test.ps1` then installs, starts, upgrades and
+  uninstalls the installer. Screenshots, logs, `gui-results.md` and
+  `installer-results.md` are uploaded as `panero-windows-test-results`.
 - Release (`release.yml`, tags `v*`): its `windows` job calls `windows.yml` on
-  the tag; the ZIP is added to the release as
-  `panero-<version>-windows-x64.zip`, next to the `.deb`, and listed in
-  `SHA256SUMS`. A failing Windows build or GUI test stops the release.
+  the tag; the ZIP and the installer are added to the release as
+  `panero-<version>-windows-x64.zip` and `panero-<version>-windows-x64-setup.exe`,
+  next to the `.deb`, and listed in `SHA256SUMS`. A failing Windows build, GUI
+  test or installer test stops the release.
 
 ## Windows-specific code
 
@@ -72,6 +80,8 @@ unchanged):
 - `app/Panel/panerowinshell.*`: Explorer drive names and the shell icons for
   drives, folders and files (cached per extension), used by the file list, the
   folder tree, the drive button and the pins.
+- `app/Panel/panerowinshellmenu.*` (preview 12, D-019): Explorer's right-click
+  menu, see "Explorer right-click menu" below. Built on Windows only.
 - `app/panerowording.h`: `PANERO_TEXT(linux, windows)` for the words Windows
   uses: Recycle Bin (toolbar, menus, F8/Del question and button, progress,
   settings), "Panero Settings" for the Konfigurator window and in messages,
@@ -85,13 +95,14 @@ unchanged):
 - `app/krusader.cpp`: the main window is a plain `Qt::Window` on Windows (see
   below); no welcome box, no first-run Konfigurator / tool search; the default
   window size also applies on the first run.
+- `app/FileSystem/panerocloudfiles.*` (preview 12, D-020): the providers' sync
+  folders and their Cloud Files placeholders, see "Cloud folders" below.
 - Not built on Windows: the cloud backend `app/Cloud` (rclone mounts need FUSE;
   Secret Service keyring, `panero-cloud-key`, rclone's unix-socket remote
   control) and its two test suites, the ISO worker (Linux CD-ROM ioctls) and the
-  handbook. The sidebar has no Cloud section on Windows and Quick Settings hides
-  "Show the Cloud section". Cloud on Windows (preview 12) will use the OneDrive /
-  Google Drive app folders, not rclone. `PaneroSlowPaths` is still built (it has
-  no cloud mounts to find there).
+  handbook. Cloud on Windows uses the OneDrive / Google Drive / Dropbox app
+  folders instead (D-020). `PaneroSlowPaths` is still built (it has no cloud
+  mounts to find there).
 - Linux keeps its behaviour: experiment changes that would alter it (first-run
   window size, job error dialogs, the internal-editor warning, viewer and lister
   captions as local paths) are Windows-only.
@@ -124,3 +135,181 @@ unchanged):
 Screenshots from the CI run that verified these fixes are in
 `dev/windows/screenshots/p11-*.png` (the older ones there show the
 experiment, including the dialog-style title bar it fixed).
+
+## Preview 12 (D-020)
+
+### Folder icons (owner report: no icon on `inetpub`, `PerfLogs`, `Windows`)
+
+The folders without an icon were exactly the plain ones: `Program Files` and
+`Users` have a `desktop.ini`, so each got its own icon; every other folder
+shared one cache entry, "folder". That entry held the `QIcon` that
+`QFileIconProvider` made for the *first* plain folder Panero painted: a lazy
+icon engine bound to that folder's path, which asks the shell (in Qt's helper
+thread, with a time-out) only when a pixmap is drawn, with the shell's overlay
+handlers (OneDrive installs several). When that call gave no icon (time-out
+while the shell extensions load, a folder the shell cannot read), the panel
+cached the empty pixmap for every plain folder, and the tree asked the same
+path again. The runner does not show the failure (the baseline run of the old
+code with this GUI test, run 45155135836, draws all icons), so this is the mechanism
+that fits the report, not a reproduction. Fix (`panerowinshell.cpp`): Panero
+calls `SHGetFileInfo` itself; the shared folder and file-type icons come from
+the name only (`SHGFI_USEFILEATTRIBUTES`, nothing is read from disk, no
+overlays), per-path icons are made at once and checked, an empty result falls
+back to the kind's icon and then to the theme icon, and the panel never caches
+an empty pixmap. CI: `p12-c-drive-*.png`.
+
+### Cloud folders
+
+- Found by Panero (`PaneroCloudFiles::syncRoots`, re-read every 5 s, registry
+  and settings only): registered Cloud Files sync roots
+  (`HKLM` and `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\SyncRootManager\*`,
+  `DisplayNameResource`, `UserSyncRoots\<user SID>`), `%OneDrive%`,
+  `%OneDriveConsumer%` ("OneDrive - Personal"), `%OneDriveCommercial%`, Google
+  Drive for desktop (`HKCU\Software\Google\DriveFS` `PerAccountPreferences`
+  `mount_point_path`, else `DefaultMountPoint`; the drive letter is a streaming
+  drive) and Dropbox (`%LOCALAPPDATA%\Dropbox\info.json`). Only folders that
+  exist are listed.
+- Sidebar: a Cloud section with each folder's shell icon and name while at
+  least one is connected (Quick Settings' "Show the Cloud section" is still
+  hidden on Windows; the setting defaults to on). Click: open in the active
+  panel; right-click: Open in Active Panel, Open in Other Panel, Pin.
+- Never downloading while browsing: inside a sync folder Panero takes the file
+  type from the extension only, reads no `desktop.ini` / `.directory`, extracts
+  no per-file icons (`.exe`, `.lnk`, ...) from placeholders (the type's icon
+  instead), makes no previews and shows nothing in the per-panel preview/view
+  page for placeholders (`RECALL_ON_DATA_ACCESS` or `OFFLINE`). Everything on
+  Google Drive's streaming drive counts as a placeholder. Enter, F3 and F4 open
+  the file and may download it, as in Explorer.
+- Badges from the attributes (the Linux drawing, `PaneroCloudFiles::decorate`):
+  cloud = online only, green outline check = available on this device, green
+  filled check = always kept. Folders show their own pin state.
+- Context menu (all selected items inside a sync folder): "Always Keep on This
+  Device" (a check box as in Explorer; `CfSetPinState` PINNED, recursive for
+  folders; unchecking clears the pin) and "Free Up Space" (UNPINNED). The
+  provider then downloads / frees the files. Without the Cloud Files API the
+  attributes are set with `SetFileAttributes`.
+- Folder tree: a sync folder is never drawn faded as hidden.
+- Tests: `panerocloudfilestest` (attributes -> placeholder / badge, pin
+  actions, registry / JSON parsing, merge and order, badge drawing; Linux and
+  Windows). GUI test phase C: `cloud-provider.py` registers a real sync root
+  with `CfRegisterSyncRoot` in the runner's profile (`PaneroTestCloud`),
+  creates placeholders with `CfCreatePlaceholders` and stays connected, logging
+  every `FETCH_DATA` callback with the requesting process. Checks: the Cloud
+  section lists it, browsing (painting, cursor over every file, entering a
+  sub-folder, context menus, both offline actions on a file and a folder)
+  causes no `FETCH_DATA` from Panero and leaves every placeholder online-only;
+  F3 does download (positive control). The test's registry entry is written to
+  `HKCU` when `CfRegisterSyncRoot` alone creates none (OneDrive registers
+  through the shell's `StorageProviderSyncRootManager`, which needs an app
+  package).
+
+### Installer
+
+`panero.iss` (Inno Setup 6): per user without administrator rights
+(`%LOCALAPPDATA%\Programs\Panero`), Start menu entry, optional desktop icon,
+uninstaller, fixed `AppId` {57A1DB5D-E2D2-41F6-804E-6A302AA64E0D} so a newer
+installer upgrades in place (program `plugins`, `data` and DLLs are replaced
+completely; a running Panero is closed first). Settings live in the profile
+(`%LOCALAPPDATA%\panerorc`, ...), so upgrades and uninstalling keep them. No
+background update service. `installer-test.ps1` (fresh runner, after the GUI
+test): `/VERYSILENT /CURRENTUSER` install, files, Start menu entry, `HKCU`
+uninstall entry, nothing machine-wide, start from the installed folder (every
+module from there or Windows), install again (one uninstall entry, settings
+with a marker kept), silent uninstall (folder, shortcut and entry gone,
+settings kept).
+
+### Explorer right-click menu (D-019)
+
+Right-click (held right button, the menu key or Shift+F10) on files and folders
+shows the real Windows shell context menu of the targets (the marked items, or
+the item under the cursor); on empty space, the folder's background menu.
+`app/Panel/panerowinshellmenu.*`:
+
+- Built in the GUI thread (its OLE / single-threaded COM apartment):
+  `SHParseDisplayName` + `IShellFolder::BindToObject` for the panel folder,
+  `ParseDisplayName` for the names, `GetUIObjectOf(IID_IContextMenu)` for the
+  items, `CreateViewObject(IID_IContextMenu)` for the background;
+  `QueryContextMenu` with `CMF_NORMAL | CMF_CANRENAME`, plus
+  `CMF_EXTENDEDVERBS` while Shift is held (as in Explorer). Shown with
+  `TrackPopupMenuEx`; while it is open the main window is subclassed
+  (`SetWindowSubclass`) and passes `WM_INITMENUPOPUP`, `WM_DRAWITEM`,
+  `WM_MEASUREITEM` and `WM_MENUCHAR` to `IContextMenu3::HandleMenuMsg2` (or
+  `IContextMenu2`), so "Open with", "Send to", "New", 7-Zip and other
+  extensions fill their submenus. All interfaces and PIDLs are released.
+- Shell commands run with `InvokeCommand` (`CMINVOKECOMMANDINFOEX`, Unicode,
+  the panel folder as `lpDirectory`, the menu point, Ctrl / Shift masks), then
+  the panel is refreshed (at once, after 0.7 s and 2.5 s: some commands finish
+  in the background). Delete therefore goes to the Recycle Bin as in Explorer
+  (Shift+Delete in the menu: permanently). Two verbs are Panero's way:
+  `rename` starts Panero's rename in place (several items: Multi-Rename), and
+  `open` on one folder enters it in the panel instead of opening Explorer.
+- Panero's items on top (command ids from 0x8000, the shell's are 1..0x7FFF):
+  Copy to other panel (F5), Move to other panel (F6), Copy Path / Copy Paths
+  (Windows paths with backslashes), Open Terminal Here, inside a sync folder
+  "Always Keep on This Device" (check box) and "Free Up Space", and
+  "Panero Menu", which opens Panero's full previous menu (Preview, User
+  Actions, Link Handling, ...). The background menu has Copy Path, Open
+  Terminal Here and Panero Menu.
+- The offline actions are only added when the provider has none of its own:
+  not for OneDrive and Dropbox folders (their shell extensions add them in the
+  Windows language), and not when the menu already has an item such as
+  "Always keep on this device", "Free up space", "Make available offline" or
+  "Make online-only" (`PaneroCloudFiles::isProviderOfflineItem`, unit-tested).
+  The test provider on the runner adds none, so Panero's are shown there.
+- Building the menu reads no file contents: the GUI test registers
+  placeholders and opens the menu on a placeholder file, a placeholder folder,
+  several placeholders and the sync folder's background; the provider logs no
+  `FETCH_DATA` from Panero and every placeholder stays online-only.
+- Panero's own menu is used for everything that is not a plain local folder
+  (archives, the Recycle Bin, search results, FTP / SFTP / SMB through KIO), and
+  when the shell gives no menu. `PANERO_NO_EXPLORER_MENU=1` always shows
+  Panero's menu; `PANERO_DEBUG_EXPLORER_MENU=1` logs the menus (texts and
+  canonical verbs), the choice and the `InvokeCommand` result.
+- Linux is unchanged (the file is built on Windows only).
+
+GUI test (phase B, disposable files; phase C, placeholders): the menu on a
+file, a folder, two marked files and the background has the shell's items
+("Open with", "Send to", "Properties"; "New" on the background) and Panero's;
+Copy to other panel copies through the F5 dialog; Copy Path gives
+`C:\pt\work\left\alpha.txt`; the shell's "Copy as path" works; New > Folder
+creates a folder (the IContextMenu3 submenu) and the panel shows it; the shell's
+Rename starts Panero's rename in place; the shell's Delete moves the folder to
+the Recycle Bin; Properties opens the Windows properties; Open on a folder
+enters it; "Panero Menu" opens Panero's menu with "Move to Recycle Bin".
+
+Screenshots (CI run 45169504569), `dev/windows/screenshots/p12-explorer-menu-*.png`:
+`file`, `folder`, `several`, `background`, `copy-dialog` (Copy to other panel),
+`new-submenu` (New > Folder, Shortcut, ... from the shell's New handler),
+`rename` (Panero's rename in place after the shell's Rename), `after-delete`,
+`properties`, `open-folder`, `panero-menu` (Panero's previous menu),
+`cloud-several` (three placeholders: the offline actions on top),
+`cloud-background`.
+
+Needs the owner's PC: that OneDrive's own "Always keep on this device" / "Free
+up space" show and Panero's are not added in a OneDrive folder (also with a
+non-English Windows); third-party extensions with owner-drawn items (TortoiseGit,
+WinRAR, ...); the menu position at display scaling above 100 % (the runner
+runs at 100 %); and that releasing a held right button on a real mouse never
+picks an item (the menu opens at the pointer).
+
+### Needs the owner's PC (real OneDrive)
+
+- Whether the OneDrive folder in the owner's tree carries the hidden attribute
+  (`attrib "%OneDrive%"` in a command prompt); Panero now draws a sync folder
+  normally even then, but a hidden folder is only listed when hidden folders
+  are shown.
+- The names and icons Panero shows for real OneDrive / Google Drive / Dropbox
+  accounts, and that OneDrive downloads / frees files after "Always Keep on
+  This Device" / "Free Up Space".
+
+### Screenshots (CI run 45159458206)
+
+`dev/windows/screenshots/p12-*.png`: `c-drive-folders`, `c-drive-folders-end`
+(Windows, Users) and `c-drive-tree` (every folder with its icon, no overlay
+arrows); `cloud-section`, `cloud-entry-menu` (Open in Active / Other Panel,
+Pin); `cloud-folder-badges`, `cloud-badges-zoom` (always kept: filled check,
+downloaded: outline check, online only: cloud); `cloud-context-menu`,
+`cloud-always-keep-folder`; `cloud-f3-download` (F3 downloads, as in
+Explorer); `profile-with-cloud-folder` (the sync folder as a normal folder in
+the panel and the tree); `installed-panero` (started from
+`%LOCALAPPDATA%\Programs\Panero`).

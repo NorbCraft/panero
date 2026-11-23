@@ -29,7 +29,9 @@ specific to Panero.
 - **Drive buttons** (Quick Settings > *Show drive buttons above each panel*,
   off by default): a row of buttons above each panel, like Total Commander's
   drive bar: System, Home, disks and USB drives (also unmounted ones: a click
-  mounts), network shares and your cloud drives. A click opens the drive in
+  mounts), network shares, your cloud drives and **Network** (Linux: the
+  computers and shares in your network, smb:/; Windows: network drives,
+  Network Locations and Open Network Path...). A click opens the drive in
   that panel; the drive the panel is on is highlighted. Right-click: Open in
   Other Panel, Safely Remove / Eject, Hide This Button, Show Hidden Buttons.
 - Column headers: **^** sorted ascending (A to Z, small to large, old to new),
@@ -161,10 +163,12 @@ Multi Rename). The patterns are Total Commander's:
 - "Use Panero's look": the modern Panero look; unchecked, Panero uses the plain
   system style like Krusader.
 - **Icons**: the system's icons or **Panero Line** (thin line icons for the
-  toolbar and sidebar). **Folder color**: keep the icon theme's folders or pick
+  toolbar and sidebar). **Icon theme** (Linux): the desktop's icon theme or
+  **Windows 11** (the Win11 icon theme, shipped with Panero, light and dark). **Folder color**: keep the icon theme's folders or pick
   a colour (or a custom one).
 - **Menus**: Menu button or the classic menu bar. **Cloud** section on or off.
-  **Drive buttons** above each panel on or off.
+  **Drive buttons** above each panel on or off, with icon and name or only the
+  letter (Windows) / icon (Linux).
 - **Hold feedback** while the right button is held: pie, ring, bar or off.
 - Changing the appearance, icons or folder colour asks to **restart** Panero
   (Restart / Later); folders and tabs are kept.

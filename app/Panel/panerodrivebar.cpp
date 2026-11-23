@@ -35,6 +35,7 @@
 #include <KCoreAddons/KFormat>
 #include <KI18n/KLocalizedString>
 #include <KIOCore/KMountPoint>
+#include <KIOCore/KProtocolInfo>
 #include <Solid/Block>
 #include <Solid/Device>
 #include <Solid/DeviceNotifier>
@@ -48,6 +49,8 @@
 #include "../Cloud/panerocloud.h"
 #else
 #include "panerowinshell.h"
+#include <QInputDialog>
+#include <windows.h>
 #endif
 
 namespace
@@ -232,6 +235,15 @@ void PaneroDrives::refresh()
         // the ones Explorer shows for each drive
         for (PaneroDrive &d : found)
             d.icon = PaneroWinShell::driveIcon(d.url.toLocalFile());
+        // Total Commander's network button
+        PaneroDrive net;
+        net.kind = PaneroDrive::NetworkPlaces;
+        net.id = QStringLiteral("network");
+        net.label = i18nc("drive button", "Network");
+        net.shortLabel = QStringLiteral("\\\\");
+        net.icon = Icon(QStringLiteral("network-workgroup"));
+        net.toolTip = i18n("Network drives, network locations and network paths");
+        found << net;
         bool same = found.size() == m_drives.size();
         for (int i = 0; same && i < found.size(); ++i)
             same = found[i].id == m_drives[i].id && found[i].label == m_drives[i].label;
@@ -246,8 +258,10 @@ void PaneroDrives::refresh()
             if (root.size() < 2 || root.at(1) != QLatin1Char(':'))
                 continue;
             PaneroDrive d;
-            d.kind = PaneroDrive::Volume;
+            const bool remote = GetDriveTypeW(reinterpret_cast<const wchar_t *>(root.left(3).utf16())) == DRIVE_REMOTE;
+            d.kind = remote ? PaneroDrive::Network : PaneroDrive::Volume;
             d.id = QStringLiteral("drive:") + root.left(2).toUpper();
+            d.shortLabel = root.left(2).toUpper();
             d.label = v.name().isEmpty() ? root.left(2).toUpper() : QStringLiteral("%1 %2").arg(root.left(2).toUpper(), v.name());
             d.url = QUrl::fromLocalFile(v.rootPath());
             d.toolTip = root;
@@ -386,6 +400,19 @@ void PaneroDrives::refresh()
         d.toolTip = e.isServer() ? e.url.toDisplayString() : i18n("Cloud drive %1", e.label);
         drives << d;
     }
+
+    // Total Commander's network button: the network neighbourhood (Windows
+    // shares, NAS) through KIO's smb worker (kio-extras) when it is there
+    if (KProtocolInfo::isKnownProtocol(QStringLiteral("smb"))) {
+        PaneroDrive net;
+        net.kind = PaneroDrive::NetworkPlaces;
+        net.id = QStringLiteral("network");
+        net.label = i18nc("drive button", "Network");
+        net.icon = Icon(QStringLiteral("network-workgroup"));
+        net.url = QUrl(QStringLiteral("smb:/"));
+        net.toolTip = i18n("Computers and shares in the local network (smb:/)");
+        drives << net;
+    }
 #endif
 
     bool same = drives.size() == m_drives.size();
@@ -412,6 +439,11 @@ bool PaneroDriveBar::enabledInSettings()
     return KConfigGroup(krConfig, "Panero Appearance").readEntry("Show Drive Buttons", false);
 }
 
+bool PaneroDriveBar::shortLabelsInSettings()
+{
+    return KConfigGroup(krConfig, "Panero Appearance").readEntry("Drive Button Labels", QString()) == QLatin1String("short");
+}
+
 void PaneroDriveBar::updateVisibility()
 {
     const bool on = enabledInSettings();
@@ -431,6 +463,7 @@ void PaneroDriveBar::rebuild()
     m_buttons.clear();
     m_shown.clear();
     const QStringList hidden = hiddenIds();
+    const bool shortLabels = shortLabelsInSettings();
     for (const PaneroDrive &d : PaneroDrives::instance()->drives()) {
         if (hidden.contains(d.id))
             continue;
@@ -438,11 +471,17 @@ void PaneroDriveBar::rebuild()
         b->setAutoRaise(true);
         b->setCheckable(true);
         b->setFocusPolicy(Qt::NoFocus);
-        b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
         b->setIconSize(QSize(16, 16));
         b->setIcon(d.icon);
-        b->setText(d.label);
-        b->setToolTip(d.toolTip);
+        if (shortLabels && d.shortLabel.isEmpty()) {
+            b->setToolButtonStyle(Qt::ToolButtonIconOnly);
+            b->setText(d.label);
+            b->setToolTip(d.toolTip.startsWith(d.label) ? d.toolTip : d.label + QLatin1Char('\n') + d.toolTip);
+        } else {
+            b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+            b->setText(shortLabels ? d.shortLabel : d.label);
+            b->setToolTip(shortLabels ? d.label + QLatin1Char('\n') + d.toolTip : d.toolTip);
+        }
         b->setContextMenuPolicy(Qt::CustomContextMenu);
         const int index = m_shown.size();
         connect(b, &QToolButton::clicked, this, [this, index]() {
@@ -506,6 +545,15 @@ void PaneroDriveBar::open(const PaneroDrive &drive)
             dock->openCloudEntry(PaneroCloud::instance()->entry(drive.cloudId));
             return;
         }
+    }
+#endif
+#ifdef Q_OS_WIN
+    if (drive.kind == PaneroDrive::NetworkPlaces) {
+        for (int i = 0; i < m_shown.size(); ++i) {
+            if (m_shown.at(i).kind == PaneroDrive::NetworkPlaces && m_buttons.value(i))
+                showNetworkMenu(m_buttons.at(i));
+        }
+        return;
     }
 #endif
     if (drive.url.isValid()) {
@@ -576,4 +624,46 @@ void PaneroDriveBar::showMenu(const PaneroDrive &drive, QToolButton *button, con
         if (auto *access = dev.as<Solid::StorageAccess>())
             access->teardown();
     }
+}
+
+void PaneroDriveBar::showNetworkMenu(QToolButton *button)
+{
+#ifdef Q_OS_WIN
+    QMenu menu(this);
+    // network drives (letters) first
+    for (const PaneroDrive &d : PaneroDrives::instance()->drives()) {
+        if (d.kind != PaneroDrive::Network)
+            continue;
+        const QUrl url = d.url;
+        menu.addAction(d.icon, d.label, this, [this, url]() { m_panel->func->openUrl(url); });
+    }
+    // Explorer's Network Locations: folders with a target.lnk shortcut
+    const QString shortcuts = QDir::fromNativeSeparators(qEnvironmentVariable("APPDATA")) + QLatin1String("/Microsoft/Windows/Network Shortcuts");
+    const QFileInfoList places = QDir(shortcuts).entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase);
+    bool first = true;
+    for (const QFileInfo &place : places) {
+        const QFileInfo link(place.absoluteFilePath() + QLatin1String("/target.lnk"));
+        const QString target = link.symLinkTarget();
+        if (target.isEmpty())
+            continue;
+        if (first && !menu.isEmpty())
+            menu.addSeparator();
+        first = false;
+        menu.addAction(Icon(QStringLiteral("folder-network")), place.fileName(), this, [this, target]() {
+            m_panel->func->openUrl(QUrl::fromLocalFile(target));
+        });
+    }
+    if (!menu.isEmpty())
+        menu.addSeparator();
+    menu.addAction(Icon(QStringLiteral("network-connect")), i18n("Open Network Path..."), this, [this]() {
+        bool ok = false;
+        const QString path = QInputDialog::getText(this, i18n("Open Network Path"), i18n("Network path, for example \\\\server\\share:"),
+                                                   QLineEdit::Normal, QStringLiteral("\\\\"), &ok).trimmed();
+        if (ok && path.size() > 2)
+            m_panel->func->openUrl(QUrl::fromLocalFile(QDir::fromNativeSeparators(path)));
+    });
+    menu.exec(button->mapToGlobal(QPoint(0, button->height())));
+#else
+    Q_UNUSED(button)
+#endif
 }

@@ -123,6 +123,7 @@ env = dict(os.environ)
 env['PATH'] = os.environ['PANERO_CLEAN_PATH']
 env['QT_FORCE_STDERR_LOGGING'] = '1'
 env['QT_LOGGING_RULES'] = 'kf.kio.*=true'
+env['PANERO_DEBUG_EXPLORER_MENU'] = '1'   # Explorer menu items, choices and results in the log
 APP_DIR = str(Path(EXE).parent).lower()
 WINDIR = os.environ.get('SystemRoot', r'C:\Windows').lower()
 
@@ -294,6 +295,153 @@ def icon_colour(box):
     blue = sum(1 for r, g, b in px if b > 150 and b - r > 50) / len(px)
     dark = sum(1 for r, g, b in px if r < 90 and g < 90 and b < 90) / len(px)
     return {'yellow': round(yellow, 2), 'blue': round(blue, 2), 'dark': round(dark, 2)}
+
+
+def norm(text):
+    """A menu item's text without accelerator, shortcut and dots, lower case."""
+    t = (text or '').split('\t')[0].replace('&', '').strip().lower()
+    return t.rstrip('.\u2026').strip()
+
+
+def menu_items(pid):
+    """Menu items of the popup menus of Panero (Explorer's native menu, Qt menus)."""
+    items = []
+    for w in Desktop(backend='uia').windows(process=pid):
+        try:
+            if is_main(w):
+                continue
+            items += [i for i in w.descendants(control_type='MenuItem')]
+        except Exception:  # noqa: BLE001
+            pass
+    return items
+
+
+def menu_texts(pid):
+    out = []
+    for i in menu_items(pid):
+        try:
+            out.append(i.window_text())
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def wait_menu(pid, want=('panero menu',), timeout=12):
+    """Waits until an open menu has one of @p want (the shell loads its extensions first)."""
+    texts, end = [], time.time() + timeout
+    while time.time() < end:
+        texts = menu_texts(pid)
+        if any(norm(t) in want for t in texts):
+            return texts
+        time.sleep(0.4)
+    return texts
+
+
+def click_native_submenu_item(text, parent_text):
+    """Clicks an item of an open native submenu (UI Automation does not list the
+    submenus of shell extensions): finds the #32768 menu windows, asks each for its
+    HMENU (MN_GETHMENU) and clicks the item by text, else the submenu's first item."""
+    import ctypes
+    from ctypes import wintypes
+    u32 = ctypes.windll.user32
+    menus = []
+
+    def found(h, _):
+        if win32gui.GetClassName(h) == '#32768' and win32gui.IsWindowVisible(h):
+            menus.append(h)
+        return True
+    win32gui.EnumWindows(found, None)
+    want, parent, fallback = norm(text), norm(parent_text), None
+    for h in menus:
+        hmenu = win32gui.SendMessage(h, 0x01E1, 0, 0)   # MN_GETHMENU
+        if not hmenu:
+            continue
+        texts = []
+        for i in range(u32.GetMenuItemCount(wintypes.HMENU(hmenu))):
+            buf = ctypes.create_unicode_buffer(256)
+            u32.GetMenuStringW(wintypes.HMENU(hmenu), i, buf, 256, 0x400)   # MF_BYPOSITION
+            texts.append(norm(buf.value))
+        if parent in texts:                 # the parent menu
+            continue
+        pos = texts.index(want) if want in texts else 0
+        r = wintypes.RECT()
+        if u32.GetMenuItemRect(None, wintypes.HMENU(hmenu), pos, ctypes.byref(r)):
+            fallback = (pos, texts, ((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            if want in texts:
+                break
+    if fallback:
+        mouse.click(button='left', coords=fallback[2])
+        time.sleep(1.5)
+        return f'item {fallback[0]} of {fallback[1]}'
+    return None
+
+
+def close_menus():
+    for _ in range(3):
+        keys('{ESC}', 0.3)
+
+
+def click_menu(pid, text, close_on_fail=True, pause=1.5):
+    want = norm(text)
+    for i in menu_items(pid):
+        try:
+            if norm(i.window_text()) == want:
+                i.click_input()
+                time.sleep(pause)
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    if close_on_fail:
+        close_menus()
+    return False
+
+
+def panel_view_rect(main_w, win):
+    """The left file panel's view (UI Automation: a Tree between the sidebar and the middle)."""
+    mid = win.rectangle().mid_point().x
+    pins = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
+    side_right = pins[0].right if pins else win.rectangle().left + 200
+    views = [t.rectangle() for t in main_w.descendants(control_type='Tree')
+             if side_right - 5 <= t.rectangle().left < mid and t.rectangle().height() > 100]
+    return views[0] if views else None
+
+
+def hold_right(x, y):
+    """Panero's right button marks (Total Commander); held, it opens the menu."""
+    mouse.move(coords=(x, y))
+    time.sleep(0.3)
+    mouse.press(button='right', coords=(x, y))
+    time.sleep(1.4)
+    mouse.release(button='right', coords=(x, y))
+    time.sleep(0.3)
+
+
+def clipboard_text():
+    import win32clipboard
+    for _ in range(5):
+        try:
+            win32clipboard.OpenClipboard()
+            try:
+                return win32clipboard.GetClipboardData(win32con.CF_UNICODETEXT)
+            finally:
+                win32clipboard.CloseClipboard()
+        except Exception:  # noqa: BLE001
+            time.sleep(0.3)
+    return None
+
+
+def panel_order(folder):
+    """The rows as Panero sorts them: "..", folders, then files, by name."""
+    entries = list(Path(folder).iterdir())
+    dirs = sorted((e.name for e in entries if e.is_dir()), key=str.lower)
+    files = sorted((e.name for e in entries if not e.is_dir()), key=str.lower)
+    return ['..'] + dirs + files
+
+
+SHELL_FILE = ['open with', 'send to', 'properties']      # Explorer's items on a file
+SHELL_DIR = ['send to', 'properties']
+SHELL_BACKGROUND = ['new', 'properties']
+EXTRAS = ['copy to other panel', 'move to other panel', 'copy path', 'open terminal here', 'panero menu']
 
 
 # --- phase A: first run, as a new user would start it (double-click, no arguments) ----
@@ -692,6 +840,193 @@ try:
 except Exception as e:  # noqa: BLE001
     record('Mouse: Ctrl+click selection', False, f'automation error: {e}')
 
+# --- Explorer's right-click menu with Panero's extras on top (D-019) ---------------------------
+def explorer_menu(label, opener, shell_need, extras_need, keep_open=False):
+    opener()
+    texts = wait_menu(proc.pid)
+    time.sleep(0.8)
+    shot(f'p12-explorer-menu-{label}')
+    have = {norm(t) for t in texts}
+    missing = [x for x in shell_need + extras_need if x not in have]
+    first = norm(texts[0]) if texts else ''
+    record(f'Explorer menu on {label}: the shell\'s {shell_need} and Panero\'s {extras_need}', not missing,
+           f'missing: {missing}; menu: {texts}', must=True)
+    if not keep_open:
+        close_menus()
+    return texts
+
+
+def menu_key_on(name):
+    def open_it():
+        go_to(name)
+        keys('{VK_APPS}', 0.5)
+    return open_it
+
+
+try:
+    win.set_focus()
+    keys('{ESC}', 0.3)
+    keys('%-', 0.4)                     # clear the marks of the mouse test
+    ORDER = panel_order(LEFT)
+    texts = explorer_menu('file', menu_key_on('alpha.txt'), SHELL_FILE, EXTRAS)
+    top = [norm(t) for t in texts[:6]]
+    record('Panero\'s extras are at the top of the Explorer menu (Copy to other panel first)',
+           bool(top) and top[0] == 'copy to other panel', f'first items: {texts[:7]}')
+    explorer_menu('folder', menu_key_on('docs'), SHELL_DIR, EXTRAS)
+
+    def several():
+        go_to('alpha.txt')
+        keys('{INSERT}{INSERT}', 0.4)    # alpha.txt and renamed.txt
+        keys('{VK_APPS}', 0.5)
+    explorer_menu('several', several, SHELL_FILE[1:], ['copy to other panel', 'copy paths', 'panero menu'])
+    keys('%-', 0.4)
+
+    view = panel_view_rect(main_w, win)
+    bg_point = (view.left + 80, view.bottom - 30) if view else None
+
+    def background():
+        if bg_point:
+            hold_right(*bg_point)
+    explorer_menu('background', background, SHELL_BACKGROUND, ['copy path', 'open terminal here', 'panero menu'])
+
+    # Copy to other panel (F5) from the menu
+    (RIGHT / 'alpha.txt').unlink(missing_ok=True)
+    time.sleep(1.0)
+    go_to('alpha.txt')
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Copy to other panel')
+    shot('p12-explorer-menu-copy-dialog')
+    if ok:
+        keys('{ENTER}', 0.5)
+    copied = wait_for(lambda: (RIGHT / 'alpha.txt').exists())
+    record('Explorer menu: "Copy to other panel" copies the file (F5 dialog)', ok and copied,
+           f'clicked: {ok}; in the right folder: {sorted(p.name for p in RIGHT.iterdir())}', must=True)
+
+    # Copy Path: the Windows path with backslashes
+    go_to('alpha.txt')
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Copy Path')
+    clip = clipboard_text()
+    record('Explorer menu: "Copy Path" puts the Windows path on the clipboard', ok and clip == str(LEFT / 'alpha.txt'),
+           f'clipboard: {clip!r}', must=True)
+
+    # a shell verb: "Copy as path" (Windows 11 / Server 2025 shows it without Shift)
+    go_to('alpha.txt')
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Copy as path')
+    clip = clipboard_text()
+    record('Explorer menu: the shell\'s "Copy as path" works', ok and clip == f'"{LEFT / "alpha.txt"}"',
+           f'clicked: {ok}; clipboard: {clip!r}')
+
+    # New > Folder on the background (a submenu filled by a shell extension: IContextMenu3)
+    before = {p.name for p in LEFT.iterdir()}
+    if bg_point:
+        hold_right(*bg_point)
+    wait_menu(proc.pid)
+    ok_new = click_menu(proc.pid, 'New', close_on_fail=False, pause=1.5)
+    sub = menu_texts(proc.pid)
+    shot('p12-explorer-menu-new-submenu')
+    ok_folder = click_menu(proc.pid, 'Folder', close_on_fail=False) \
+        or (ok_new and click_native_submenu_item('Folder', 'New'))
+    if not ok_new or not ok_folder:
+        close_menus()
+    created = []
+    wait_for(lambda: created.extend(sorted({p.name for p in LEFT.iterdir() if p.is_dir()} - before)) or created, 8)
+    time.sleep(2.5)                      # Panero refreshes after the command
+    shot('p12-explorer-menu-new-folder')
+    record('Explorer menu: New > Folder (the shell) creates a folder, and the panel shows it', bool(created),
+           f'New: {ok_new}, Folder: {ok_folder}; created {created}; submenu: {sub}', must=True)
+
+    if created:
+        new_name = created[0]
+        # the shell's "Rename" starts Panero's rename in place
+        ORDER = panel_order(LEFT)
+        go_to(new_name)
+        keys('{VK_APPS}', 0.5)
+        wait_menu(proc.pid)
+        ok = click_menu(proc.pid, 'Rename', pause=1.0)
+        shot('p12-explorer-menu-rename')
+        keys('^a', 0.2)
+        keys('shellmenu', 0.3)
+        keys('{ENTER}', 0.5)
+        renamed = wait_for(lambda: (LEFT / 'shellmenu').is_dir())
+        record('Explorer menu: "Rename" renames in place (Panero\'s inline rename)', ok and renamed,
+               f'clicked: {ok}; folders now: {sorted(p.name for p in LEFT.iterdir() if p.is_dir())}', must=True)
+        time.sleep(1.5)
+        target = 'shellmenu' if renamed else new_name
+        # the shell's "Delete": to the Recycle Bin, as in Explorer
+        ORDER = panel_order(LEFT)
+        go_to(target)
+        before_wins = {w.handle for w in windows_of(proc.pid)}
+        keys('{VK_APPS}', 0.5)
+        wait_menu(proc.pid)
+        ok = click_menu(proc.pid, 'Delete', pause=2.0)
+        dialogs = [w for w in windows_of(proc.pid) if w.handle not in before_wins and not is_main(w)]
+        names = [w.window_text() for w in dialogs]
+        if dialogs:                       # "Are you sure you want to move this folder to the Recycle Bin?"
+            shot('p12-explorer-menu-delete-confirm')
+            press_button(proc.pid, 'Yes')
+        gone = wait_for(lambda: not (LEFT / target).exists(), 10)
+        binned = wait_for(lambda: target in recycle_bin_names(), 8)
+        time.sleep(2.0)
+        shot('p12-explorer-menu-after-delete')
+        record('Explorer menu: the shell\'s "Delete" moves the folder to the Recycle Bin', ok and gone and binned,
+               f'clicked: {ok}; dialogs: {names}; gone: {gone}; in the Recycle Bin: {binned}', must=True)
+        ORDER = panel_order(LEFT)
+        visible = [w.window_text() for w in win.descendants() if w.window_text() == target]
+        record('After a shell command the panel is refreshed', not visible, f'rows named {target}: {len(visible)}')
+
+    # Properties from the shell
+    ORDER = panel_order(LEFT)
+    go_to('alpha.txt')
+    before_wins = {w.handle for w in windows_of(proc.pid)}
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Properties', pause=1.0)
+    props = []
+    wait_for(lambda: props.extend(w for w in windows_of(proc.pid) if w.handle not in before_wins) or props, 10)
+    time.sleep(1.0)
+    shot('p12-explorer-menu-properties')
+    names = [w.window_text() for w in props]
+    record('Explorer menu: "Properties" opens the Windows properties of the file', ok and any('alpha' in n for n in names),
+           f'windows: {names}', must=True)
+    for w in props:
+        try:
+            w.close()
+        except Exception:  # noqa: BLE001
+            pass
+    time.sleep(1.0)
+
+    # the shell's "Open" on a folder enters it in the panel (no Explorer window)
+    win.set_focus()
+    go_to('docs')
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Open', pause=1.5)
+    t = title()
+    shot('p12-explorer-menu-open-folder')
+    explorers = [w.window_text() for w in Desktop(backend='uia').windows() if w.window_text() == 'docs'
+                 and w.process_id() != proc.pid]
+    record('Explorer menu: "Open" on a folder opens it in the panel, not in Explorer', ok and t.startswith('docs')
+           and not explorers, f'title "{t}"; Explorer windows: {explorers}', must=True)
+    for w in Desktop(backend='uia').windows():
+        if w.window_text() == 'docs' and w.process_id() != proc.pid:
+            try:
+                w.close()
+            except Exception:  # noqa: BLE001
+                pass
+    if t.startswith('docs'):
+        keys('{BACKSPACE}', 1.5)
+except Exception as e:  # noqa: BLE001
+    record('Explorer menu checks', False, f'automation error: {e!r}', must=True)
+    close_menus()
+win.set_focus()
+keys('%-', 0.4)
+ORDER = panel_order(LEFT)
+
 # --- drives -------------------------------------------------------------------------------
 keys('{ESC}', 0.3)
 def drive_menu_items():
@@ -742,17 +1077,16 @@ try:
         # Panero's right button selects (Total Commander style); the menu key opens the menu
         win.set_focus()
         go_to('alpha.txt')
-        keys('{VK_APPS}', 1.5)
+        keys('{VK_APPS}', 0.5)
+        shell_items = wait_menu(proc.pid)
+        # Explorer's menu first (D-019); Panero's own menu through "Panero Menu"
+        opened = click_menu(proc.pid, 'Panero Menu', pause=1.5)
         shot('context-menu-recycle-bin')
-        items = []
-        for w in Desktop(backend='uia').windows(process=proc.pid):
-            try:
-                items += [i.window_text() for i in w.descendants(control_type='MenuItem')]
-            except Exception:  # noqa: BLE001
-                pass
-        keys('{ESC}', 0.5)
-        record('Right-click menu says "Move to Recycle Bin"', 'Move to Recycle Bin' in items
-               and not any('Trash' in i for i in items), f'menu: {items}', must=True)
+        items = menu_texts(proc.pid)
+        close_menus()
+        record('Right-click menu says "Move to Recycle Bin" (Panero Menu), Explorer\'s menu has no "Trash"',
+               opened and 'Move to Recycle Bin' in items and not any('Trash' in i for i in items + shell_items),
+               f'Explorer menu: {shell_items}; Panero menu: {items}', must=True)
     else:
         record('Right-click menu says "Move to Recycle Bin"', False, 'file row not exposed to UI Automation')
 except Exception as e:  # noqa: BLE001
@@ -851,5 +1185,307 @@ try:
 except subprocess.TimeoutExpired:
     proc.kill()
     record('Panero closes cleanly', False, 'killed after 15 s')
+
+
+# --- phase C (D-020): folder icons on C:\, a real cloud sync folder, no downloads while browsing ----
+import ctypes  # noqa: E402
+
+k32 = ctypes.WinDLL('kernel32')
+k32.GetFileAttributesW.restype = ctypes.c_uint32
+k32.GetFileAttributesW.argtypes = [ctypes.c_wchar_p]
+RECALL_ON_DATA_ACCESS, PINNED, UNPINNED = 0x400000, 0x80000, 0x100000
+PROFILE = Path(os.environ['USERPROFILE'])
+CLOUD = PROFILE / 'PaneroTestCloud'
+CLOUD_NAME = 'Panero Test Cloud'
+PLACEHOLDERS = ['notes.txt', 'report.pdf', 'photo.jpg', 'tool.exe', 'noext', 'Shared/plan.docx']
+FETCH_LOG = OUT / 'cloud-provider-log.jsonl'
+READY, STOP = OUT / 'cloud-provider-state.json', OUT / 'cloud-provider.stop'
+PANERO_PROCS = ('panero.exe', 'kioslave5.exe', 'kiod5.exe')
+
+
+def wattrs(rel):
+    return k32.GetFileAttributesW(str(CLOUD / rel))
+
+
+def fetches(by_panero=True):
+    out = []
+    if FETCH_LOG.exists():
+        for line in FETCH_LOG.read_text(encoding='utf-8').splitlines():
+            e = json.loads(line)
+            if e.get('type') == 'FETCH_DATA' and (not by_panero or e.get('image', '').lower().endswith(PANERO_PROCS)):
+                out.append(e)
+    return out
+
+
+def still_placeholders():
+    return {rel: f'0x{wattrs(rel):08x}' for rel in PLACEHOLDERS if not wattrs(rel) & RECALL_ON_DATA_ACCESS}
+
+
+def main_window_of(p):
+    for _ in range(60):
+        time.sleep(1)
+        mains = [w for w in windows_of(p.pid) if is_main(w)]
+        if mains:
+            a = Application(backend='uia')
+            a.connect(process=p.pid)
+            return a, a.window(handle=mains[0].handle), Desktop(backend='uia').window(handle=mains[0].handle).wrapper_object()
+    return None, None, None
+
+
+provider = None
+try:
+    for f in (FETCH_LOG, READY, STOP):
+        f.unlink(missing_ok=True)
+    provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root', str(CLOUD),
+                                 '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP), '--name', CLOUD_NAME],
+                                stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
+    wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
+    time.sleep(0.5)
+    pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
+except Exception as e:  # noqa: BLE001
+    pstate = {'ok': False, 'error': repr(e)}
+cloud_ok = bool(pstate.get('ok'))
+record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
+       f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
+       f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
+       + (f"; {pstate}" if not cloud_ok else ''), must=True)
+if cloud_ok:
+    record('Placeholders are online-only before Panero starts (RECALL_ON_DATA_ACCESS)', not still_placeholders(),
+           f'not placeholders: {still_placeholders()}', must=True)
+
+proc = start(['--left', 'C:\\', '--right', str(PROFILE)], 'cloud')
+app, win, main_w = main_window_of(proc)
+if win is None:
+    record('Panero starts with C:\\ and the profile folder', False, 'no main window', must=True)
+    proc.kill()
+else:
+    time.sleep(3)
+    win.set_focus()
+    title = lambda: app.top_window().window_text()
+    if title() == PROFILE.name:
+        keys('{TAB}', 1.0)
+    shot('c-drive-folders')
+    mid = win.rectangle().mid_point().x
+    pins_list = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
+    side_right = pins_list[0].right if pins_list else win.rectangle().left + 200
+
+    def icon_checks(names, label, tree, found=None):
+        """Icon colours of visible folder rows by UI Automation name: the sidebar's folder
+        tree (left of the panels) or the left panel (both are tree views: TreeItem)."""
+        found = {} if found is None else found
+        wr = win.rectangle()
+        # the visible part of the view: the tree view control under the rows
+        views = []
+        for t in main_w.descendants(control_type='Tree'):
+            tr = t.rectangle()
+            if (tree and tr.right <= side_right + 5) or (not tree and side_right - 5 <= tr.left < mid):
+                views.append(tr)
+        vtop = views[0].top + (0 if tree else 22) if views else wr.top   # the panel's column header
+        vbottom = views[0].bottom if views else wr.bottom
+        with open(OUT / f'uia-{label}.txt', 'a', encoding='utf-8') as dump:
+            for el in main_w.descendants(control_type='TreeItem'):
+                try:
+                    t = el.window_text()
+                    r = el.rectangle()
+                    dump.write(f'{t}\t{r}\n')
+                    if t not in names or t in found or r.height() < 8 or r.top < vtop or r.bottom > vbottom:
+                        continue
+                    if (tree and r.left >= side_right) or (not tree and not side_right <= r.left < mid):
+                        continue
+                    cy = (r.top + r.bottom) // 2
+                    found[t] = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
+                except Exception:  # noqa: BLE001
+                    pass
+        box = (wr.left, wr.top + 100, side_right, wr.bottom - 40) if tree else (side_right, wr.top + 100, mid, wr.bottom - 40)
+        crop_shot(f'{label}-icons-zoom', box, 2)
+        return found
+
+    c_names = ['inetpub', 'PerfLogs', 'Program Files', 'Program Files (x86)', 'Users', 'Windows']
+    existing = [n for n in c_names if os.path.isdir('C:\\' + n)]
+    panel = icon_checks(existing, 'c-drive-panel', tree=False)
+    for step in range(6):                 # page through the list (Users, Windows are near the end)
+        if all(n in panel for n in existing):
+            break
+        keys('{PGDN}', 1.0)
+        shot(f'c-drive-folders-page{step + 2}')
+        icon_checks(existing, f'c-drive-panel-page{step + 2}', tree=False, found=panel)
+    keys('{HOME}', 0.8)
+    missing = [n for n in existing if n not in panel or panel[n]['yellow'] < 0.05]
+    record('Every folder on C:\\ has its folder icon in the panel (also Windows, PerfLogs, inetpub)',
+           bool(panel) and not missing, f'icon colours: {panel}; without icon: {missing}', must=bool(panel))
+    tree_icons = icon_checks(existing, 'c-drive-tree', tree=True)
+    try:                                   # scroll the tree to its end
+        tr = [t.rectangle() for t in main_w.descendants(control_type='Tree') if t.window_text() == 'Folder tree']
+        for step in range(10):
+            if not tr or all(n in tree_icons for n in existing):
+                break
+            mouse.scroll(coords=((tr[0].left + tr[0].right) // 2, (tr[0].top + tr[0].bottom) // 2), wheel_dist=-3)
+            time.sleep(0.8)
+            shot(f'c-drive-tree-scroll{step + 1}')
+            icon_checks(existing, f'c-drive-tree-scroll{step + 1}', tree=True, found=tree_icons)
+    except Exception as e:  # noqa: BLE001
+        print('tree scroll failed:', e)
+    missing = [n for n in existing if n not in tree_icons or tree_icons[n]['yellow'] < 0.05]
+    record('Every folder on C:\\ has its folder icon in the folder tree', bool(tree_icons) and not missing,
+           f'icon colours: {tree_icons}; without icon: {missing}', must=bool(tree_icons))
+
+    if cloud_ok:
+        # the Cloud section lists the sync folder (found in the registry), with its name
+        entries = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME]
+        lists = [l.window_text() for l in main_w.descendants(control_type='List')]
+        record('The sidebar\'s Cloud section lists the sync folder by its name', bool(entries),
+               f'lists: {lists}', must=True)
+        if entries:
+            r = entries[0].rectangle()
+            crop_shot('cloud-section', (r.left - 4, r.top - 30, r.left + 240, r.bottom + 6), 3)
+            entries[0].click_input()
+            time.sleep(2.0)
+        shot('cloud-folder-badges')
+        record('Clicking the cloud entry opens the sync folder in the active panel', title() == CLOUD.name,
+               f'title "{title()}"', must=True)
+        # browse: every row painted, the cursor over every file, the folder entered and left
+        ORDER = ['..', 'Shared', 'kept.txt', 'local-copy.txt', 'noext', 'notes.txt', 'photo.jpg', 'report.pdf', 'tool.exe']
+        keys('{HOME}', 0.3)
+        for _ in ORDER[1:]:
+            keys('{DOWN}', 0.25)
+        go_to('Shared')
+        keys('{ENTER}', 2.0)
+        shot('cloud-subfolder')
+        keys('{BACKSPACE}', 2.0)
+        rows = [el for el in main_w.descendants() if el.window_text() in ('notes', 'report', 'kept', 'local-copy', 'Shared')
+                and side_right < el.rectangle().left < mid]
+        if rows:
+            top = min(el.rectangle().top for el in rows)
+            crop_shot('cloud-badges-zoom', (side_right, top - 30, mid, top + 240), 2)
+        time.sleep(2)
+        got = fetches()
+        record('Browsing the sync folder downloads nothing (no FETCH_DATA from Panero)', not got,
+               f'fetch requests by Panero: {got}', must=True)
+        record('The placeholders stay online-only after browsing', not still_placeholders(),
+               f'downloaded: {still_placeholders()}', must=True)
+
+        # Explorer's offline actions on a file and on a folder
+        for name, rel in (('report.pdf', 'report.pdf'), ('Shared', 'Shared')):
+            go_to(name)
+            keys('{VK_APPS}', 0.5)
+            texts = wait_menu(proc.pid)
+            time.sleep(0.5)
+            shot(f'cloud-menu-{name}')
+            ok = click_menu(proc.pid, 'Always Keep on This Device')
+            a = wattrs(rel)
+            child = wattrs('Shared/plan.docx') if name == 'Shared' else a
+            record(f'"Always Keep on This Device" on {name} sets PINNED, clears UNPINNED'
+                   + (' (also inside the folder)' if name == 'Shared' else ''),
+                   ok and a & PINNED and not a & UNPINNED and child & PINNED,
+                   f'menu: {texts}; attributes 0x{a:08x}, inside 0x{child:08x}', must=True)
+            shot(f'cloud-always-keep-{name}')
+            keys('{VK_APPS}', 0.5)
+            wait_menu(proc.pid)
+            ok = click_menu(proc.pid, 'Free Up Space')
+            a = wattrs(rel)
+            child = wattrs('Shared/plan.docx') if name == 'Shared' else a
+            record(f'"Free Up Space" on {name} sets UNPINNED, clears PINNED', ok and a & UNPINNED and not a & PINNED
+                   and child & UNPINNED, f'attributes 0x{a:08x}, inside 0x{child:08x}', must=True)
+            shot(f'cloud-free-up-{name}')
+        # Explorer's menu on several placeholders and on the folder's background
+        go_to('notes.txt')
+        keys('{INSERT}{INSERT}{INSERT}', 0.4)   # notes.txt, photo.jpg, report.pdf
+        keys('{VK_APPS}', 0.5)
+        texts = wait_menu(proc.pid)
+        time.sleep(0.8)
+        shot('p12-explorer-menu-cloud-several')
+        have = {norm(t) for t in texts}
+        record('Explorer menu on several placeholders: shell items, Panero\'s extras and the offline actions',
+               all(x in have for x in ('send to', 'properties', 'copy to other panel', 'always keep on this device',
+                                       'free up space')), f'menu: {texts}', must=True)
+        close_menus()
+        keys('%-', 0.4)
+        view = panel_view_rect(main_w, win)
+        if view:
+            hold_right(view.left + 80, view.bottom - 30)
+        texts = wait_menu(proc.pid)
+        time.sleep(0.8)
+        shot('p12-explorer-menu-cloud-background')
+        have = {norm(t) for t in texts}
+        record('Explorer menu on the sync folder\'s background', all(x in have for x in ('properties', 'panero menu')),
+               f'menu: {texts}', must=True)
+        close_menus()
+        time.sleep(2)
+        got = fetches()
+        record('Context menus (Explorer\'s, on files, a folder, several, the background) and offline actions download nothing',
+               not got, f'fetch requests by Panero: {got}; by any process: {fetches(by_panero=False)}', must=True)
+        record('The placeholders stay online-only after the menus', not still_placeholders(),
+               f'downloaded: {still_placeholders()}', must=True)
+
+        # explicit open: F3 may download (as in Explorer) - and proves the provider sees reads
+        go_to('notes.txt')
+        before_wins = {w.handle for w in windows_of(proc.pid)}
+        keys('{F3}', 3.0)
+        wait_for(lambda: fetches(), 10)
+        shot('cloud-f3-download')
+        got = fetches()
+        record('F3 on an online-only file downloads it (the provider is asked, as in Explorer)',
+               any(e.get('file') == 'notes.txt' for e in got), f'fetch requests: {got}', must=True)
+        for w in windows_of(proc.pid):
+            if w.handle not in before_wins:
+                try:
+                    w.close()
+                except Exception:  # noqa: BLE001
+                    pass
+        time.sleep(1)
+        win.set_focus()
+
+        # the folder holding the sync folder: a normal folder in the tree and the panel
+        keys('{BACKSPACE}', 2.0)
+        shot('profile-with-cloud-folder')
+        prof = icon_checks([CLOUD.name], 'profile-tree', tree=True)
+        record('The sync folder has its icon in the folder tree', bool(prof) and all(c['dark'] < 0.9 for c in prof.values()),
+               f'{prof}')
+        # right-click menu of the cloud entry: Pin, Open in Other Panel
+        cloud_list = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Cloud folders']
+        entries = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME
+                   and cloud_list and cloud_list[0].top <= li.rectangle().top <= cloud_list[0].bottom]
+        if entries:
+            r = entries[0].rectangle()
+            mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            time.sleep(1.2)
+            texts = [i.window_text() for i in menu_items(proc.pid)]
+            shot('cloud-entry-menu')
+            pin_clicked = click_menu(proc.pid, 'Pin')
+            time.sleep(1)
+            try:                               # the new pin is the last one: scroll the pins list down
+                pl = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders'][0]
+                mouse.scroll(coords=((pl.left + pl.right) // 2, (pl.top + pl.bottom) // 2), wheel_dist=-10)
+                time.sleep(0.8)
+            except Exception:  # noqa: BLE001
+                pass
+            shot('cloud-pinned')
+            mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            time.sleep(1.2)
+            ok = click_menu(proc.pid, 'Open in Other Panel')
+            time.sleep(1.5)
+            record('Cloud entry menu: Open in Other Panel', ok and title() == CLOUD.name, f'title "{title()}"')
+            shot('cloud-open-other-panel')
+        time.sleep(1)
+        record('Nothing else was downloaded (only the file opened with F3)',
+               all(e.get('file') == 'notes.txt' for e in fetches()), f'fetch requests by Panero: {fetches()}', must=True)
+    try:
+        win.close()
+        proc.wait(15)
+    except Exception:  # noqa: BLE001
+        proc.kill()
+    if cloud_ok:
+        # pins are saved in the settings (%LOCALAPPDATA%\panerorc, group "Panero Pins")
+        rc = Path(os.environ['LOCALAPPDATA']) / 'panerorc'
+        text = rc.read_text(encoding='utf-8', errors='replace') if rc.exists() else ''
+        group = text.split('[Panero Pins]', 1)[1].split('\n[', 1)[0] if '[Panero Pins]' in text else ''
+        record('Cloud entry menu: Pin adds it to Pinned (with its name)', 'pin_clicked' in globals() and pin_clicked
+               and 'PaneroTestCloud' in group and CLOUD_NAME in group, f'[Panero Pins]: {group.strip()[:400]}', must=True)
+if provider is not None:
+    STOP.write_text('stop')
+    try:
+        provider.wait(30)
+    except subprocess.TimeoutExpired:
+        provider.kill()
 
 sys.exit(1 if any(r['status'] == 'FAIL' for r in results) else 0)

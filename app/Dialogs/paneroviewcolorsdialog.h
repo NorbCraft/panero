@@ -56,6 +56,8 @@ private:
     QComboBox *m_menuMode = nullptr;
     QCheckBox *m_showCloud = nullptr;
     QCheckBox *m_showDrives = nullptr;
+    QComboBox *m_iconTheme = nullptr;
+    QComboBox *m_driveLabels = nullptr;
     QComboBox *m_holdFeedback = nullptr;
     QHash<QString, QCheckBox *> m_transparentFill;
     QCheckBox *m_showHidden;

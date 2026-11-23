@@ -76,6 +76,10 @@ fi
 # debian/rclone/ inside the container (debian/rules picks it up).
 rclone_dir="$out_abs/rclone"
 "$repo_root/dev/scripts/fetch-rclone.sh" "$rclone_dir" amd64
+# The Win11 icon theme (D-020): pinned commit, SHA-256 checked, installed on the
+# host; copied into debian/icons/ inside the container.
+icons_dir="$out_abs/win11-icons"
+"$repo_root/dev/scripts/fetch-win11-icons.sh" "$icons_dir"
 
 echo "==> Building Panero .deb from $src_desc in $image"
 docker pull -q "$image" >/dev/null
@@ -102,6 +106,9 @@ cd /build/panero
 mkdir -p debian/rclone
 cp /rclone/rclone /rclone/COPYING /rclone/rclone-dependencies.txt debian/rclone/
 echo "==> Bundled $(debian/rclone/rclone version | head -n 1)"
+mkdir -p debian/icons
+cp -a /win11/icons /win11/COPYING /win11/SOURCE debian/icons/
+echo "==> Bundled icon themes: $(ls debian/icons/icons | xargs)"
 if [ -n "$DEB_VERSION_OVERRIDE" ]; then
     sed -i "1s/^panero ([^)]*)/panero ($DEB_VERSION_OVERRIDE)/" debian/changelog
 fi
@@ -135,6 +142,7 @@ make_tar | docker run --rm -i \
     -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
     -v "$out_abs:/out" \
     -v "$rclone_dir:/rclone:ro" \
+    -v "$icons_dir:/win11:ro" \
     "${cache_args[@]}" \
     "$image" bash -c "$container_script" 2>&1 | tee "$out_abs/build.log"
 status=${PIPESTATUS[1]}

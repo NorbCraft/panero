@@ -20,6 +20,9 @@
 #include "../FileSystem/filesystem.h"
 #include "../KViewer/diskusageviewer.h"
 #include "../KViewer/panelviewer.h"
+#ifdef Q_OS_WIN
+#include "../FileSystem/panerocloudfiles.h"
+#endif
 #include "PanelView/krview.h"
 #include "PanelView/krviewitem.h"
 
@@ -240,6 +243,18 @@ void Sidebar::update(const FileItem *fileitem)
     QUrl url;
     if(fileitem)
        url = fileitem->getUrl();
+#ifdef Q_OS_WIN
+    // Panero: moving the cursor never downloads a cloud placeholder (D-020)
+    if (url.isLocalFile() && (currentPage() == Preview || currentPage() == View)
+        && PaneroCloudFiles::avoidReading(url.toLocalFile())) {
+        if (currentPage() == View)
+            fileViewer->closeUrl();
+        else
+            imageFilePreview->showPreview(QUrl());
+        dataLine->setText(i18n("Online only: %1", url.fileName()));
+        return;
+    }
+#endif
 
     switch (currentPage()) {
     case Preview:

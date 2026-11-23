@@ -1,0 +1,5 @@
+# Win11 icon theme (https://github.com/yeyushengfan258/Win11-icon-theme, GPL-3.0),
+# bundled as an icon option for Linux (D-020). Pinned commit and the SHA-256 of
+# GitHub's archive of that commit; dev/scripts/fetch-win11-icons.sh checks it.
+commit a5b460a407da143b32f19a503d7fcebb3edf2371
+sha256 358479b3113a96604eecf6a94ee099f72e8d46431242c7766c80c51db8bc981a

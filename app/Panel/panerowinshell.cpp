@@ -8,6 +8,7 @@
 
 #include "panerotheme.h"
 #include "../krglobal.h"
+#include "../FileSystem/panerocloudfiles.h"
 
 #include <QDir>
 #include <QFile>
@@ -25,7 +26,12 @@
 
 #ifdef Q_OS_WIN
 #include <windows.h>
+#include <commctrl.h>
+#include <objbase.h>
 #include <shellapi.h>
+
+// QtGui (Qt 5) exports the HICON conversion that QtWinExtras uses
+Q_GUI_EXPORT QPixmap qt_pixmapFromWinHICON(HICON icon);
 #endif
 
 namespace
@@ -72,6 +78,59 @@ const QSet<QString> &specialFolders()
     }
     return s;
 }
+
+/// The shell's icon (16, 32 and 48 px) of a path. @p generic: only the name and
+/// @p attributes count (SHGFI_USEFILEATTRIBUTES, nothing is read from disk).
+/// Pixmaps are made at once and checked, so a null result means "no icon".
+QIcon shellIcon(const QString &path, bool generic, unsigned long attributes, bool overlays)
+{
+    QIcon icon;
+#ifdef Q_OS_WIN
+    static const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED); // the GUI thread has OLE already
+    Q_UNUSED(com)
+    const std::wstring native = QDir::toNativeSeparators(path).toStdWString();
+    // overlays: the shell's own (shortcut arrow, sharing, ...); never with a generic icon
+    const UINT base = (generic ? SHGFI_USEFILEATTRIBUTES : 0) | (overlays && !generic ? SHGFI_ADDOVERLAYS : 0);
+    const DWORD attrs = generic ? DWORD(attributes) : 0;
+    for (const UINT size : {UINT(SHGFI_SMALLICON), UINT(SHGFI_LARGEICON)}) {
+        SHFILEINFOW info = {};
+        if (SHGetFileInfoW(native.c_str(), attrs, &info, sizeof(info), SHGFI_ICON | size | base) && info.hIcon) {
+            const QPixmap pm = qt_pixmapFromWinHICON(info.hIcon);
+            DestroyIcon(info.hIcon);
+            if (!pm.isNull())
+                icon.addPixmap(pm);
+        }
+    }
+    if (icon.isNull())
+        return icon;
+    // 48 px from the system image list (larger panel icon sizes)
+    using GetImageList = HRESULT(WINAPI *)(int, REFIID, void **);
+    static const auto getImageList = reinterpret_cast<GetImageList>(
+        reinterpret_cast<void *>(GetProcAddress(GetModuleHandleW(L"shell32.dll"), "SHGetImageList")));
+    SHFILEINFOW info = {};
+    if (getImageList && SHGetFileInfoW(native.c_str(), attrs, &info, sizeof(info), SHGFI_SYSICONINDEX | (generic ? SHGFI_USEFILEATTRIBUTES : 0))) {
+        static const GUID iidImageList = {0x46eb5926, 0x582e, 0x4017, {0x9f, 0xdf, 0xe8, 0x99, 0x8d, 0xaa, 0x09, 0x50}};
+        void *list = nullptr;
+        if (SUCCEEDED(getImageList(0x2 /*SHIL_EXTRALARGE*/, iidImageList, &list)) && list) {
+            // an IImageList is also an HIMAGELIST
+            HICON h = ImageList_GetIcon(static_cast<HIMAGELIST>(list), info.iIcon & 0xffffff, ILD_TRANSPARENT);
+            if (h) {
+                const QPixmap pm = qt_pixmapFromWinHICON(h);
+                DestroyIcon(h);
+                if (!pm.isNull() && pm.width() > 32)
+                    icon.addPixmap(pm);
+            }
+            static_cast<IUnknown *>(list)->Release();
+        }
+    }
+#else
+    Q_UNUSED(path)
+    Q_UNUSED(generic)
+    Q_UNUSED(attributes)
+    Q_UNUSED(overlays)
+#endif
+    return icon;
+}
 } // namespace
 
 namespace PaneroWinShell
@@ -99,7 +158,9 @@ QIcon driveIcon(const QString &rootPath)
     auto it = iconCache().constFind(key);
     if (it != iconCache().constEnd())
         return *it;
-    const QIcon icon = provider().icon(QFileInfo(root));
+    QIcon icon = shellIcon(root, false, 0, true);
+    if (icon.isNull())
+        icon = provider().icon(QFileIconProvider::Drive);
     iconCache().insert(key, icon);
     return icon;
 }
@@ -133,27 +194,62 @@ QString iconKey(const QString &localPath, bool isDir)
         const QString clean = QDir::cleanPath(localPath);
         if (clean.length() <= 3) // drive root
             return QStringLiteral("drive:") + clean.toLower();
-        if (specialFolders().contains(clean.toLower()) || QFileInfo::exists(clean + QStringLiteral("/desktop.ini")))
+        if (specialFolders().contains(clean.toLower()) || PaneroCloudFiles::isSyncRoot(clean))
+            return QStringLiteral("dir:") + clean.toLower();
+        // inside OneDrive & co. folders look like folders: no desktop.ini lookups
+        // there (they would make the provider list the folder)
+        if (!PaneroCloudFiles::isInSyncRoot(clean) && QFileInfo::exists(clean + QStringLiteral("/desktop.ini")))
             return QStringLiteral("dir:") + clean.toLower();
         return QStringLiteral("folder");
     }
     const QString suffix = QFileInfo(localPath).suffix().toLower();
     if (suffix.isEmpty())
         return QStringLiteral("file");
-    if (ownIconSuffixes().contains(suffix))
+    // a cloud placeholder is never opened for its icon (that would download it)
+    if (ownIconSuffixes().contains(suffix) && !PaneroCloudFiles::avoidReading(localPath))
         return QStringLiteral("own:") + localPath.toLower();
     return QStringLiteral("ext:") + suffix;
 }
 
-QIcon fileIcon(const QString &localPath, bool isDir)
+namespace
 {
-    const QString key = iconKey(localPath, isDir);
+/// Icon of a kind of item (folder, file type), never read from disk; cached by key.
+QIcon genericIcon(const QString &key, bool isDir)
+{
     auto it = iconCache().constFind(key);
     if (it != iconCache().constEnd())
         return *it;
-    QIcon icon = provider().icon(QFileInfo(localPath));
-    if (icon.isNull())
-        icon = provider().icon(isDir ? QFileIconProvider::Folder : QFileIconProvider::File);
+    constexpr unsigned long normal = 0x80; // FILE_ATTRIBUTE_NORMAL
+    QIcon icon;
+    if (key == QLatin1String("folder"))
+        icon = shellIcon(QStringLiteral("folder"), true, PaneroCloudFiles::AttrDirectory, false);
+    else if (key.startsWith(QLatin1String("ext:")))
+        icon = shellIcon(QStringLiteral("file.") + key.mid(4), true, normal, false);
+    else
+        icon = shellIcon(QStringLiteral("file"), true, normal, false);
+    if (icon.isNull()) // the shell gave nothing: the theme's icon, never an empty cell
+        icon = QIcon::fromTheme(isDir ? QStringLiteral("folder") : QStringLiteral("unknown"),
+                                provider().icon(isDir ? QFileIconProvider::Folder : QFileIconProvider::File));
+    iconCache().insert(key, icon);
+    return icon;
+}
+} // namespace
+
+QIcon fileIcon(const QString &localPath, bool isDir)
+{
+    const QString key = iconKey(localPath, isDir);
+    if (key == QLatin1String("folder") || key == QLatin1String("file") || key.startsWith(QLatin1String("ext:")))
+        return genericIcon(key, isDir);
+    auto it = iconCache().constFind(key);
+    if (it != iconCache().constEnd())
+        return *it;
+    // own icon of this folder, drive or file; inside the sync folders without
+    // the provider's overlays (Panero draws its own badges)
+    QIcon icon = shellIcon(localPath, false, 0, !PaneroCloudFiles::rootFor(localPath));
+    if (icon.isNull()) { // e.g. access denied: the icon of its kind
+        const QString suffix = QFileInfo(localPath).suffix().toLower();
+        icon = genericIcon(isDir ? QStringLiteral("folder") : suffix.isEmpty() ? QStringLiteral("file") : QStringLiteral("ext:") + suffix, isDir);
+    }
     iconCache().insert(key, icon);
     return icon;
 }

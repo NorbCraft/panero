@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(panero)
 
 # Panero version (Debian mapping: 0.1.0-preview.1 -> 0.1.0~preview.1-1).
-set(VERSION "0.1.0-preview.11")
+set(VERSION "0.1.0-preview.12")
 # Upstream Krusader release this fork is based on (see dev/DECISIONS.md D-001).
 set(KRUSADER_BASE_VERSION "2.8.1")
 # Reverse-DNS application identifier derived from the project owner
@@ -115,8 +115,9 @@ if(WIN32)
     add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include ${CMAKE_SOURCE_DIR}/app/compat/panero_win32_compat.h>")
     # Plugins live next to the executable (qt.conf), not in a compiled-in path
     add_definitions(-DPANERO_PORTABLE_PLUGINS)
-    # Cloud mounts use rclone + FUSE (Linux only; app/Cloud is not built on Windows)
-    add_definitions(-DPANERO_CLOUD_DEFAULT=false)
+    # Cloud on Windows = the providers' own sync folders (D-020; app/Cloud with
+    # rclone + FUSE is Linux only); the section shows while one is connected
+    add_definitions(-DPANERO_CLOUD_DEFAULT=true)
 else()
     add_definitions(-DPANERO_CLOUD_DEFAULT=true)
 endif()

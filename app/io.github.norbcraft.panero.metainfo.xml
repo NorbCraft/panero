@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.12" date="2026-11-23" type="development">
+      <description>
+        <p>Windows: Explorer's right-click menu, cloud folders of OneDrive, Google Drive and Dropbox in the sidebar without downloading while browsing, Explorer's offline actions, folder icons fixed and an installer. Drive buttons with letter or icon only and a Network button. Linux: a Windows 11 icon theme option.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.11" date="2026-11-22" type="development">
       <description>
         <p>Drive buttons above each panel, a built-in Multi-Rename (Ctrl+M) with Total Commander's patterns, the same sort arrows everywhere, and a Windows version built from the same code.</p>
