@@ -387,3 +387,8 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       feature/explorer-menu (Windows run 45169504569 green).
 - Needs the owner's PC: OneDrive names/icons, real download/free-up after
   the pin actions, the icon fix on his C:\, Google Drive detection.
+
+## Phase 17 — Preview 13 (owner list 2026-11-23; waiting for decisions)
+
+See LOG 2026-11-23 "Preview 13 planning" and the proposal page. Nothing
+implemented yet.

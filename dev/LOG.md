@@ -540,3 +540,22 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   run 45177457275 green (Windows build + GUI test, .deb build + test-deb,
   publish). Assets: .deb, Windows ZIP, setup.exe, source, licences;
   SHA256SUMS verified after download.
+
+## 2026-11-23 — Preview 13 planning
+
+- Owner feedback after preview 12 (drag & drop, Windows cloud, drive
+  right-click, icons, selection, app icon, splitter, back/forward, menu
+  choice, viewer, colours, thumbnails, copy progress, Windows workflow,
+  ideas, settings). Causes found:
+  - Drag & drop: Firefox is a Flatpak (filesystem=xdg-download only); Qt 5
+    drags pass plain paths, GTK file managers use the document portal
+    (application/vnd.portal.filetransfer). Fix: offer the portal key too.
+  - Windows Cloud section hidden: preview 11 Quick Settings wrote
+    "Show Cloud=false" (hidden checkbox, default false on Windows).
+  - OneDrive ticks on all folders: stateFromAttributes treats folders
+    without flags as Available; use PKEY_StorageProviderState instead.
+  - Special folder icons: only KDirModel (tree) maps XDG user dirs.
+  - Folder colour recolours the active theme's folders (Win11 shape kept);
+    a previously chosen colour persists across icon theme changes.
+- Proposal page with 12 decisions given to the owner (private artifact):
+  https://claude.ai/artifact/P3K5pkJobatqem4De4Uyoc. Waiting for decisions.
