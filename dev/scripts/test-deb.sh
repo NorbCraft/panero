@@ -191,7 +191,7 @@ check "rclone license and dependency list installed" test -s /usr/share/doc/pane
 # the Win11 icon theme (D-020), light and dark, with its license
 check "Win11 icon theme installed" test -f /usr/share/panero/icons/Win11/index.theme -a -f /usr/share/panero/icons/Win11-dark/index.theme
 check "Win11 icon theme has folder icons" bash -c "ls /usr/share/panero/icons/Win11/places/*/folder.svg >/dev/null"
-check "Win11 icon theme license installed" test -s /usr/share/doc/panero/win11-icon-theme/COPYING
+check "Win11 icon theme license installed" bash -c "test -s /usr/share/doc/panero/win11-icon-theme/COPYING.gz -o -s /usr/share/doc/panero/win11-icon-theme/COPYING"
 check "no broken links in the icon themes" bash -c "[ -z \"\$(find /usr/share/panero/icons -xtype l)\" ]"
 check "the distribution's rclone is not pulled in" bash -c "! dpkg-query -W -f '\${Status}' rclone 2>/dev/null | grep -q 'ok installed'"
 check "desktop-file-validate" desktop-file-validate /usr/share/applications/io.github.norbcraft.panero.desktop
