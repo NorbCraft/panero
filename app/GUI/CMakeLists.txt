@@ -12,6 +12,7 @@ set(GUI_SRCS
     mediabutton.cpp
     panerodrivefilter.cpp
     panerodialogplacement.cpp
+    panerodriveactions.cpp
     kcmdmodebutton.cpp
     recentlyclosedtabsmenu.cpp
     terminaldock.cpp)
@@ -24,6 +25,8 @@ target_link_libraries(GUI
     KF5::CoreAddons
     KF5::I18n
     KF5::IconThemes
+    KF5::KIOCore
+    KF5::KIOWidgets
     KF5::Parts
     KF5::Service
     KF5::Solid
