@@ -981,6 +981,27 @@ try:
         except Exception:  # noqa: BLE001
             pass
     time.sleep(1.0)
+
+    # the shell's "Open" on a folder enters it in the panel (no Explorer window)
+    win.set_focus()
+    go_to('docs')
+    keys('{VK_APPS}', 0.5)
+    wait_menu(proc.pid)
+    ok = click_menu(proc.pid, 'Open', pause=1.5)
+    t = title()
+    shot('p12-explorer-menu-open-folder')
+    explorers = [w.window_text() for w in Desktop(backend='uia').windows() if w.window_text() == 'docs'
+                 and w.process_id() != proc.pid]
+    record('Explorer menu: "Open" on a folder opens it in the panel, not in Explorer', ok and t.startswith('docs')
+           and not explorers, f'title "{t}"; Explorer windows: {explorers}', must=True)
+    for w in Desktop(backend='uia').windows():
+        if w.window_text() == 'docs' and w.process_id() != proc.pid:
+            try:
+                w.close()
+            except Exception:  # noqa: BLE001
+                pass
+    if t.startswith('docs'):
+        keys('{BACKSPACE}', 1.5)
 except Exception as e:  # noqa: BLE001
     record('Explorer menu checks', False, f'automation error: {e!r}', must=True)
     close_menus()

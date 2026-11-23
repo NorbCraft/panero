@@ -754,16 +754,21 @@ bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool back
     extras << extra(ExtraCopyPath, names.size() > 1 ? i18n("Copy Paths") : i18n("Copy Path"), Icon("edit-copy-path"));
     extras << extra(ExtraTerminal, i18n("Open Terminal Here"), Icon("utilities-terminal"));
     int inCloud = 0, pinned = 0;
+    bool knownProvider = false;
     for (const QString &path : qAsConst(paths)) {
         PaneroCloudFiles::SyncRoot root;
         if (PaneroCloudFiles::rootFor(path, &root) && !root.virtualDrive && PaneroCloudFiles::isInSyncRoot(path)) {
             ++inCloud;
+            // their shell extensions add the offline actions, in every language
+            if (root.provider == QLatin1String("OneDrive") || root.provider == QLatin1String("Dropbox"))
+                knownProvider = true;
             if (PaneroCloudFiles::attributes(path) & PaneroCloudFiles::AttrPinned)
                 ++pinned;
         }
     }
-    // only when the provider's shell extension has no such items of its own
-    if (!paths.isEmpty() && inCloud == paths.size() && !menu.hasProviderOfflineItems()) {
+    // only when the provider's shell extension has no such items of its own: none
+    // in the menu, and not a provider known to add them (Panero Menu still has them)
+    if (!paths.isEmpty() && inCloud == paths.size() && !knownProvider && !menu.hasProviderOfflineItems()) {
         PaneroWinShell::MenuExtra keep = extra(ExtraCloudKeep, i18n("Always Keep on This Device"), QIcon());
         keep.checkable = true;
         keep.checked = pinned == inCloud;
