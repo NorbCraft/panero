@@ -53,6 +53,7 @@
 #include "Cloud/panerocloud.h"
 #endif
 #include "Panel/paneroappearance.h"
+#include "GUI/panerodialogplacement.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
@@ -324,6 +325,8 @@ int main(int argc, char *argv[])
 
     // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
     PaneroAppearance::instance()->apply();
+    // dialogs without a parent open centred on the Panero window
+    PaneroDialogPlacement::install();
 
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;

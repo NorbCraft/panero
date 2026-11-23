@@ -11,6 +11,7 @@ set(GUI_SRCS
     krlistwidget.cpp
     mediabutton.cpp
     panerodrivefilter.cpp
+    panerodialogplacement.cpp
     kcmdmodebutton.cpp
     recentlyclosedtabsmenu.cpp
     terminaldock.cpp)
