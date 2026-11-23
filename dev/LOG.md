@@ -536,3 +536,7 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   executable (lintian), fixed in fetch-win11-icons.sh; test-deb accepts the
   compressed licence; .deb lintian-clean, test-deb 96 checks incl. upgrade
   from preview 11.
+- Released v0.1.0-preview.12: PR #18 merged (e98c4f8b7), tag pushed, release
+  run 45177457275 green (Windows build + GUI test, .deb build + test-deb,
+  publish). Assets: .deb, Windows ZIP, setup.exe, source, licences;
+  SHA256SUMS verified after download.

@@ -367,7 +367,7 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       6e82a2bfe, release run 45061474829.
 - Preview 12: Explorer right-click menu; Windows cloud via app folders.
 
-## Phase 16 — Preview 12 (owner plan 2026-11-23, D-020)
+## Phase 16 — Preview 12 (owner plan 2026-11-23, D-020; done)
 
 - [x] Drive buttons: "letter only" (Windows) / "icon only" (Linux) option,
       Network button (smb:/ on Linux, network menu on Windows).
@@ -380,7 +380,8 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       (per user, upgrade in place) + installer test; GUI test with a real
       Cloud Files sync root.
 - [x] Quick Settings: Cloud section checkbox also on Windows.
-- [ ] Release v0.1.0-preview.12 (.deb, ZIP, setup.exe).
+- [x] Release v0.1.0-preview.12 (.deb, ZIP, setup.exe): PR #18, tag on
+      e98c4f8b7, release run 45177457275.
 - [x] Explorer right-click menu (D-019, D-021): shell IContextMenu with
       Panero's extras on top (panerowinshellmenu.*), merged from
       feature/explorer-menu (Windows run 45169504569 green).
