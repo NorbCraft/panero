@@ -41,6 +41,7 @@
 #include <KIOWidgets/KPropertiesDialog>
 #ifdef Q_OS_WIN
 #include "panerowinshell.h"
+#include "../FileSystem/panerocloudfiles.h"
 #endif
 
 
@@ -81,9 +82,23 @@ public:
         // Windows: the folder icons Explorer shows, as in the file list
         if (role == Qt::DecorationRole && index.column() == KDirModel::Name) {
             const KFileItem item = itemForIndex(index);
-            if (!item.isNull() && item.isLocalFile() && PaneroWinShell::useShellIcons(item.isDir()))
-                return QIcon(PaneroWinShell::fileIcon(item.localPath(), item.isDir())
-                                 .pixmap(KrFileTreeView::IconSize)); // shell icons come in 16/32/48 px
+            if (!item.isNull() && item.isLocalFile() && PaneroWinShell::useShellIcons(item.isDir())) {
+                QPixmap pm = PaneroWinShell::fileIcon(item.localPath(), item.isDir())
+                                 .pixmap(KrFileTreeView::IconSize); // shell icons come in 16/32/48 px
+                if (pm.isNull()) // every folder has an icon (D-020)
+                    pm = QIcon::fromTheme(QStringLiteral("folder")).pixmap(KrFileTreeView::IconSize);
+                return QIcon(pm);
+            }
+        }
+        // a cloud sync folder (OneDrive, ...) is a normal folder, as in Explorer:
+        // the delegate draws "hidden" items faded
+        if (role == KDirModel::FileItemRole && index.column() == KDirModel::Name) {
+            const KFileItem item = itemForIndex(index);
+            if (!item.isNull() && item.isHidden() && item.isLocalFile() && PaneroCloudFiles::isSyncRoot(item.localPath())) {
+                KIO::UDSEntry entry = item.entry();
+                entry.replace(KIO::UDSEntry::UDS_HIDDEN, 0);
+                return QVariant::fromValue(KFileItem(entry, item.url()));
+            }
         }
 #endif
         return KDirModel::data(index, role);

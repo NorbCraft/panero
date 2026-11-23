@@ -6,6 +6,9 @@
 */
 
 #include "krpreviews.h"
+#ifdef Q_OS_WIN
+#include "../FileSystem/panerocloudfiles.h"
+#endif
 #include "krpreviewjob.h"
 
 #include "krcolorcache.h"
@@ -60,6 +63,12 @@ void KrPreviews::deletePreview(KrViewItem *item)
 
 void KrPreviews::updatePreview(KrViewItem *item)
 {
+#ifdef Q_OS_WIN
+    // Panero: no previews of cloud placeholders (making one downloads the file, D-020)
+    const QUrl url = item->getFileItem()->getUrl();
+    if (url.isLocalFile() && PaneroCloudFiles::avoidReading(url.toLocalFile()))
+        return;
+#endif
     if(!_job) {
         _job = new KrPreviewJob(this);
         connect(_job, &KrPreviewJob::result, this, &KrPreviews::slotJobResult);

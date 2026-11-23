@@ -50,6 +50,8 @@
 #ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
 #include "../Cloud/panerocloud.h"
 #include "../Cloud/panerooffline.h"
+#else
+#include "../FileSystem/panerocloudfiles.h"
 #endif
 #include "../UserAction/useractionpopupmenu.h"
 
@@ -376,6 +378,29 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
             addSeparator();
     }
 
+#else
+    // Panero (D-020): OneDrive & co. on Windows, as in Explorer: the PINNED /
+    // UNPINNED attributes, which the provider acts on (download / free up)
+    {
+        int inCloud = 0, pinned = 0;
+        for (FileItem *f : files) {
+            const QString path = f->getUrl().isLocalFile() ? f->getUrl().toLocalFile() : QString();
+            PaneroCloudFiles::SyncRoot root;
+            if (!path.isEmpty() && PaneroCloudFiles::rootFor(path, &root) && !root.virtualDrive && PaneroCloudFiles::isInSyncRoot(path)) {
+                ++inCloud;
+                if (PaneroCloudFiles::attributes(path) & PaneroCloudFiles::AttrPinned)
+                    ++pinned;
+            }
+        }
+        if (inCloud > 0 && inCloud == files.size()) {
+            QAction *keep = addAction(Icon("folder-download"), i18n("Always Keep on This Device"));
+            keep->setData(QVariant(CLOUD_KEEP_ID));
+            keep->setCheckable(true);
+            keep->setChecked(pinned == inCloud);
+            addAction(Icon("edit-clear"), i18n("Free Up Space"))->setData(QVariant(CLOUD_FREE_ID));
+            addSeparator();
+        }
+    }
 #endif
 
     addAction(panel->gui->actions()->actCut);
@@ -532,7 +557,32 @@ void PanelContextMenu::performAction(int id)
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
         break;
     }
-#ifndef Q_OS_WIN
+#ifdef Q_OS_WIN
+    case CLOUD_KEEP_ID :
+    case CLOUD_FREE_ID : {
+        // "Always keep" is a check box, as in Explorer: unchecking clears the pin
+        QStringList paths;
+        bool allPinned = true;
+        for (const KFileItem &item : _items) {
+            if (!item.url().isLocalFile())
+                continue;
+            paths << item.url().toLocalFile();
+            allPinned &= bool(PaneroCloudFiles::attributes(paths.last()) & PaneroCloudFiles::AttrPinned);
+        }
+        const PaneroCloudFiles::Pin pin = id == CLOUD_FREE_ID ? PaneroCloudFiles::Pin::FreeUp
+            : allPinned                                       ? PaneroCloudFiles::Pin::Clear
+                                                              : PaneroCloudFiles::Pin::AlwaysKeep;
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        QString error;
+        const int changed = PaneroCloudFiles::setPinState(paths, pin, &error);
+        QApplication::restoreOverrideCursor();
+        if (changed < paths.size())
+            KMessageBox::error(krMainWindow, i18n("Could not change %1.", error),
+                               id == CLOUD_FREE_ID ? i18n("Free Up Space") : i18n("Always Keep on This Device"));
+        panel->func->refresh();
+        break;
+    }
+#else
     case CLOUD_AVAILABLE_ID : {
         QStringList paths;
         for (const KFileItem &item : _items)

@@ -852,4 +852,300 @@ except subprocess.TimeoutExpired:
     proc.kill()
     record('Panero closes cleanly', False, 'killed after 15 s')
 
+
+# --- phase C (D-020): folder icons on C:\, a real cloud sync folder, no downloads while browsing ----
+import ctypes  # noqa: E402
+
+k32 = ctypes.WinDLL('kernel32')
+k32.GetFileAttributesW.restype = ctypes.c_uint32
+k32.GetFileAttributesW.argtypes = [ctypes.c_wchar_p]
+RECALL_ON_DATA_ACCESS, PINNED, UNPINNED = 0x400000, 0x80000, 0x100000
+PROFILE = Path(os.environ['USERPROFILE'])
+CLOUD = PROFILE / 'PaneroTestCloud'
+CLOUD_NAME = 'Panero Test Cloud'
+PLACEHOLDERS = ['notes.txt', 'report.pdf', 'photo.jpg', 'tool.exe', 'noext', 'Shared/plan.docx']
+FETCH_LOG = OUT / 'cloud-provider-log.jsonl'
+READY, STOP = OUT / 'cloud-provider-state.json', OUT / 'cloud-provider.stop'
+PANERO_PROCS = ('panero.exe', 'kioslave5.exe', 'kiod5.exe')
+
+
+def wattrs(rel):
+    return k32.GetFileAttributesW(str(CLOUD / rel))
+
+
+def fetches(by_panero=True):
+    out = []
+    if FETCH_LOG.exists():
+        for line in FETCH_LOG.read_text(encoding='utf-8').splitlines():
+            e = json.loads(line)
+            if e.get('type') == 'FETCH_DATA' and (not by_panero or e.get('image', '').lower().endswith(PANERO_PROCS)):
+                out.append(e)
+    return out
+
+
+def still_placeholders():
+    return {rel: f'0x{wattrs(rel):08x}' for rel in PLACEHOLDERS if not wattrs(rel) & RECALL_ON_DATA_ACCESS}
+
+
+def main_window_of(p):
+    for _ in range(60):
+        time.sleep(1)
+        mains = [w for w in windows_of(p.pid) if is_main(w)]
+        if mains:
+            a = Application(backend='uia')
+            a.connect(process=p.pid)
+            return a, a.window(handle=mains[0].handle), Desktop(backend='uia').window(handle=mains[0].handle).wrapper_object()
+    return None, None, None
+
+
+def menu_items(pid):
+    items = []
+    for w in Desktop(backend='uia').windows(process=pid):
+        try:
+            items += [i for i in w.descendants(control_type='MenuItem')]
+        except Exception:  # noqa: BLE001
+            pass
+    return items
+
+
+def click_menu(pid, text):
+    for i in menu_items(pid):
+        try:
+            if i.window_text().replace('&', '') == text:
+                i.click_input()
+                time.sleep(1.5)
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    keys('{ESC}', 0.5)
+    return False
+
+
+provider = None
+try:
+    for f in (FETCH_LOG, READY, STOP):
+        f.unlink(missing_ok=True)
+    provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root', str(CLOUD),
+                                 '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP), '--name', CLOUD_NAME],
+                                stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
+    wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
+    time.sleep(0.5)
+    pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
+except Exception as e:  # noqa: BLE001
+    pstate = {'ok': False, 'error': repr(e)}
+cloud_ok = bool(pstate.get('ok'))
+record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
+       f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
+       f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
+       + (f"; {pstate}" if not cloud_ok else ''), must=True)
+if cloud_ok:
+    record('Placeholders are online-only before Panero starts (RECALL_ON_DATA_ACCESS)', not still_placeholders(),
+           f'not placeholders: {still_placeholders()}', must=True)
+
+proc = start(['--left', 'C:\\', '--right', str(PROFILE)], 'cloud')
+app, win, main_w = main_window_of(proc)
+if win is None:
+    record('Panero starts with C:\\ and the profile folder', False, 'no main window', must=True)
+    proc.kill()
+else:
+    time.sleep(3)
+    win.set_focus()
+    title = lambda: app.top_window().window_text()
+    if title() == PROFILE.name:
+        keys('{TAB}', 1.0)
+    shot('c-drive-folders')
+    mid = win.rectangle().mid_point().x
+    pins_list = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders']
+    side_right = pins_list[0].right if pins_list else win.rectangle().left + 200
+
+    def icon_checks(names, label, tree, found=None):
+        """Icon colours of visible folder rows by UI Automation name: the sidebar's folder
+        tree (left of the panels) or the left panel (both are tree views: TreeItem)."""
+        found = {} if found is None else found
+        wr = win.rectangle()
+        # the visible part of the view: the tree view control under the rows
+        views = []
+        for t in main_w.descendants(control_type='Tree'):
+            tr = t.rectangle()
+            if (tree and tr.right <= side_right + 5) or (not tree and side_right - 5 <= tr.left < mid):
+                views.append(tr)
+        vtop = views[0].top + (0 if tree else 22) if views else wr.top   # the panel's column header
+        vbottom = views[0].bottom if views else wr.bottom
+        with open(OUT / f'uia-{label}.txt', 'a', encoding='utf-8') as dump:
+            for el in main_w.descendants(control_type='TreeItem'):
+                try:
+                    t = el.window_text()
+                    r = el.rectangle()
+                    dump.write(f'{t}\t{r}\n')
+                    if t not in names or t in found or r.height() < 8 or r.top < vtop or r.bottom > vbottom:
+                        continue
+                    if (tree and r.left >= side_right) or (not tree and not side_right <= r.left < mid):
+                        continue
+                    cy = (r.top + r.bottom) // 2
+                    found[t] = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
+                except Exception:  # noqa: BLE001
+                    pass
+        box = (wr.left, wr.top + 100, side_right, wr.bottom - 40) if tree else (side_right, wr.top + 100, mid, wr.bottom - 40)
+        crop_shot(f'{label}-icons-zoom', box, 2)
+        return found
+
+    c_names = ['inetpub', 'PerfLogs', 'Program Files', 'Program Files (x86)', 'Users', 'Windows']
+    existing = [n for n in c_names if os.path.isdir('C:\\' + n)]
+    panel = icon_checks(existing, 'c-drive-panel', tree=False)
+    for step in range(6):                 # page through the list (Users, Windows are near the end)
+        if all(n in panel for n in existing):
+            break
+        keys('{PGDN}', 1.0)
+        shot(f'c-drive-folders-page{step + 2}')
+        icon_checks(existing, f'c-drive-panel-page{step + 2}', tree=False, found=panel)
+    keys('{HOME}', 0.8)
+    missing = [n for n in existing if n not in panel or panel[n]['yellow'] < 0.05]
+    record('Every folder on C:\\ has its folder icon in the panel (also Windows, PerfLogs, inetpub)',
+           bool(panel) and not missing, f'icon colours: {panel}; without icon: {missing}', must=bool(panel))
+    tree_icons = icon_checks(existing, 'c-drive-tree', tree=True)
+    try:                                   # scroll the tree to its end
+        tr = [t.rectangle() for t in main_w.descendants(control_type='Tree') if t.window_text() == 'Folder tree']
+        for step in range(10):
+            if not tr or all(n in tree_icons for n in existing):
+                break
+            mouse.scroll(coords=((tr[0].left + tr[0].right) // 2, (tr[0].top + tr[0].bottom) // 2), wheel_dist=-3)
+            time.sleep(0.8)
+            shot(f'c-drive-tree-scroll{step + 1}')
+            icon_checks(existing, f'c-drive-tree-scroll{step + 1}', tree=True, found=tree_icons)
+    except Exception as e:  # noqa: BLE001
+        print('tree scroll failed:', e)
+    missing = [n for n in existing if n not in tree_icons or tree_icons[n]['yellow'] < 0.05]
+    record('Every folder on C:\\ has its folder icon in the folder tree', bool(tree_icons) and not missing,
+           f'icon colours: {tree_icons}; without icon: {missing}', must=bool(tree_icons))
+
+    if cloud_ok:
+        # the Cloud section lists the sync folder (found in the registry), with its name
+        entries = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME]
+        lists = [l.window_text() for l in main_w.descendants(control_type='List')]
+        record('The sidebar\'s Cloud section lists the sync folder by its name', bool(entries),
+               f'lists: {lists}', must=True)
+        if entries:
+            r = entries[0].rectangle()
+            crop_shot('cloud-section', (r.left - 4, r.top - 30, r.left + 240, r.bottom + 6), 3)
+            entries[0].click_input()
+            time.sleep(2.0)
+        shot('cloud-folder-badges')
+        record('Clicking the cloud entry opens the sync folder in the active panel', title() == CLOUD.name,
+               f'title "{title()}"', must=True)
+        # browse: every row painted, the cursor over every file, the folder entered and left
+        ORDER = ['..', 'Shared', 'kept.txt', 'local-copy.txt', 'noext', 'notes.txt', 'photo.jpg', 'report.pdf', 'tool.exe']
+        keys('{HOME}', 0.3)
+        for _ in ORDER[1:]:
+            keys('{DOWN}', 0.25)
+        go_to('Shared')
+        keys('{ENTER}', 2.0)
+        shot('cloud-subfolder')
+        keys('{BACKSPACE}', 2.0)
+        rows = [el for el in main_w.descendants() if el.window_text() in ('notes', 'report', 'kept', 'local-copy', 'Shared')
+                and side_right < el.rectangle().left < mid]
+        if rows:
+            top = min(el.rectangle().top for el in rows)
+            crop_shot('cloud-badges-zoom', (side_right, top - 30, mid, top + 240), 2)
+        time.sleep(2)
+        got = fetches()
+        record('Browsing the sync folder downloads nothing (no FETCH_DATA from Panero)', not got,
+               f'fetch requests by Panero: {got}', must=True)
+        record('The placeholders stay online-only after browsing', not still_placeholders(),
+               f'downloaded: {still_placeholders()}', must=True)
+
+        # Explorer's offline actions on a file and on a folder
+        for name, rel in (('report.pdf', 'report.pdf'), ('Shared', 'Shared')):
+            go_to(name)
+            keys('{VK_APPS}', 1.5)
+            texts = [i.window_text() for i in menu_items(proc.pid)]
+            shot(f'cloud-menu-{name}')
+            ok = click_menu(proc.pid, 'Always Keep on This Device')
+            a = wattrs(rel)
+            child = wattrs('Shared/plan.docx') if name == 'Shared' else a
+            record(f'"Always Keep on This Device" on {name} sets PINNED, clears UNPINNED'
+                   + (' (also inside the folder)' if name == 'Shared' else ''),
+                   ok and a & PINNED and not a & UNPINNED and child & PINNED,
+                   f'menu: {texts}; attributes 0x{a:08x}, inside 0x{child:08x}', must=True)
+            shot(f'cloud-always-keep-{name}')
+            keys('{VK_APPS}', 1.5)
+            ok = click_menu(proc.pid, 'Free Up Space')
+            a = wattrs(rel)
+            child = wattrs('Shared/plan.docx') if name == 'Shared' else a
+            record(f'"Free Up Space" on {name} sets UNPINNED, clears PINNED', ok and a & UNPINNED and not a & PINNED
+                   and child & UNPINNED, f'attributes 0x{a:08x}, inside 0x{child:08x}', must=True)
+            shot(f'cloud-free-up-{name}')
+        got = fetches()
+        record('Context menu and offline actions download nothing', not got, f'fetch requests by Panero: {got}', must=True)
+
+        # explicit open: F3 may download (as in Explorer) - and proves the provider sees reads
+        go_to('notes.txt')
+        before_wins = {w.handle for w in windows_of(proc.pid)}
+        keys('{F3}', 3.0)
+        wait_for(lambda: fetches(), 10)
+        shot('cloud-f3-download')
+        got = fetches()
+        record('F3 on an online-only file downloads it (the provider is asked, as in Explorer)',
+               any(e.get('file') == 'notes.txt' for e in got), f'fetch requests: {got}', must=True)
+        for w in windows_of(proc.pid):
+            if w.handle not in before_wins:
+                try:
+                    w.close()
+                except Exception:  # noqa: BLE001
+                    pass
+        time.sleep(1)
+        win.set_focus()
+
+        # the folder holding the sync folder: a normal folder in the tree and the panel
+        keys('{BACKSPACE}', 2.0)
+        shot('profile-with-cloud-folder')
+        prof = icon_checks([CLOUD.name], 'profile-tree', tree=True)
+        record('The sync folder has its icon in the folder tree', bool(prof) and all(c['dark'] < 0.9 for c in prof.values()),
+               f'{prof}')
+        # right-click menu of the cloud entry: Pin, Open in Other Panel
+        cloud_list = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Cloud folders']
+        entries = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME
+                   and cloud_list and cloud_list[0].top <= li.rectangle().top <= cloud_list[0].bottom]
+        if entries:
+            r = entries[0].rectangle()
+            mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            time.sleep(1.2)
+            texts = [i.window_text() for i in menu_items(proc.pid)]
+            shot('cloud-entry-menu')
+            pin_clicked = click_menu(proc.pid, 'Pin')
+            time.sleep(1)
+            try:                               # the new pin is the last one: scroll the pins list down
+                pl = [l.rectangle() for l in main_w.descendants(control_type='List') if l.window_text() == 'Pinned folders'][0]
+                mouse.scroll(coords=((pl.left + pl.right) // 2, (pl.top + pl.bottom) // 2), wheel_dist=-10)
+                time.sleep(0.8)
+            except Exception:  # noqa: BLE001
+                pass
+            shot('cloud-pinned')
+            mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+            time.sleep(1.2)
+            ok = click_menu(proc.pid, 'Open in Other Panel')
+            time.sleep(1.5)
+            record('Cloud entry menu: Open in Other Panel', ok and title() == CLOUD.name, f'title "{title()}"')
+            shot('cloud-open-other-panel')
+        time.sleep(1)
+        record('Nothing else was downloaded (only the file opened with F3)',
+               all(e.get('file') == 'notes.txt' for e in fetches()), f'fetch requests by Panero: {fetches()}', must=True)
+    try:
+        win.close()
+        proc.wait(15)
+    except Exception:  # noqa: BLE001
+        proc.kill()
+    if cloud_ok:
+        # pins are saved in the settings (%LOCALAPPDATA%\panerorc, group "Panero Pins")
+        rc = Path(os.environ['LOCALAPPDATA']) / 'panerorc'
+        text = rc.read_text(encoding='utf-8', errors='replace') if rc.exists() else ''
+        group = text.split('[Panero Pins]', 1)[1].split('\n[', 1)[0] if '[Panero Pins]' in text else ''
+        record('Cloud entry menu: Pin adds it to Pinned (with its name)', 'pin_clicked' in globals() and pin_clicked
+               and 'PaneroTestCloud' in group and CLOUD_NAME in group, f'[Panero Pins]: {group.strip()[:400]}', must=True)
+if provider is not None:
+    STOP.write_text('stop')
+    try:
+        provider.wait(30)
+    except subprocess.TimeoutExpired:
+        provider.kill()
+
 sys.exit(1 if any(r['status'] == 'FAIL' for r in results) else 0)

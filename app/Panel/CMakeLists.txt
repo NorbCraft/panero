@@ -48,3 +48,9 @@ target_link_libraries(Panel
     KF5::XmlGui
     Qt5::Xml
 )
+
+target_link_libraries(Panel PaneroCloudFiles)
+if(WIN32)
+    # shell icons: system image list (ImageList_GetIcon)
+    target_link_libraries(Panel comctl32)
+endif()

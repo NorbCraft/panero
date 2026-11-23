@@ -9,6 +9,7 @@
 #include "krview.h"
 
 #ifdef Q_OS_WIN
+#include "../../FileSystem/panerocloudfiles.h"
 #include "../panerowinshell.h"
 #endif
 
@@ -333,15 +334,28 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     const QUrl url = fileitem->getUrl();
     if (url.isLocalFile() && PaneroWinShell::useShellIcons(fileitem->isDir())) {
         const QString path = url.toLocalFile();
-        cacheName = QStringLiteral("WIN_%1_%2%3").arg(size).arg(dim ? QStringLiteral("DIM_") : QString(),
-                                                              PaneroWinShell::iconKey(path, fileitem->isDir()));
+        // OneDrive & co.: the badge from the Cloud Files attributes (D-020), never from the content
+        const PaneroCloudFiles::State cloudState = PaneroCloudFiles::state(path, fileitem->isDir());
+        cacheName = QStringLiteral("WIN_%1_%2%3%4").arg(size).arg(dim ? QStringLiteral("DIM_") : QString(),
+                                                                cloudState != PaneroCloudFiles::State::NotCloud
+                                                                    ? QStringLiteral("CLOUD%1_").arg(int(cloudState))
+                                                                    : QString(),
+                                                                PaneroWinShell::iconKey(path, fileitem->isDir()));
         if (!QPixmapCache::find(cacheName, &icon)) {
-            icon = processIcon(PaneroWinShell::fileIcon(path, fileitem->isDir()).pixmap(size), dim, dimColor, dimFactor,
-                               false); // .lnk icons already carry the shortcut arrow
-            QPixmapCache::insert(cacheName, icon);
+            QPixmap shell = PaneroWinShell::fileIcon(path, fileitem->isDir()).pixmap(size);
+            if (shell.isNull()) // never an empty cell (D-020)
+                shell = Icon(fileitem->isDir() ? QStringLiteral("folder") : QStringLiteral("unknown")).pixmap(size);
+            if (shell.width() > size) // the shell gives 16/32/48 px
+                shell = shell.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            icon = processIcon(shell, dim, dimColor, dimFactor, false); // .lnk icons already carry the shortcut arrow
+            PaneroCloudFiles::decorate(icon, cloudState);
+            if (!icon.isNull())
+                QPixmapCache::insert(cacheName, icon);
         }
         return icon;
     }
+    const PaneroCloudFiles::State cloudState = url.isLocalFile() ? PaneroCloudFiles::state(url.toLocalFile(), fileitem->isDir())
+                                                                 : PaneroCloudFiles::State::NotCloud;
 #else
     // Panero: cloud badge (online-only / available offline / always kept), R10
     PaneroOffline::State cloudState = PaneroOffline::State::NotCloud;
@@ -350,10 +364,8 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
 #endif
 
     cacheName.append(QString::number(size));
-#ifndef Q_OS_WIN
-    if (cloudState != PaneroOffline::State::NotCloud)
+    if (cloudState != decltype(cloudState)::NotCloud)
         cacheName.append(QStringLiteral("CLOUD%1_").arg(int(cloudState)));
-#endif
     if(fileitem->isSymLink())
         cacheName.append("LINK_");
     if(dim)
@@ -366,7 +378,9 @@ QPixmap KrView::getIcon(FileItem *fileitem, bool active, int size/*, KRListItem:
     if (!QPixmapCache::find(cacheName, &icon)) {
         icon = processIcon(Icon(iconName, Icon("unknown")).pixmap(size),
                            dim, dimColor, dimFactor, fileitem->isSymLink());
-#ifndef Q_OS_WIN
+#ifdef Q_OS_WIN
+        PaneroCloudFiles::decorate(icon, cloudState);
+#else
         PaneroOffline::decorate(icon, cloudState);
 #endif
         // insert it into the cache

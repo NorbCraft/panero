@@ -7,6 +7,7 @@
 
 #include "fileitem.h"
 #include "paneroslowpaths.h"
+#include "panerocloudfiles.h"
 
 // QtCore
 #include <QCache>
@@ -125,6 +126,19 @@ void FileItem::setSize(KIO::filesize_t size)
     s_fileSizeCache.insert(m_url, new FileSize(size));
 }
 
+namespace
+{
+/// Never open files here to find their type: cloud/network mounts, Windows sync folders
+bool avoidContent(const QString &path)
+{
+#ifdef Q_OS_WIN
+    if (PaneroCloudFiles::rootFor(path))
+        return true;
+#endif
+    return PaneroSlowPaths::isSlowPath(path);
+}
+} // namespace
+
 const QString &FileItem::getMime()
 {
     if (m_mimeType.isEmpty()) {
@@ -138,8 +152,10 @@ const QString &FileItem::getMime()
             const QMimeDatabase db;
             // Panero: on cloud/network mounts never open the file to sniff its
             // content (each open starts a download): the extension decides
+            // (Windows: also in the sync folders of OneDrive, Google Drive, ...
+            // where reading a placeholder downloads it, D-020)
             const QUrl url = getUrl();
-            const QMimeType mt = url.isLocalFile() && PaneroSlowPaths::isSlowPath(url.toLocalFile())
+            const QMimeType mt = url.isLocalFile() && avoidContent(url.toLocalFile())
                 ? db.mimeTypeForFile(url.toLocalFile(), QMimeDatabase::MatchExtension)
                 : db.mimeTypeForUrl(url);
             m_mimeType = mt.isValid() ? mt.name() : "unknown";
@@ -157,7 +173,7 @@ const QString &FileItem::getMime()
             // (several file accesses per folder, in the GUI thread while
             // painting) waits for the drive and freezes the window while rclone
             // is busy
-            if (url.isLocalFile() && !PaneroSlowPaths::isSlowPath(url.toLocalFile())) {
+            if (url.isLocalFile() && !avoidContent(url.toLocalFile())) {
                 const QString file = url.toLocalFile() + "/.directory";
                 const KDesktopFile cfg(file);
                 const QString iconName = cfg.readIcon();

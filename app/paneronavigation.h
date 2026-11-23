@@ -53,7 +53,7 @@ public:
     /// Pin the active panel's current folder.
     void pinCurrentFolder();
     /// Pin a folder URL; returns false if it is invalid or already pinned.
-    bool pinUrl(const QUrl &folderUrl);
+    bool pinUrl(const QUrl &folderUrl, const QString &label = QString());
     void saveSettings() const;
     void restoreSettings();
 
@@ -74,10 +74,9 @@ private:
     void updatePinHighlight();
     /// Highlights the cloud drive or server the active panel is in, else none.
     void updateCloudHighlight();
-#ifndef Q_OS_WIN
     void loadCloud();
     void cloudContextMenu(const QPoint &pos);
-#endif
+    QStringList m_cloudSignature; ///< Windows: the sync folders shown
     QWidget *m_cloudSection = nullptr;
     QListWidget *m_cloud = nullptr;
     QString m_pendingCloud;

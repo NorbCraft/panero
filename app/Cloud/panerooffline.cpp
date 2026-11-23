@@ -8,6 +8,7 @@
 #include "panerocloud.h"
 #include "panerocloudutils.h"
 #include "panerorclone.h"
+#include "../FileSystem/panerocloudfiles.h"
 
 #include <QApplication>
 #include <QCryptographicHash>
@@ -442,40 +443,8 @@ QString PaneroOffline::redirect(const QString &localPath)
 
 void PaneroOffline::decorate(QPixmap &icon, State state)
 {
-    if (state == State::NotCloud || icon.isNull())
-        return;
-    const qreal dpr = icon.devicePixelRatio();
-    const qreal w = icon.width() / dpr;
-    const qreal d = qMax<qreal>(7.0, w * 0.45);
-    const QRectF r(0.5, w - d - 0.5, d, d);
-    QPainter p(&icon);
-    p.setRenderHint(QPainter::Antialiasing);
-    const QColor green(0x2e, 0x9e, 0x4f);
-    const QColor blue(0x3a, 0x7b, 0xd5);
-    if (state == State::OnlineOnly) {
-        // a small cloud
-        QPainterPath cloud;
-        const qreal x = r.left(), y = r.top() + d * 0.2, cw = d, ch = d * 0.62;
-        cloud.addEllipse(QRectF(x + cw * 0.05, y + ch * 0.35, cw * 0.42, ch * 0.62));
-        cloud.addEllipse(QRectF(x + cw * 0.25, y, cw * 0.5, ch * 0.75));
-        cloud.addEllipse(QRectF(x + cw * 0.53, y + ch * 0.3, cw * 0.42, ch * 0.66));
-        cloud.addRect(QRectF(x + cw * 0.25, y + ch * 0.6, cw * 0.5, ch * 0.37));
-        p.setPen(QPen(blue, qMax<qreal>(1.0, d / 9.0)));
-        p.setBrush(Qt::white);
-        p.drawPath(cloud.simplified());
-        return;
-    }
-    const bool pinned = state == State::Pinned;
-    p.setPen(QPen(green, qMax<qreal>(1.0, d / 8.0)));
-    p.setBrush(pinned ? QBrush(green) : QBrush(Qt::white));
-    p.drawEllipse(r.adjusted(0.5, 0.5, -0.5, -0.5));
-    QPainterPath check;
-    check.moveTo(r.left() + d * 0.27, r.top() + d * 0.52);
-    check.lineTo(r.left() + d * 0.44, r.top() + d * 0.69);
-    check.lineTo(r.left() + d * 0.74, r.top() + d * 0.35);
-    p.setPen(QPen(pinned ? Qt::white : green, qMax<qreal>(1.2, d / 7.0), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    p.setBrush(Qt::NoBrush);
-    p.drawPath(check);
+    // shared with the Windows sync folders (same states, same drawing)
+    PaneroCloudFiles::decorate(icon, PaneroCloudFiles::State(int(state)));
 }
 
 namespace
