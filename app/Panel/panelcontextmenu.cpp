@@ -54,6 +54,7 @@
 #include "../FileSystem/panerocloudfiles.h"
 #include "../kractions.h"
 #include "panerowinshellmenu.h"
+#include <QCursor>
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -771,7 +772,10 @@ bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool back
     extras << extra(ExtraPaneroMenu, i18n("Panero Menu"), QApplication::windowIcon());
     menu.addExtras(extras);
 
-    const PaneroWinShell::ShellMenu::Choice choice = menu.exec(pos);
+    // opened by a held right button: at the pointer, so that the release lands on
+    // the menu's corner and chooses nothing
+    const QPoint at = (QGuiApplication::mouseButtons() & Qt::RightButton) ? QCursor::pos() : pos;
+    const PaneroWinShell::ShellMenu::Choice choice = menu.exec(at);
     if (!gui) // the panel went away while the menu was open
         return true;
     if (!choice.shell) {
