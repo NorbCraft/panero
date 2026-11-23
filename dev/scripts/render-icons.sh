@@ -8,3 +8,6 @@ for s in 16 22 24; do rsvg-convert -w $s -h $s $ID-small.svg -o $s-apps-$ID.png;
 for s in 32 48 64 128 256; do rsvg-convert -w $s -h $s $ID.svg -o $s-apps-$ID.png; done
 cp $ID.svg sc-apps-$ID.svg
 echo "rendered $(ls *-apps-$ID.png | wc -l) PNGs"
+# Windows icon (exe, shortcuts, taskbar): the same PNGs
+convert $(for s in 16 24 32 48 64 128 256; do echo "$s-apps-$ID.png"; done) ../../windows/panero.ico
+echo "wrote app/windows/panero.ico"
