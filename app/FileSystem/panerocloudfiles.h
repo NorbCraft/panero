@@ -58,6 +58,10 @@ void decorate(QPixmap &icon, State state);
 enum class Pin { AlwaysKeep, FreeUp, Clear };
 /// The attributes after @p pin: PINNED / UNPINNED / neither.
 quint32 withPinState(quint32 attributes, Pin pin);
+/// True for an item of the Explorer menu (text with "&" accelerators, canonical
+/// verb) that already does what Panero's "Always Keep on This Device" / "Free Up
+/// Space" do: the provider's own offline actions (OneDrive, Windows, Dropbox, ...).
+bool isProviderOfflineItem(const QString &text, const QString &verb);
 
 struct SyncRoot {
     QString path;     ///< "C:/Users/me/OneDrive" (forward slashes, no trailing slash)

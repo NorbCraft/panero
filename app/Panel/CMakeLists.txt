@@ -51,6 +51,8 @@ target_link_libraries(Panel
 
 target_link_libraries(Panel PaneroCloudFiles)
 if(WIN32)
+    # Explorer's context menu (D-019): IContextMenu, IShellFolder, window subclassing
+    target_sources(Panel PRIVATE panerowinshellmenu.cpp)
     # shell icons: system image list (ImageList_GetIcon)
-    target_link_libraries(Panel comctl32)
+    target_link_libraries(Panel comctl32 ole32 shell32 uuid)
 endif()

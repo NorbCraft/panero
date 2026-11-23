@@ -80,6 +80,22 @@ private slots:
         QCOMPARE(withPinState(0, Pin::Clear), 0u);
     }
 
+    void providerOfflineItems()
+    {
+        // the provider's own items in the Explorer menu: Panero then adds none
+        QVERIFY(isProviderOfflineItem(QStringLiteral("Always keep on this device"), QString()));
+        QVERIFY(isProviderOfflineItem(QStringLiteral("&Free up space"), QString()));
+        QVERIFY(isProviderOfflineItem(QStringLiteral("Make available offline\tCtrl+O"), QString()));
+        QVERIFY(isProviderOfflineItem(QStringLiteral("Make online-only..."), QString()));
+        QVERIFY(isProviderOfflineItem(QStringLiteral("Mindig ezen az eszközön"), QStringLiteral("FreeUpSpace")));
+        // other shell items, including the "pin to" verbs
+        QVERIFY(!isProviderOfflineItem(QStringLiteral("Pin to Start"), QStringLiteral("pintostartscreen")));
+        QVERIFY(!isProviderOfflineItem(QStringLiteral("Pin to Quick access"), QStringLiteral("pintohome")));
+        QVERIFY(!isProviderOfflineItem(QStringLiteral("Free up space on disk C:"), QString()));
+        QVERIFY(!isProviderOfflineItem(QStringLiteral("Properties"), QStringLiteral("properties")));
+        QVERIFY(!isProviderOfflineItem(QString(), QString()));
+    }
+
     void paths()
     {
         QCOMPARE(normalizePath(QStringLiteral("c:\\Users\\me\\OneDrive\\")), QStringLiteral("C:/Users/me/OneDrive"));

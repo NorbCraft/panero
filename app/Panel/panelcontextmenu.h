@@ -39,6 +39,15 @@ private:
     explicit PanelContextMenu(KrPanel *thePanel, bool background, QWidget *parent = nullptr);
 
     void performAction(int id);
+#ifdef Q_OS_WIN
+    /// Panero (D-019): Explorer's menu with Panero's few items on top. False when
+    /// Panero's own menu is to be shown instead (not a local folder, the user chose
+    /// "Panero Menu", or no shell menu).
+    static bool runShellMenu(const QPoint &pos, KrPanel *panel, bool background);
+    /// Panero (D-020): "Always Keep on This Device" (a check box: unchecking clears
+    /// the pin when all are pinned) or "Free Up Space" on @p paths.
+    static void setCloudPin(KrPanel *panel, const QStringList &paths, bool freeUp);
+#endif
     /// Panero: true for a menu text meaning "copy the path" (service menus)
     static bool isCopyPathText(const QString &text);
     /// Panero: hides service-menu entries duplicating Copy Path; false when

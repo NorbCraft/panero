@@ -52,11 +52,24 @@
 #include "../Cloud/panerooffline.h"
 #else
 #include "../FileSystem/panerocloudfiles.h"
+#include "../kractions.h"
+#include "panerowinshellmenu.h"
+#include <QCursor>
+#include <QDir>
+#include <QFileInfo>
+#include <QGuiApplication>
+#include <QPointer>
+#include <QTimer>
 #endif
 #include "../UserAction/useractionpopupmenu.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
 {
+#ifdef Q_OS_WIN
+    // Panero (D-019): Explorer's menu; Panero's own one through its "Panero Menu" item
+    if (runShellMenu(pos, panel, background))
+        return nullptr;
+#endif
     auto menu = new PanelContextMenu(panel, background);
     QAction * res = menu->exec(pos);
     int result = res && res->data().canConvert<int>() ?
@@ -553,33 +566,24 @@ void PanelContextMenu::performAction(int id)
         QStringList paths;
         const QList<QUrl> urls = _items.isEmpty() ? QList<QUrl>{panel->virtualPath()} : _items.urlList();
         for (const QUrl &url : urls)
+#ifdef Q_OS_WIN // backslashes, as Windows writes paths
+            paths << (url.isLocalFile() ? QDir::toNativeSeparators(url.toLocalFile())
+                                        : url.toDisplayString(QUrl::PreferLocalFile | QUrl::StripTrailingSlash));
+#else
             paths << url.toDisplayString(QUrl::PreferLocalFile | QUrl::StripTrailingSlash);
+#endif
         QApplication::clipboard()->setText(paths.join(QLatin1Char('\n')));
         break;
     }
 #ifdef Q_OS_WIN
     case CLOUD_KEEP_ID :
     case CLOUD_FREE_ID : {
-        // "Always keep" is a check box, as in Explorer: unchecking clears the pin
         QStringList paths;
-        bool allPinned = true;
         for (const KFileItem &item : _items) {
-            if (!item.url().isLocalFile())
-                continue;
-            paths << item.url().toLocalFile();
-            allPinned &= bool(PaneroCloudFiles::attributes(paths.last()) & PaneroCloudFiles::AttrPinned);
+            if (item.url().isLocalFile())
+                paths << item.url().toLocalFile();
         }
-        const PaneroCloudFiles::Pin pin = id == CLOUD_FREE_ID ? PaneroCloudFiles::Pin::FreeUp
-            : allPinned                                       ? PaneroCloudFiles::Pin::Clear
-                                                              : PaneroCloudFiles::Pin::AlwaysKeep;
-        QApplication::setOverrideCursor(Qt::WaitCursor);
-        QString error;
-        const int changed = PaneroCloudFiles::setPinState(paths, pin, &error);
-        QApplication::restoreOverrideCursor();
-        if (changed < paths.size())
-            KMessageBox::error(krMainWindow, i18n("Could not change %1.", error),
-                               id == CLOUD_FREE_ID ? i18n("Free Up Space") : i18n("Always Keep on This Device"));
-        panel->func->refresh();
+        setCloudPin(panel, paths, id == CLOUD_FREE_ID);
         break;
     }
 #else
@@ -656,3 +660,186 @@ void PanelContextMenu::performAction(int id)
                                 panel->func->files()->getUrls(names));
     }
 }
+
+#ifdef Q_OS_WIN
+void PanelContextMenu::setCloudPin(KrPanel *panel, const QStringList &paths, bool freeUp)
+{
+    // "Always keep" is a check box, as in Explorer: unchecking clears the pin
+    bool allPinned = !paths.isEmpty();
+    for (const QString &path : paths)
+        allPinned &= bool(PaneroCloudFiles::attributes(path) & PaneroCloudFiles::AttrPinned);
+    const PaneroCloudFiles::Pin pin = freeUp ? PaneroCloudFiles::Pin::FreeUp
+        : allPinned                          ? PaneroCloudFiles::Pin::Clear
+                                             : PaneroCloudFiles::Pin::AlwaysKeep;
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QString error;
+    const int changed = PaneroCloudFiles::setPinState(paths, pin, &error);
+    QApplication::restoreOverrideCursor();
+    if (changed < paths.size())
+        KMessageBox::error(krMainWindow, i18n("Could not change %1.", error),
+                           freeUp ? i18n("Free Up Space") : i18n("Always Keep on This Device"));
+    panel->func->refresh();
+}
+
+namespace
+{
+enum ShellExtraId : unsigned {
+    ExtraCopy = PaneroWinShell::MenuExtraFirst,
+    ExtraMove,
+    ExtraCopyPath,
+    ExtraTerminal,
+    ExtraCloudKeep,
+    ExtraCloudFree,
+    ExtraPaneroMenu,
+};
+
+PaneroWinShell::MenuExtra extraFor(unsigned id, QAction *action, const QIcon &icon)
+{
+    PaneroWinShell::MenuExtra e;
+    e.id = id;
+    e.text = action->text().remove(QLatin1Char('&'));
+    e.shortcut = action->shortcut().toString(QKeySequence::NativeText);
+    e.icon = action->icon().isNull() ? icon : action->icon();
+    return e;
+}
+
+PaneroWinShell::MenuExtra extra(unsigned id, const QString &text, const QIcon &icon)
+{
+    PaneroWinShell::MenuExtra e;
+    e.id = id;
+    e.text = text;
+    e.icon = icon;
+    return e;
+}
+} // namespace
+
+bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool background)
+{
+    if (qEnvironmentVariableIsSet("PANERO_NO_EXPLORER_MENU"))
+        return false;
+    // only items of a local folder (not archives, the Recycle Bin, search results, FTP, ...)
+    const QUrl dir = panel->virtualPath();
+    if (!dir.isLocalFile() || !panel->func->files()->isLocal())
+        return false;
+    const QString folder = dir.toLocalFile();
+    QStringList marked;
+    panel->view->getSelectedItems(&marked, false);
+    const QStringList names = CommanderTargets::contextMenuTargets(background, marked, panel->view->getCurrentItem());
+    QStringList paths;
+    bool allDirs = !names.isEmpty();
+    for (const QString &name : names) {
+        FileItem *file = panel->func->files()->getFileItem(name);
+        if (!file || !file->getUrl().isLocalFile())
+            return false;
+        const QString path = file->getUrl().toLocalFile();
+        if (QDir::cleanPath(QFileInfo(path).absolutePath()).compare(QDir::cleanPath(folder), Qt::CaseInsensitive) != 0)
+            return false;
+        paths << path;
+        allDirs = allDirs && file->isDir();
+    }
+
+    QPointer<ListPanel> gui = panel->gui;
+    const bool shift = QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier;
+    PaneroWinShell::ShellMenu menu(panel->gui, folder, names, shift);
+    if (!menu.isValid()) {
+        qWarning() << "Explorer menu not available:" << menu.error();
+        return false;
+    }
+
+    // Panero's few items on top: F5, F6, Copy Path, terminal, the offline actions, its own menu
+    QList<PaneroWinShell::MenuExtra> extras;
+    ListPanelActions *actions = panel->gui->actions();
+    if (!names.isEmpty())
+        extras << extraFor(ExtraCopy, actions->actCopyF5, Icon("edit-copy")) << extraFor(ExtraMove, actions->actMoveF6, Icon("go-next"));
+    extras << extra(ExtraCopyPath, names.size() > 1 ? i18n("Copy Paths") : i18n("Copy Path"), Icon("edit-copy-path"));
+    extras << extra(ExtraTerminal, i18n("Open Terminal Here"), Icon("utilities-terminal"));
+    int inCloud = 0, pinned = 0;
+    bool knownProvider = false;
+    for (const QString &path : qAsConst(paths)) {
+        PaneroCloudFiles::SyncRoot root;
+        if (PaneroCloudFiles::rootFor(path, &root) && !root.virtualDrive && PaneroCloudFiles::isInSyncRoot(path)) {
+            ++inCloud;
+            // their shell extensions add the offline actions, in every language
+            if (root.provider == QLatin1String("OneDrive") || root.provider == QLatin1String("Dropbox"))
+                knownProvider = true;
+            if (PaneroCloudFiles::attributes(path) & PaneroCloudFiles::AttrPinned)
+                ++pinned;
+        }
+    }
+    // only when the provider's shell extension has no such items of its own: none
+    // in the menu, and not a provider known to add them (Panero Menu still has them)
+    if (!paths.isEmpty() && inCloud == paths.size() && !knownProvider && !menu.hasProviderOfflineItems()) {
+        PaneroWinShell::MenuExtra keep = extra(ExtraCloudKeep, i18n("Always Keep on This Device"), QIcon());
+        keep.checkable = true;
+        keep.checked = pinned == inCloud;
+        extras << keep << extra(ExtraCloudFree, i18n("Free Up Space"), Icon("edit-clear"));
+    }
+    extras << extra(ExtraPaneroMenu, i18n("Panero Menu"), Icon(Krusader::appIconName()));
+    menu.addExtras(extras);
+
+    // opened by a held right button: at the pointer, so that the release lands on
+    // the menu's corner and chooses nothing
+    const QPoint at = (QGuiApplication::mouseButtons() & Qt::RightButton) ? QCursor::pos() : pos;
+    const PaneroWinShell::ShellMenu::Choice choice = menu.exec(at);
+    if (!gui) // the panel went away while the menu was open
+        return true;
+    if (!choice.shell) {
+        switch (choice.extra) {
+        case 0: // closed without a choice
+            return true;
+        case ExtraPaneroMenu:
+            return false;
+        case ExtraCopy:
+            actions->actCopyF5->trigger();
+            return true;
+        case ExtraMove:
+            actions->actMoveF6->trigger();
+            return true;
+        case ExtraCopyPath: {
+            QStringList list;
+            for (const QString &path : paths.isEmpty() ? QStringList{folder} : paths)
+                list << QDir::toNativeSeparators(path);
+            QApplication::clipboard()->setText(list.join(QLatin1Char('\n')));
+            return true;
+        }
+        case ExtraTerminal:
+            SLOTS->runTerminal(paths.size() == 1 && allDirs ? paths.first() : folder);
+            return true;
+        case ExtraCloudKeep:
+        case ExtraCloudFree:
+            setCloudPin(panel, paths, choice.extra == ExtraCloudFree);
+            return true;
+        default:
+            return true;
+        }
+    }
+
+    // the shell's items: a few are done Panero's way
+    if (choice.verb == QLatin1String("rename")) {
+        // in place (F2), as Explorer does; several items: Multi-Rename
+        if (names.size() == 1) {
+            panel->view->setCurrentItem(names.first());
+            actions->actRenameF2->trigger();
+        } else if (KrActions::actMultiRename) {
+            KrActions::actMultiRename->trigger();
+        }
+        return true;
+    }
+    if (choice.verb == QLatin1String("open") && names.size() == 1 && allDirs) {
+        panel->func->execute(names.first()); // a folder opens in the panel, not in Explorer
+        return true;
+    }
+    QString error;
+    if (!menu.invoke(&error))
+        qWarning() << "Explorer menu command failed:" << choice.text << choice.verb << error;
+    // the command may have changed the folder (Delete, New, Paste, an extension's action, ...)
+    panel->func->refresh();
+    for (int delay : {700, 2500}) {
+        QTimer::singleShot(delay, gui.data(), [gui]() {
+            if (gui)
+                gui->func->refresh();
+        });
+    }
+    return true;
+}
+#endif

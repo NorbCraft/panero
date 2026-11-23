@@ -60,7 +60,8 @@ unchanged):
   panel's outline with each panel active (keyboard and mouse, normal and
   maximized), the shell icons of the pins, the Windows words (Recycle Bin,
   Panero Settings) and the Total Commander habits (F5–F8, F2, Insert, Del, Tab,
-  Enter/Backspace, Alt+F1/F2, Shift+F6, Ctrl+click, F3/F4/F9). Phase C (D-020)
+  Enter/Backspace, Alt+F1/F2, Shift+F6, Ctrl+click, F3/F4/F9) and the Explorer
+  right-click menu (see "Explorer right-click menu"). Phase C (D-020)
   checks the folder icons on `C:\` (panel and tree), registers a real Cloud
   Files sync root with `cloud-provider.py` and browses it (see "Cloud
   folders"). `installer-test.ps1` then installs, starts, upgrades and
@@ -79,6 +80,8 @@ unchanged):
 - `app/Panel/panerowinshell.*`: Explorer drive names and the shell icons for
   drives, folders and files (cached per extension), used by the file list, the
   folder tree, the drive button and the pins.
+- `app/Panel/panerowinshellmenu.*` (preview 12, D-019): Explorer's right-click
+  menu, see "Explorer right-click menu" below. Built on Windows only.
 - `app/panerowording.h`: `PANERO_TEXT(linux, windows)` for the words Windows
   uses: Recycle Bin (toolbar, menus, F8/Del question and button, progress,
   settings), "Panero Settings" for the Konfigurator window and in messages,
@@ -214,6 +217,80 @@ uninstall entry, nothing machine-wide, start from the installed folder (every
 module from there or Windows), install again (one uninstall entry, settings
 with a marker kept), silent uninstall (folder, shortcut and entry gone,
 settings kept).
+
+### Explorer right-click menu (D-019)
+
+Right-click (held right button, the menu key or Shift+F10) on files and folders
+shows the real Windows shell context menu of the targets (the marked items, or
+the item under the cursor); on empty space, the folder's background menu.
+`app/Panel/panerowinshellmenu.*`:
+
+- Built in the GUI thread (its OLE / single-threaded COM apartment):
+  `SHParseDisplayName` + `IShellFolder::BindToObject` for the panel folder,
+  `ParseDisplayName` for the names, `GetUIObjectOf(IID_IContextMenu)` for the
+  items, `CreateViewObject(IID_IContextMenu)` for the background;
+  `QueryContextMenu` with `CMF_NORMAL | CMF_CANRENAME`, plus
+  `CMF_EXTENDEDVERBS` while Shift is held (as in Explorer). Shown with
+  `TrackPopupMenuEx`; while it is open the main window is subclassed
+  (`SetWindowSubclass`) and passes `WM_INITMENUPOPUP`, `WM_DRAWITEM`,
+  `WM_MEASUREITEM` and `WM_MENUCHAR` to `IContextMenu3::HandleMenuMsg2` (or
+  `IContextMenu2`), so "Open with", "Send to", "New", 7-Zip and other
+  extensions fill their submenus. All interfaces and PIDLs are released.
+- Shell commands run with `InvokeCommand` (`CMINVOKECOMMANDINFOEX`, Unicode,
+  the panel folder as `lpDirectory`, the menu point, Ctrl / Shift masks), then
+  the panel is refreshed (at once, after 0.7 s and 2.5 s: some commands finish
+  in the background). Delete therefore goes to the Recycle Bin as in Explorer
+  (Shift+Delete in the menu: permanently). Two verbs are Panero's way:
+  `rename` starts Panero's rename in place (several items: Multi-Rename), and
+  `open` on one folder enters it in the panel instead of opening Explorer.
+- Panero's items on top (command ids from 0x8000, the shell's are 1..0x7FFF):
+  Copy to other panel (F5), Move to other panel (F6), Copy Path / Copy Paths
+  (Windows paths with backslashes), Open Terminal Here, inside a sync folder
+  "Always Keep on This Device" (check box) and "Free Up Space", and
+  "Panero Menu", which opens Panero's full previous menu (Preview, User
+  Actions, Link Handling, ...). The background menu has Copy Path, Open
+  Terminal Here and Panero Menu.
+- The offline actions are only added when the provider has none of its own:
+  not for OneDrive and Dropbox folders (their shell extensions add them in the
+  Windows language), and not when the menu already has an item such as
+  "Always keep on this device", "Free up space", "Make available offline" or
+  "Make online-only" (`PaneroCloudFiles::isProviderOfflineItem`, unit-tested).
+  The test provider on the runner adds none, so Panero's are shown there.
+- Building the menu reads no file contents: the GUI test registers
+  placeholders and opens the menu on a placeholder file, a placeholder folder,
+  several placeholders and the sync folder's background; the provider logs no
+  `FETCH_DATA` from Panero and every placeholder stays online-only.
+- Panero's own menu is used for everything that is not a plain local folder
+  (archives, the Recycle Bin, search results, FTP / SFTP / SMB through KIO), and
+  when the shell gives no menu. `PANERO_NO_EXPLORER_MENU=1` always shows
+  Panero's menu; `PANERO_DEBUG_EXPLORER_MENU=1` logs the menus (texts and
+  canonical verbs), the choice and the `InvokeCommand` result.
+- Linux is unchanged (the file is built on Windows only).
+
+GUI test (phase B, disposable files; phase C, placeholders): the menu on a
+file, a folder, two marked files and the background has the shell's items
+("Open with", "Send to", "Properties"; "New" on the background) and Panero's;
+Copy to other panel copies through the F5 dialog; Copy Path gives
+`C:\pt\work\left\alpha.txt`; the shell's "Copy as path" works; New > Folder
+creates a folder (the IContextMenu3 submenu) and the panel shows it; the shell's
+Rename starts Panero's rename in place; the shell's Delete moves the folder to
+the Recycle Bin; Properties opens the Windows properties; Open on a folder
+enters it; "Panero Menu" opens Panero's menu with "Move to Recycle Bin".
+
+Screenshots (CI run 45169504569), `dev/windows/screenshots/p12-explorer-menu-*.png`:
+`file`, `folder`, `several`, `background`, `copy-dialog` (Copy to other panel),
+`new-submenu` (New > Folder, Shortcut, ... from the shell's New handler),
+`rename` (Panero's rename in place after the shell's Rename), `after-delete`,
+`properties`, `open-folder`, `panero-menu` (Panero's previous menu),
+`cloud-several` (three placeholders: the offline actions on top),
+`cloud-background`.
+
+Needs the owner's PC: that OneDrive's own "Always keep on this device" / "Free
+up space" show and Panero's are not added in a OneDrive folder (also with a
+non-English Windows); third-party extensions with owner-drawn items (TortoiseGit,
+WinRAR, ...); the menu position at display scaling above 100 % (the runner
+runs at 100 %); and that releasing a held right button on a real mouse never
+picks an item (the menu opens at the pointer).
 
 ### Needs the owner's PC (real OneDrive)
 
