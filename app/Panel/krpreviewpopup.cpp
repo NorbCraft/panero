@@ -7,6 +7,9 @@
 */
 
 #include "krpreviewpopup.h"
+#ifdef Q_OS_WIN
+#include "../FileSystem/panerocloudfiles.h"
+#endif
 
 #include <algorithm>
 
@@ -115,6 +118,11 @@ void KrPreviewPopup::showEvent(QShowEvent *event)
 void KrPreviewPopup::setUrls(const QList<QUrl> &urls)
 {
     foreach(const QUrl &url, urls) {
+#ifdef Q_OS_WIN
+        // Panero: showing this menu never downloads a cloud placeholder (D-020)
+        if (url.isLocalFile() && PaneroCloudFiles::avoidReading(url.toLocalFile()))
+            continue;
+#endif
         files.push_back(KFileItem(url));
     }
 }
