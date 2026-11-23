@@ -7,6 +7,7 @@
 */
 
 #include "listpanel.h"
+#include "paneroportaldrag.h"
 #include "panerojobrow.h"
 
 // QtCore
@@ -913,6 +914,8 @@ void ListPanel::startDragging(const QStringList& names, const QPixmap& px)
     auto *mimeData = new QMimeData;
     drag->setPixmap(px);
     mimeData->setUrls(urls);
+    // sandboxed apps (Flatpak Firefox ...) get the files through the portal
+    PaneroPortalDrag::addFiles(mimeData, urls);
     drag->setMimeData(mimeData);
 
     drag->exec(Qt::MoveAction | Qt::CopyAction | Qt::LinkAction);

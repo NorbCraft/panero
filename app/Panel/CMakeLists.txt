@@ -9,6 +9,7 @@ set(Panel_SRCS
     krerrordisplay.cpp
     krfiletreeview.cpp
     paneropaths.cpp
+    paneroportaldrag.cpp
     panerowinshell.cpp
     panerodrivebar.cpp
     paneroiconthemes.cpp
@@ -47,6 +48,7 @@ target_link_libraries(Panel
     KF5::WidgetsAddons
     KF5::XmlGui
     Qt5::Xml
+    Qt5::DBus
 )
 
 target_link_libraries(Panel PaneroCloudFiles)
