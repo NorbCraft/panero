@@ -30,17 +30,29 @@ ifneq (,$(wildcard $(PANERO_RCLONE_DIR)/rclone))
 PANERO_RCLONE_FLAGS = -DPANERO_RCLONE_BINARY=$(PANERO_RCLONE_DIR)/rclone
 endif
 
+# The Win11 icon theme (D-020), fetched and verified by
+# dev/scripts/fetch-win11-icons.sh into debian/icons/ (dev/scripts/build-deb.sh).
+PANERO_ICONS_DIR = $(CURDIR)/debian/icons
+ifneq (,$(wildcard $(PANERO_ICONS_DIR)/icons/Win11/index.theme))
+PANERO_ICONS_FLAGS = -DPANERO_ICON_THEMES_DIR=$(PANERO_ICONS_DIR)/icons
+endif
+
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DBUILD_TESTING=$(PANERO_BUILD_TESTING) \
-		$(PANERO_RCLONE_FLAGS)
+		$(PANERO_RCLONE_FLAGS) \
+		$(PANERO_ICONS_FLAGS)
 
 override_dh_auto_install:
 	dh_auto_install
 ifneq (,$(wildcard $(PANERO_RCLONE_DIR)/rclone))
 	install -D -m 0644 $(PANERO_RCLONE_DIR)/COPYING debian/panero/usr/share/doc/panero/rclone/COPYING
 	install -D -m 0644 $(PANERO_RCLONE_DIR)/rclone-dependencies.txt debian/panero/usr/share/doc/panero/rclone/dependencies.txt
+endif
+ifneq (,$(wildcard $(PANERO_ICONS_DIR)/icons/Win11/index.theme))
+	install -D -m 0644 $(PANERO_ICONS_DIR)/COPYING debian/panero/usr/share/doc/panero/win11-icon-theme/COPYING
+	install -D -m 0644 $(PANERO_ICONS_DIR)/SOURCE debian/panero/usr/share/doc/panero/win11-icon-theme/SOURCE
 endif
 
 # The rclone binary is the verified upstream build: keep it byte for byte.

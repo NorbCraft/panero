@@ -29,6 +29,8 @@
 #include <QPixmap>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFileInfo>
+#include <QStandardPaths>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGridLayout>
@@ -105,6 +107,21 @@ PaneroViewColorsDialog::PaneroViewColorsDialog(QWidget *parent)
     m_iconSet->addItem(i18n("Panero Line"), QStringLiteral("line"));
     m_iconSet->setToolTip(i18n("Panero Line: thin line icons for the toolbar and sidebar. File icons always come from the system."));
     lookForm->addRow(i18n("Icons:"), m_iconSet);
+#ifndef Q_OS_WIN
+    // icon theme for files and folders: the desktop's, or one Panero ships (D-020)
+    m_iconTheme = new QComboBox(lookBox);
+    m_iconTheme->addItem(i18n("The desktop's icon theme"), QString());
+    for (const QString &dir : QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("panero/icons"),
+                                                         QStandardPaths::LocateDirectory)) {
+        if (QFileInfo::exists(dir + QStringLiteral("/Win11/index.theme")) && m_iconTheme->findData(QStringLiteral("Win11")) < 0)
+            m_iconTheme->addItem(i18n("Windows 11 (Win11 icon theme)"), QStringLiteral("Win11"));
+    }
+    m_iconTheme->setToolTip(i18n("Icons of files, folders and drives. The dark variant is used with the dark look."));
+    if (m_iconTheme->count() > 1)
+        lookForm->addRow(i18n("Icon theme:"), m_iconTheme);
+    else
+        m_iconTheme->hide();
+#endif
     m_folderColor = new QComboBox(lookBox);
     m_folderColor->addItem(i18n("As in the icon theme"), QString());
     for (const auto &preset : PaneroIconThemes::folderColorPresets()) {
@@ -273,6 +290,8 @@ void PaneroViewColorsDialog::load()
     m_alternating->setChecked(g.readEntry("Alternating Rows", true));
     m_markIndicator->setChecked(g.readEntry("Mark Indicator", false));
     m_iconSet->setCurrentIndex(qMax(0, m_iconSet->findData(g.readEntry("Icon Set", QString()))));
+    if (m_iconTheme)
+        m_iconTheme->setCurrentIndex(qMax(0, m_iconTheme->findData(g.readEntry("Icon Theme", QString()))));
     const QString folder = g.readEntry("Folder Color", QString());
     int folderIndex = m_folderColor->findData(folder);
     if (folderIndex < 0 && QColor(folder).isValid()) {
@@ -391,8 +410,15 @@ void PaneroViewColorsDialog::apply()
     const bool needsRestart = g.readEntry("Theme", 0) != m_theme->currentIndex()
         || g.readEntry("Panero Style", true) != m_paneroStyle->isChecked()
         || g.readEntry("Icon Set", QString()) != m_iconSet->currentData().toString()
+        || (m_iconTheme && g.readEntry("Icon Theme", QString()) != m_iconTheme->currentData().toString())
         || g.readEntry("Folder Color", QString()) != folderValue;
     g.writeEntry("Icon Set", m_iconSet->currentData().toString());
+    if (m_iconTheme) {
+        if (m_iconTheme->currentData().toString().isEmpty())
+            g.deleteEntry("Icon Theme");
+        else
+            g.writeEntry("Icon Theme", m_iconTheme->currentData().toString());
+    }
     g.writeEntry("Folder Color", folderValue);
     g.writeEntry("Show Cloud", m_showCloud->isChecked());
     g.writeEntry("Show Drive Buttons", m_showDrives->isChecked());

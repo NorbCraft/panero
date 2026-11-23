@@ -42,6 +42,15 @@ PaneroAppearance::PaneroAppearance()
 {
     m_originalStyle = QApplication::style() ? QApplication::style()->objectName() : QString();
     m_originalIconTheme = QIcon::themeName();
+    // icon themes Panero ships (Win11, D-020): only on Panero's own search path,
+    // so they do not appear in the desktop's settings
+    QStringList paths = QIcon::themeSearchPaths();
+    for (const QString &dir : QStandardPaths::locateAll(QStandardPaths::GenericDataLocation, QStringLiteral("panero/icons"),
+                                                         QStandardPaths::LocateDirectory)) {
+        if (!paths.contains(dir))
+            paths << dir;
+    }
+    QIcon::setThemeSearchPaths(paths);
     readSystemScheme();
     QDBusConnection::sessionBus().connect(QLatin1String(PORTAL_SERVICE), QLatin1String(PORTAL_PATH),
                                           QLatin1String(PORTAL_SETTINGS), QStringLiteral("SettingChanged"), this,
