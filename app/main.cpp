@@ -97,6 +97,13 @@ void openTabsRemote(QStringList tabs, bool left, const QString& appName)
 
 int main(int argc, char *argv[])
 {
+    // Panero: PANERO_TEST_PROFILE=1 keeps settings and data apart from the
+    // user's (QStandardPaths test mode: ~/.qttest on Linux, %LOCALAPPDATA%\qttest
+    // on Windows). GUI tests on a real machine use it; it must come before any
+    // configuration is read.
+    if (qEnvironmentVariableIntValue("PANERO_TEST_PROFILE") == 1)
+        QStandardPaths::setTestModeEnabled(true);
+
     // set global log message format
     qSetMessagePattern(KrServices::GLOBAL_MESSAGE_PATTERN);
 

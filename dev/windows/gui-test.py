@@ -3,7 +3,11 @@
 """First-run GUI checks of the Windows build from a Total Commander user's view.
 
 Runs on a disposable GitHub Windows runner against disposable files in
-C:\\pt\\work. Drives Panero with the keyboard (and the mouse where UI Automation
+C:\\pt\\work. With --vm (dev/windows/vm-gui-test.ps1) it runs on a real machine:
+files in --work, no Cloud Files test provider, Panero with PANERO_TEST_PROFILE=1
+(separate settings), and only the items it deleted are removed from the Recycle Bin.
+
+Drives Panero with the keyboard (and the mouse where UI Automation
 exposes the file rows), checks every result on disk, and takes a screenshot
 after each step. Results go to <out>/gui-results.md and gui-results.json.
 
@@ -30,12 +34,18 @@ from pywinauto import Application, Desktop, keyboard, mouse
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # the CI console is cp1252
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)
+# --vm: a real Windows machine (the developer VM, D-022) instead of a disposable
+# runner: own work folder, no Cloud Files test provider, the Recycle Bin left
+# as it was (only the items this test deleted are removed from it again)
+ap.add_argument('--vm', action='store_true')
+ap.add_argument('--work', default=r'C:\pt\work')
 args = ap.parse_args()
 OUT = Path(args.out)
 OUT.mkdir(parents=True, exist_ok=True)
+VM = args.vm
 
 EXE = os.environ['PANERO_EXE']
-WORK = Path(r'C:\pt\work')
+WORK = Path(args.work).resolve()
 LEFT, RIGHT = WORK / 'left', WORK / 'right'
 results = []
 shot_no = [20]
@@ -101,6 +111,58 @@ def keys(seq, pause=0.6):
     time.sleep(pause)
 
 
+def recycled_from_work():
+    """Recycle Bin entries ($I info + $R data in C:\\$Recycle.Bin\\<SID>) whose original
+    path lies inside WORK: only what this test deleted."""
+    import win32api
+    import win32security
+    sid = win32security.ConvertSidToStringSid(win32security.GetTokenInformation(
+        win32security.OpenProcessToken(win32api.GetCurrentProcess(), win32con.TOKEN_QUERY),
+        win32security.TokenUser)[0])
+    folder = Path(WORK.drive + '\\') / '$Recycle.Bin' / sid
+    work = str(WORK).lower().rstrip('\\') + '\\'
+    out = []
+    try:
+        infos = [p for p in folder.iterdir() if p.name.startswith('$I')]
+    except OSError:
+        return out
+    for info in infos:
+        try:
+            data = info.read_bytes()
+            if int.from_bytes(data[0:8], 'little') == 2:       # Windows 10/11: length + path
+                n = int.from_bytes(data[24:28], 'little')
+                orig = data[28:28 + 2 * n].decode('utf-16-le').rstrip('\0')
+            else:                                              # Vista..8.1: fixed 520 bytes
+                orig = data[24:24 + 520].decode('utf-16-le').split('\0')[0]
+        except (OSError, UnicodeDecodeError):
+            continue
+        if orig.lower().startswith(work):
+            out.append((orig, info, folder / ('$R' + info.name[2:])))
+    return out
+
+
+def purge_own_recycled():
+    """VM: permanently removes the Recycle Bin items that came from WORK (nothing else)."""
+    removed = []
+    for orig, info, data in recycled_from_work():
+        try:
+            if data.is_dir():
+                shutil.rmtree(data)
+            else:
+                data.unlink(missing_ok=True)
+            info.unlink()
+            removed.append(orig)
+        except OSError as e:
+            print('could not purge', orig, e)
+    if removed:
+        print('removed from the Recycle Bin (deleted by this test):', removed, flush=True)
+    return removed
+
+
+if VM:
+    atexit.register(purge_own_recycled)
+
+
 def recycle_bin_names():
     ps = ('$s = New-Object -ComObject Shell.Application; '
           '$s.Namespace(10).Items() | ForEach-Object { $_.Name }')
@@ -110,6 +172,8 @@ def recycle_bin_names():
 
 
 # --- disposable files -------------------------------------------------------
+if VM:
+    purge_own_recycled()   # left over from an interrupted run
 shutil.rmtree(WORK, ignore_errors=True)
 (LEFT / 'docs').mkdir(parents=True)
 RIGHT.mkdir(parents=True)
@@ -173,14 +237,18 @@ def module_audit(proc, label):
                 if not path.endswith(('.dll', '.exe')):
                     continue
                 seen.append(f'{p.name()}\t{m.path}')
-                if not (path.startswith(APP_DIR) or path.startswith(WINDIR)):
+                if VM:   # a real machine: shell extensions (OneDrive, 7-Zip, ...) load too; only MSYS2 is wrong
+                    if '\\msys64' in path:
+                        bad.append(f'{p.name()}: {m.path}')
+                elif not (path.startswith(APP_DIR) or path.startswith(WINDIR)):
                     bad.append(f'{p.name()}: {m.path}')
         except psutil.Error:
             pass
     with open(OUT / f'loaded-modules-{label}.txt', 'w') as f:
         f.write('\n'.join(sorted(set(seen))))
     names = sorted({p.name() for p in procs if p.is_running()})
-    record(f'Every loaded module comes from the ZIP folder or Windows ({label})', not bad,
+    record(f'No loaded module comes from MSYS2 ({label})' if VM else
+           f'Every loaded module comes from the ZIP folder or Windows ({label})', not bad,
            f'processes: {", ".join(names)}; ' + ('; '.join(bad[:8]) if bad else f'{len(set(seen))} modules'),
            must=True)
 
@@ -522,8 +590,8 @@ except Exception as e:  # noqa: BLE001
     except Exception:  # noqa: BLE001
         proc.kill()
     record('Title bar Close button closes Panero', False, f'pressed {pressed}; {e}', must=True)
-for p in psutil.process_iter(['name']):
-    if p.info['name'] in ('kioslave5.exe', 'kiod5.exe'):
+for p in psutil.process_iter(['name', 'exe']):
+    if p.info['name'] in ('kioslave5.exe', 'kiod5.exe') and (p.info['exe'] or '').lower().startswith(APP_DIR):
         p.kill()
 
 # --- phase B: Total Commander habits on disposable files --------------------------------
@@ -1233,22 +1301,27 @@ def main_window_of(p):
 
 
 provider = None
-try:
-    for f in (FETCH_LOG, READY, STOP):
-        f.unlink(missing_ok=True)
-    provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root', str(CLOUD),
-                                 '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP), '--name', CLOUD_NAME],
-                                stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
-    wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
-    time.sleep(0.5)
-    pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
-except Exception as e:  # noqa: BLE001
-    pstate = {'ok': False, 'error': repr(e)}
+if VM:   # no test sync root on a real machine (it would sit in the user's profile and registry)
+    pstate = {'ok': False, 'vm': True}
+else:
+    try:
+        for f in (FETCH_LOG, READY, STOP):
+            f.unlink(missing_ok=True)
+        provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root',
+                                     str(CLOUD), '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP),
+                                     '--name', CLOUD_NAME],
+                                    stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
+        wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
+        time.sleep(0.5)
+        pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
+    except Exception as e:  # noqa: BLE001
+        pstate = {'ok': False, 'error': repr(e)}
 cloud_ok = bool(pstate.get('ok'))
-record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
-       f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
-       f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
-       + (f"; {pstate}" if not cloud_ok else ''), must=True)
+if not VM:
+    record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
+           f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
+           f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
+           + (f"; {pstate}" if not cloud_ok else ''), must=True)
 if cloud_ok:
     record('Placeholders are online-only before Panero starts (RECALL_ON_DATA_ACCESS)', not still_placeholders(),
            f'not placeholders: {still_placeholders()}', must=True)
@@ -1328,6 +1401,17 @@ else:
     missing = [n for n in existing if n not in tree_icons or tree_icons[n]['yellow'] < 0.05]
     record('Every folder on C:\\ has its folder icon in the folder tree', bool(tree_icons) and not missing,
            f'icon colours: {tree_icons}; without icon: {missing}', must=bool(tree_icons))
+
+    if VM and os.environ.get('OneDrive') and os.path.isdir(os.environ['OneDrive']):
+        # read only: the user's real OneDrive is found and listed (nothing is opened or changed)
+        lists = [l for l in main_w.descendants(control_type='List') if l.window_text() == 'Cloud folders']
+        names = [li.window_text() for li in main_w.descendants(control_type='ListItem')
+                 if lists and lists[0].rectangle().top <= li.rectangle().top <= lists[0].rectangle().bottom]
+        if lists:
+            r = lists[0].rectangle()
+            crop_shot('vm-cloud-section', (r.left - 4, r.top - 30, r.left + 240, r.bottom + 6), 3)
+        record('The sidebar\'s Cloud section lists the real OneDrive', any('OneDrive' in n for n in names),
+               f'Cloud section: {names}')
 
     if cloud_ok:
         # the Cloud section lists the sync folder (found in the registry), with its name
@@ -1487,5 +1571,10 @@ if provider is not None:
         provider.wait(30)
     except subprocess.TimeoutExpired:
         provider.kill()
+
+if VM:
+    removed = purge_own_recycled()
+    record('VM: the items this test deleted are removed from the Recycle Bin again (nothing else)',
+           not recycled_from_work(), f'removed: {removed}')
 
 sys.exit(1 if any(r['status'] == 'FAIL' for r in results) else 0)
