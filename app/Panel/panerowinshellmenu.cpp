@@ -13,7 +13,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QImage>
-#include <QLoggingCategory>
+#include <QDebug>
 #include <QPixmap>
 #include <QThread>
 #include <QWidget>
@@ -30,7 +30,12 @@
 #include <string>
 #include <vector>
 
-Q_LOGGING_CATEGORY(lcShellMenu, "panero.shellmenu", QtWarningMsg)
+// PANERO_DEBUG_EXPLORER_MENU=1: the menus, choices and results in the log (GUI test)
+static bool debugMenu()
+{
+    static const bool on = qEnvironmentVariableIsSet("PANERO_DEBUG_EXPLORER_MENU");
+    return on;
+}
 
 namespace
 {
@@ -67,12 +72,28 @@ HBITMAP iconBitmap(const QIcon &icon)
     if (icon.isNull())
         return nullptr;
     const int size = GetSystemMetrics(SM_CXSMICON) > 0 ? GetSystemMetrics(SM_CXSMICON) : 16;
-    QImage img = icon.pixmap(size, size).toImage();
+    // some icons (the application's) have no small size: take a larger one and scale it
+    QImage img;
+    for (const int request : {size, 32, 48, 64, 128, 256}) {
+        QImage candidate = icon.pixmap(request, request).toImage();
+        if (candidate.isNull())
+            continue;
+        if (candidate.width() != size || candidate.height() != size)
+            candidate = candidate.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        candidate = candidate.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        bool visible = false;
+        for (int y = 0; y < candidate.height() && !visible; ++y) {
+            const QRgb *line = reinterpret_cast<const QRgb *>(candidate.constScanLine(y));
+            for (int x = 0; x < candidate.width() && !visible; ++x)
+                visible = qAlpha(line[x]) > 0;
+        }
+        if (visible) {
+            img = candidate;
+            break;
+        }
+    }
     if (img.isNull())
         return nullptr;
-    if (img.width() != size || img.height() != size)
-        img = img.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bmi.bmiHeader.biWidth = img.width();
@@ -225,8 +246,8 @@ ShellMenu::ShellMenu(QWidget *owner, const QString &folder, const QStringList &n
     while (GetMenuItemCount(d->menu) > 0
            && (GetMenuState(d->menu, UINT(GetMenuItemCount(d->menu) - 1), MF_BYPOSITION) & MF_SEPARATOR))
         DeleteMenu(d->menu, UINT(GetMenuItemCount(d->menu) - 1), MF_BYPOSITION);
-    if (lcShellMenu().isDebugEnabled())
-        qCDebug(lcShellMenu) << "menu of" << d->folder << names << "extended" << extendedVerbs << "items" << items();
+    if (debugMenu())
+        qWarning() << "Explorer menu:" << "menu of" << d->folder << names << "extended" << extendedVerbs << "items" << items();
 }
 
 ShellMenu::~ShellMenu()
@@ -361,7 +382,8 @@ ShellMenu::Choice ShellMenu::exec(const QPoint &globalPos)
         choice.shell = true;
         choice.verb = d->verb(cmd).toLower();
     }
-    qCDebug(lcShellMenu) << "chosen" << cmd << choice.text << "verb" << choice.verb;
+    if (debugMenu())
+        qWarning() << "Explorer menu:" << "chosen" << cmd << choice.text << "verb" << choice.verb;
     return choice;
 }
 
@@ -387,7 +409,8 @@ bool ShellMenu::invoke(QString *error)
     ici.nShow = SW_SHOWNORMAL;
     ici.ptInvoke = d->point;
     const HRESULT hr = d->cm->InvokeCommand(reinterpret_cast<LPCMINVOKECOMMANDINFO>(&ici));
-    qCDebug(lcShellMenu) << "invoked" << d->chosen << "hr" << Qt::hex << quint32(hr);
+    if (debugMenu())
+        qWarning() << "Explorer menu:" << "invoked" << d->chosen << "hr" << Qt::hex << quint32(hr);
     if (FAILED(hr) && error)
         *error = QStringLiteral("0x%1").arg(quint32(hr), 8, 16, QLatin1Char('0'));
     // HRESULT_FROM_WIN32(ERROR_CANCELLED): the user cancelled a dialog of the command

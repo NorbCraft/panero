@@ -693,13 +693,13 @@ enum ShellExtraId : unsigned {
     ExtraPaneroMenu,
 };
 
-PaneroWinShell::MenuExtra extraFor(unsigned id, QAction *action)
+PaneroWinShell::MenuExtra extraFor(unsigned id, QAction *action, const QIcon &icon)
 {
     PaneroWinShell::MenuExtra e;
     e.id = id;
     e.text = action->text().remove(QLatin1Char('&'));
     e.shortcut = action->shortcut().toString(QKeySequence::NativeText);
-    e.icon = action->icon();
+    e.icon = action->icon().isNull() ? icon : action->icon();
     return e;
 }
 
@@ -750,7 +750,7 @@ bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool back
     QList<PaneroWinShell::MenuExtra> extras;
     ListPanelActions *actions = panel->gui->actions();
     if (!names.isEmpty())
-        extras << extraFor(ExtraCopy, actions->actCopyF5) << extraFor(ExtraMove, actions->actMoveF6);
+        extras << extraFor(ExtraCopy, actions->actCopyF5, Icon("edit-copy")) << extraFor(ExtraMove, actions->actMoveF6, Icon("go-next"));
     extras << extra(ExtraCopyPath, names.size() > 1 ? i18n("Copy Paths") : i18n("Copy Path"), Icon("edit-copy-path"));
     extras << extra(ExtraTerminal, i18n("Open Terminal Here"), Icon("utilities-terminal"));
     int inCloud = 0, pinned = 0;
@@ -769,7 +769,7 @@ bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool back
         keep.checked = pinned == inCloud;
         extras << keep << extra(ExtraCloudFree, i18n("Free Up Space"), Icon("edit-clear"));
     }
-    extras << extra(ExtraPaneroMenu, i18n("Panero Menu"), QApplication::windowIcon());
+    extras << extra(ExtraPaneroMenu, i18n("Panero Menu"), Icon(Krusader::appIconName()));
     menu.addExtras(extras);
 
     // opened by a held right button: at the pointer, so that the release lands on

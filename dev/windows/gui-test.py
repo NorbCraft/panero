@@ -122,7 +122,8 @@ ORDER = ['..', 'docs', 'alpha.txt', 'beta.txt', 'delta.txt', 'gamma.txt', 'omega
 env = dict(os.environ)
 env['PATH'] = os.environ['PANERO_CLEAN_PATH']
 env['QT_FORCE_STDERR_LOGGING'] = '1'
-env['QT_LOGGING_RULES'] = 'kf.kio.*=true;panero.shellmenu.debug=true'   # Explorer menu items in the log
+env['QT_LOGGING_RULES'] = 'kf.kio.*=true'
+env['PANERO_DEBUG_EXPLORER_MENU'] = '1'   # Explorer menu items, choices and results in the log
 APP_DIR = str(Path(EXE).parent).lower()
 WINDIR = os.environ.get('SystemRoot', r'C:\Windows').lower()
 
@@ -334,6 +335,24 @@ def wait_menu(pid, want=('panero menu',), timeout=12):
             return texts
         time.sleep(0.4)
     return texts
+
+
+def click_any_menu(text, pause=1.5):
+    """Clicks a menu item of any process's open menus (a native submenu may not be
+    listed under Panero's process)."""
+    want = norm(text)
+    for w in Desktop(backend='uia').windows():
+        try:
+            if w.element_info.control_type != 'Menu' and w.class_name() != '#32768':
+                continue
+            for i in w.descendants(control_type='MenuItem'):
+                if norm(i.window_text()) == want:
+                    i.click_input()
+                    time.sleep(pause)
+                    return True
+        except Exception:  # noqa: BLE001
+            pass
+    return False
 
 
 def close_menus():
@@ -889,7 +908,13 @@ try:
     ok_new = click_menu(proc.pid, 'New', close_on_fail=False, pause=1.5)
     sub = menu_texts(proc.pid)
     shot('p12-explorer-menu-new-submenu')
-    ok_folder = click_menu(proc.pid, 'Folder')
+    ok_folder = click_menu(proc.pid, 'Folder', close_on_fail=False) or click_any_menu('Folder')
+    if not ok_folder and ok_new:          # the submenu is open: its first item is "Folder"
+        keys('{RIGHT}', 0.4)
+        keys('{ENTER}', 1.0)
+        ok_folder = 'keyboard'
+    if not ok_new:
+        close_menus()
     created = []
     wait_for(lambda: created.extend(sorted({p.name for p in LEFT.iterdir() if p.is_dir()} - before)) or created, 8)
     time.sleep(2.5)                      # Panero refreshes after the command

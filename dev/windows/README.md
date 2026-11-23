@@ -79,6 +79,8 @@ unchanged):
 - `app/Panel/panerowinshell.*`: Explorer drive names and the shell icons for
   drives, folders and files (cached per extension), used by the file list, the
   folder tree, the drive button and the pins.
+- `app/Panel/panerowinshellmenu.*` (preview 12, D-019): Explorer's right-click
+  menu, see "Explorer right-click menu" below. Built on Windows only.
 - `app/panerowording.h`: `PANERO_TEXT(linux, windows)` for the words Windows
   uses: Recycle Bin (toolbar, menus, F8/Del question and button, progress,
   settings), "Panero Settings" for the Konfigurator window and in messages,
