@@ -5,6 +5,7 @@
 */
 
 #include "paneronavigation.h"
+#include "FileSystem/panerospecialfolders.h"
 #ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE); Windows: preview 12
 #include "Cloud/panerocloud.h"
 #include "Cloud/paneroaddclouddialog.h"
@@ -73,8 +74,9 @@ QString iconForUrl(const QUrl &url)
     if (!url.isLocalFile())
         return url.scheme() == QLatin1String("trash") ? QStringLiteral("user-trash") : QStringLiteral("folder-network");
     const QString path = url.toLocalFile();
-    if (QDir::cleanPath(path) == QDir::homePath())
-        return QStringLiteral("user-home");
+    const QString special = PaneroSpecialFolders::iconName(path);
+    if (!special.isEmpty())
+        return special; // Home, Documents, Downloads, ...
     if (path == QLatin1String("/"))
         return QStringLiteral("drive-harddisk-root");
     return QStringLiteral("folder");

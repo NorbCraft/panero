@@ -6,6 +6,7 @@
 */
 
 #include "fileitem.h"
+#include "panerospecialfolders.h"
 #include "paneroslowpaths.h"
 #include "panerocloudfiles.h"
 
@@ -164,6 +165,17 @@ const QString &FileItem::getMime()
             if (m_mimeType == "inode/directory") {
                 // TODO view update needed? and does this ever happen?
                 m_isDir = true;
+            }
+        }
+
+        if (m_isDir) {
+            // Panero: Documents, Downloads, Pictures ... get their own icon, as in
+            // the folder tree (matched by path, no file access)
+            const QUrl url = getUrl();
+            if (url.isLocalFile()) {
+                const QString special = PaneroSpecialFolders::iconName(url.toLocalFile());
+                if (!special.isEmpty())
+                    m_iconName = special;
             }
         }
 

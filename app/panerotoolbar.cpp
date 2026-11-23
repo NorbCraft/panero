@@ -139,8 +139,18 @@ void PaneroToolBar::migrateSettings()
         // preview 4: no check badge on marked files by default (the dialog used to save it)
         KConfigGroup(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance")).deleteEntry("Mark Indicator");
     }
-    if (version < 4) {
-        panero.writeEntry("Settings Version", 4);
+#ifdef Q_OS_WIN
+    if (version < 5) {
+        // preview 13: up to preview 11 the Cloud option was hidden and off on
+        // Windows, and Quick Settings saved "Show Cloud=false" on every OK; the
+        // Cloud section (preview 12) then stayed hidden. Back to the default.
+        KConfigGroup look(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance"));
+        if (look.hasKey("Show Cloud") && !look.readEntry("Show Cloud", true))
+            look.deleteEntry("Show Cloud");
+    }
+#endif
+    if (version < 5) {
+        panero.writeEntry("Settings Version", 5);
         panero.sync();
     }
 }
