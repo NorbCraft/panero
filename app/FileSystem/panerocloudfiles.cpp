@@ -66,6 +66,32 @@ quint32 withPinState(quint32 attributes, Pin pin)
     return cleared;
 }
 
+bool isProviderOfflineItem(const QString &text, const QString &verb)
+{
+    QString t = text;
+    const int tab = t.indexOf(QLatin1Char('\t'));
+    if (tab >= 0)
+        t.truncate(tab);
+    t.remove(QLatin1Char('&'));
+    t = t.simplified().toLower();
+    while (t.endsWith(QLatin1Char('.')) || t.endsWith(QChar(0x2026)))
+        t.chop(1);
+    static const QStringList texts{QStringLiteral("always keep on this device"), QStringLiteral("free up space"),
+                                   QStringLiteral("make available offline"), QStringLiteral("make online-only"),
+                                   QStringLiteral("make online only"), QStringLiteral("available offline"),
+                                   QStringLiteral("online-only"), QStringLiteral("online only")};
+    if (texts.contains(t))
+        return true;
+    // canonical verbs; never the "pin to Start / Quick access / taskbar" ones
+    const QString v = verb.trimmed().toLower();
+    static const QStringList verbs{QStringLiteral("pinned"), QStringLiteral("unpinned"), QStringLiteral("alwayskeep"),
+                                   QStringLiteral("alwayskeeponthisdevice"), QStringLiteral("freeupspace"),
+                                   QStringLiteral("freespace"), QStringLiteral("makeavailableoffline"),
+                                   QStringLiteral("makeonlineonly"), QStringLiteral("cloudfilespin"),
+                                   QStringLiteral("cloudfilesunpin")};
+    return verbs.contains(v);
+}
+
 QString providerFromId(const QString &id)
 {
     const int bang = id.indexOf(QLatin1Char('!'));
