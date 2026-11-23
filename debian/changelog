@@ -7,6 +7,8 @@ panero (0.1.0~preview.12-1) noble; urgency=medium
     status badges as in Explorer.
   * Windows: folder icons for every folder (inetpub, PerfLogs, Windows...),
     OneDrive no longer drawn faded in the folder tree.
+  * Windows: Explorer's right-click menu with Panero's items on top (Copy /
+    Move to other panel, Copy Path, Open Terminal Here, Panero Menu).
   * Windows: installer (per user, no administrator rights) that upgrades an
     installed Panero in place; the portable ZIP stays.
   * Drive buttons: letter only (Windows) / icon only (Linux) option and a

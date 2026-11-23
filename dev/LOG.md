@@ -531,3 +531,8 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
 - Explorer menu not done; moved to preview 13 (D-021), helper started on
   feature/explorer-menu.
 - Version bumped to 0.1.0-preview.12; release notes written.
+- Explorer menu helper finished early (feature/explorer-menu, 7081d0aec);
+  merged into preview 12 (D-021 superseded). Package: icon files were
+  executable (lintian), fixed in fetch-win11-icons.sh; test-deb accepts the
+  compressed licence; .deb lintian-clean, test-deb 96 checks incl. upgrade
+  from preview 11.

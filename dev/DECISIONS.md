@@ -364,10 +364,14 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   (larger, not Windows-yellow folders). Bundled at a pinned commit, checked
   by SHA-256 at build time.
 
-## D-021 — Explorer right-click menu moves to preview 13 (2026-11-23)
+## D-021 — Explorer right-click menu: preview 13, then back in 12 (2026-11-23)
 
 - D-019 planned the Explorer menu for preview 12; it was not in the D-020
   work and needs its own round of Windows runner tests. Preview 12 ships the
   owner's D-020 list as soon as it is tested; the Explorer menu (shell
   IContextMenu with Panero's extras at the top, D-019 unchanged) follows in
   preview 13.
+- Superseded the same day: the Explorer menu (feature/explorer-menu) was
+  finished and green on the Windows runner before preview 12 was tagged, so
+  it ships in preview 12 after all. Panero's old menu stays reachable as
+  "Panero Menu" and with PANERO_NO_EXPLORER_MENU=1.

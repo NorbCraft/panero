@@ -381,7 +381,8 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       Cloud Files sync root.
 - [x] Quick Settings: Cloud section checkbox also on Windows.
 - [ ] Release v0.1.0-preview.12 (.deb, ZIP, setup.exe).
-- [ ] Explorer right-click menu (D-019) — moved to preview 13 (D-021),
-      in progress on feature/explorer-menu.
+- [x] Explorer right-click menu (D-019, D-021): shell IContextMenu with
+      Panero's extras on top (panerowinshellmenu.*), merged from
+      feature/explorer-menu (Windows run 45169504569 green).
 - Needs the owner's PC: OneDrive names/icons, real download/free-up after
   the pin actions, the icon fix on his C:\, Google Drive detection.
