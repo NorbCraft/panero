@@ -29,6 +29,7 @@
 #ifdef Q_OS_WIN
 #include "FileSystem/panerocloudfiles.h"
 #include "Panel/panerowinshell.h"
+#include "Panel/panerowinshellmenu.h"
 #endif
 #include "MountMan/kmountman.h"
 
@@ -865,6 +866,43 @@ void PaneroNavigationDock::openPin(QListWidgetItem *item)
 void PaneroNavigationDock::pinContextMenu(const QPoint &pos)
 {
     QListWidgetItem *item = m_pins->itemAt(pos);
+#ifdef Q_OS_WIN
+    // a pinned drive: Explorer's drive menu (Properties, Format, Eject, BitLocker, ...)
+    // with Panero's items on top; the shell's "Open" opens it in the active panel
+    const QUrl pinned = item ? item->data(UrlRole).toUrl() : QUrl();
+    const QString drivePath = pinned.isLocalFile() ? QDir::cleanPath(pinned.toLocalFile()) : QString();
+    if (drivePath.size() <= 3 && drivePath.size() >= 2 && drivePath.at(1) == QLatin1Char(':')) {
+        QMenu panero(this);
+        QAction *other = panero.addAction(Icon(QStringLiteral("view-split-left-right")), i18n("Open in Other Panel"));
+        QAction *up = panero.addAction(Icon(QStringLiteral("go-up")), i18n("Move Up"));
+        QAction *down = panero.addAction(Icon(QStringLiteral("go-down")), i18n("Move Down"));
+        panero.addSeparator();
+        QAction *unpin = panero.addAction(Icon(QStringLiteral("list-remove")), i18n("Unpin"));
+        QAction open(this);
+        QAction *chosen = nullptr;
+        if (PaneroWinShell::execItemMenu(this, drivePath, &panero, m_pins->viewport()->mapToGlobal(pos), &chosen, &open)) {
+            if (chosen == &open) {
+                openPin(item);
+            } else if (chosen == other && ACTIVE_PANEL) {
+                KrPanel *target = ACTIVE_PANEL->otherPanel();
+                target->func->openUrl(pinned);
+                target->gui->slotFocusOnMe();
+            } else if (chosen == unpin) {
+                delete item;
+                savePins();
+            } else if (chosen == up || chosen == down) {
+                const int row = m_pins->row(item);
+                const int target = chosen == up ? row - 1 : row + 1;
+                if (target >= 0 && target < m_pins->count()) {
+                    m_pins->insertItem(target, m_pins->takeItem(row));
+                    m_pins->setCurrentRow(target);
+                    savePins();
+                }
+            }
+            return;
+        }
+    }
+#endif
     QMenu menu(this);
     QAction *open = nullptr, *unpin = nullptr, *up = nullptr, *down = nullptr;
     if (item) {

@@ -125,6 +125,16 @@ KrArchiverResultTable::KrArchiverResultTable(QWidget* parent)
     // Special case: rpm needs cpio for unpacking
     if (PS("rpm") && !PS("cpio"))
         rpm->setNote(i18n("rpm found, but cpio not found which is required for unpacking"));
+#ifdef Q_OS_WIN
+    // Panero (Windows): the 7-Zip in the Panero folder and Windows' own tar.exe
+    if (PS("7z")) {
+        for (Archiver *a : {gzip, bzip2, lzma, xz, zip, unzip, unrar})
+            a->setNote(i18n("Done by 7-Zip (in the Panero folder)"));
+        _7z->setNote(i18n("Bundled with Panero"));
+    }
+    if (PS("tar"))
+        tar->setNote(i18n("Windows' tar.exe; .tar.gz, .tar.bz2 and .tar.xz included"));
+#endif
 
     _tableHeaders.append(i18n("Name"));
     _tableHeaders.append(i18n("Found"));

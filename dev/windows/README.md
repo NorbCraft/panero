@@ -344,3 +344,127 @@ Same code as Linux (`app/JobMan`); the Windows differences:
 - Unit test `panerojobstest` (`recycleBinRestore`): a file the test made is
   moved to the Recycle Bin and restored by Undo (skipped where a drive has no
   Recycle Bin).
+
+## Developer VM (D-022)
+
+The owner's Windows 11 VM is reachable over SSH from the host only.
+`dev/windows/vm.sh` reads the connection from `~/.config/panero-dev/vm.env`
+(never committed) and works in clones under the VM root folder, one per helper
+(`sync <name> [ref]`, `build`, `stage`, `run`, `gui`, `get`; see the script's
+header). Rules: nothing outside the VM root is changed; the owner's Panero
+settings, Recycle Bin contents, Explorer registrations and other data are left
+alone; OneDrive only inside `test-panero` at its top, only own files, removed
+afterwards. `gui` needs a logged-in desktop session (a scheduled task with
+`/it`); after a cold boot of the VM the owner has to sign in once.
+
+### GUI test on the VM (VM-safe mode)
+
+```sh
+dev/windows/vm.sh sync  <name>            # your pushed branch + local changes
+dev/windows/vm.sh build <name> && dev/windows/vm.sh stage <name>
+dev/windows/vm.sh gui   <name> dev/windows/vm-gui-test.ps1
+dev/windows/vm.sh get   <VM root>/<name>/results/vm-gui ./vm-gui   # screenshots, gui-results.md
+```
+
+- `PANERO_TEST_PROFILE=1` (any platform): `main()` switches Qt's test mode on
+  before any setting is read, so settings and data go to `~/.qttest` (Linux) or
+  `%LOCALAPPDATA%\qttest` (Windows) instead of the user's `panerorc`.
+  `vm-gui-test.ps1` sets it and removes only Panero's own files there before a
+  run, so the first-run checks see a first run.
+- `vm-gui-test.ps1` runs the staged portable folder of the clone
+  (`dist\panero-*-windows-x64\Panero`), MSYS2 stays where it is (no rename, no
+  `C:\pt`), PATH holds the Windows folders only, the disposable files are in
+  `<clone>\vm-work`, the VM's Python 3.12 is used by its full path and psutil is
+  installed into `<VM root>\vm-pydeps`.
+- `gui-test.py --vm --work <dir>`: no Cloud Files test provider (nothing is
+  registered in the user's profile or registry); instead a read-only check that
+  the Cloud section lists the real OneDrive. The module audit only fails on
+  modules from MSYS2 (Explorer's shell extensions load into Panero on a real
+  PC). Only Panero's own KIO workers are stopped. Everything the test deletes to
+  the Recycle Bin is removed from it again afterwards, matched by the original
+  path inside the work folder (the `$I` files in `C:\$Recycle.Bin\<SID>`), so
+  the bin's other contents stay as they were (checked at the end).
+- CI (`launch-test.ps1`, fresh runner) runs exactly as before.
+
+## Preview 13 (D-022)
+
+### OneDrive folder badges
+
+A folder shows the "available" tick only when Explorer would: everything inside
+is on this device. Files keep the attribute logic. Folders
+(`PaneroCloudFiles::state` → `folderState`):
+
+- freed-up (UNPINNED) or not yet listed (RECALL_ON_OPEN) folders are online-only
+  at once;
+- otherwise a worker thread walks the content with `FindFirstFileEx`
+  (metadata only), stops at the first online-only file or not-yet-listed folder
+  (which it never opens, so nothing is fetched or hydrated), and gives up after
+  50,000 entries or 8 s; the result is cached for 20 s (and re-checked after
+  Panero's own pin changes); `Notifier::folderStatesChanged` repaints the views;
+- until the scan answers, or when it gave up, the folder has no badge;
+- always kept (PINNED) and all content local: the filled tick.
+
+The shell's storage provider properties were checked first (VM, real OneDrive,
+`IShellItem2` property store): the fast properties of a folder with only local
+content and of one with an online-only file are the same
+(`System.FilePlaceholderStatus` = 14, no aggregated `StorageProviderState`), so
+they cannot give Explorer's folder status without the provider's slow handler.
+Unit tests: `folderStates`, `scanEntries` in `panerocloudfilestest`. GUI test
+phase C: the test sync folder's sub-folder with an online-only placeholder
+shows the cloud badge (`p13-cloud-folder-badge`).
+
+### Explorer's drive menu
+
+Right-click on a drive button, a drive in the drive list (Alt+F1 / Alt+F2), the
+path bar's drive button and a pinned drive shows the shell's menu of the drive
+(Open, Properties, Format, Eject, BitLocker, AutoPlay, ...) with Panero's items
+on top: drive buttons "Open in Other Panel", "Hide This Button" (and "Show the
+Hidden Buttons"); the drive list and path bar button "Open in Other Panel",
+"Open in a New Tab"; pins "Open in Other Panel", "Move Up", "Move Down",
+"Unpin". The shell's "Open" opens the drive in the panel. Built with
+`PaneroWinShell::ShellMenu(owner, paths, extended)` (the drive's PIDL in
+"This PC" via `SHBindToParent`, no Rename) and `execItemMenu()`, which turns a
+`QMenu` into the extras. Without a shell menu, or with Panero's menu chosen,
+the previous Qt menus are shown. Linux keeps its own drive menus.
+
+### Pack and unpack (7-Zip bundled)
+
+- The ZIP and the installer contain the official 7-Zip 26.06 x64 (`7z.exe`,
+  `7z.dll`, `License.txt`, `readme.txt`, `History.txt` in `Panero\7-Zip`),
+  downloaded by `package.sh` from the 7-Zip GitHub release (7-zip.org as
+  fallback), checked against the pinned SHA-256 and unpacked with bsdtar.
+  Licence: GNU LGPL with the unRAR restriction; `licenses\7-Zip-License.txt`
+  and `7-Zip-LGPL-2.1.txt` in the package, `dev/windows/7-Zip/` in the tree and
+  in the release licences archive, LICENSING.md note 5.
+- Tool lookup on Windows (`KrArcBaseManager::findExecutable`, used by
+  `KrServices` and the krarc worker): `<Panero>\7-Zip`, `<Panero>`, `System32`,
+  then PATH.
+- `KrArcHandler`: zip (pack and unpack), rar (unpack), gzip, bzip2, lzma and xz
+  go through 7-Zip (`7z a -tzip`, `x`, `t`, `l -ba`; 7-Zip's exit codes); the
+  tar family (.tar, .tar.gz, .tar.bz2, .tar.xz, .tar.lzma) through Windows' own
+  `tar.exe` (bsdtar with zlib, bzip2, liblzma), whose file lines on stderr drive
+  the progress. 7z as before. The supported packers list adds these on Windows,
+  also for settings stored by an older version.
+- Archives as folders: krarc lists and extracts zip, rar, 7z, tar and the single
+  compressed files through 7-Zip (there are no `zip:` / `tar:` KIO workers on
+  Windows); Enter on an archive browses it.
+- Konfigurator > Archives (Auto Configure): tar "Windows' tar.exe", zip, unzip,
+  unrar, gzip, bzip2, lzma, xz "Done by 7-Zip (in the Panero folder)", 7z
+  "Bundled with Panero"; rar, arj, lha, ace, rpm, dpkg stay "not found".
+- Windows fixes in the pack dialog's handling: the "archive exists" question
+  (it compared `/C:/...`), destinations typed with backslashes.
+- GUI test phase D (CI and VM): packs a folder and two files as zip, 7z and
+  tar.gz into the other panel (Alt+F5, the type chosen in the dialog), checks the
+  entries with the bundled 7-Zip, unpacks each (Alt+F9) into its own folder and
+  compares the files, and opens the zip and the 7z as folders (Enter).
+
+### Quick Settings: right-click menu
+
+Quick Settings > Mouse > "Right-click menu": "Explorer menu (default)" or
+"Panero menu" (`Look&Feel` / `Explorer Menu`, Windows only;
+`PaneroWinShell::explorerMenuEnabled()`), for files, folders and drives.
+`PANERO_NO_EXPLORER_MENU=1` still forces Panero's menu. One row in
+`paneroviewcolorsdialog.cpp`. GUI test phase D: the row is there, drive buttons
+switched on there get the Explorer drive menu, and "Panero menu" gives Panero's
+own menu on a file. (After the merge with the Settings work the row lives in
+`app/Dialogs/panerosettings.cpp` and the short Quick Settings; same key.)

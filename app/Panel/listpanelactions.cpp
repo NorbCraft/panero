@@ -84,6 +84,11 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actCalculate = action(i18n("Calculate &Occupied Space"), "accessories-calculator", 0, _func, SLOT(calcSpace()), "calculate");
     actPack = action(i18n("Pac&k..."), "archive-insert", Qt::ALT + Qt::SHIFT + Qt::Key_P, _func, SLOT(pack()), "pack");
     actUnpack = action(i18n("&Unpack..."), "archive-extract", Qt::ALT + Qt::SHIFT + Qt::Key_U, _func, SLOT(unpack()), "unpack");
+#ifdef Q_OS_WIN
+    // Panero (Windows): also Total Commander's Alt+F5 / Alt+F9
+    _mainWindow->actions()->setDefaultShortcuts(actPack, {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_P), QKeySequence(Qt::ALT + Qt::Key_F5)});
+    _mainWindow->actions()->setDefaultShortcuts(actUnpack, {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_U), QKeySequence(Qt::ALT + Qt::Key_F9)});
+#endif
     actCreateChecksum = action(i18n("Create Checksum..."), "document-edit-sign", 0, _func, SLOT(createChecksum()), "create checksum");
     actMatchChecksum = action(i18n("Verify Checksum..."), "document-edit-decrypt-verify", 0, _func, SLOT(matchChecksum()), "match checksum");
     action(i18n("New Symlink..."), nullptr, Qt::CTRL + Qt::ALT + Qt::Key_S, _func, SLOT(krlink()), "new symlink");

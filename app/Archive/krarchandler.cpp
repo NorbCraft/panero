@@ -34,6 +34,32 @@
 
 static QStringList arcProtocols = QString("tar;bzip;bzip2;lzma;xz;gzip;krarc;zip").split(';');
 
+// Panero (Windows): there is no Info-ZIP, unrar, gzip, bzip2 or xz. The 7-Zip
+// bundled in the Panero folder (KrArcBaseManager::findExecutable) does these
+// types; Windows' own tar.exe (bsdtar, System32) does the tar family. Elsewhere
+// nothing changes.
+static bool by7z(const QString &type)
+{
+#ifdef Q_OS_WIN
+    return type == QLatin1String("zip") || type == QLatin1String("rar") || type == QLatin1String("gzip")
+        || type == QLatin1String("bzip2") || type == QLatin1String("lzma") || type == QLatin1String("xz");
+#else
+    Q_UNUSED(type)
+    return false;
+#endif
+}
+
+// Windows' tar (bsdtar) reports the files it adds or extracts on stderr
+static bool progressOnStderr(const QString &type)
+{
+#ifdef Q_OS_WIN
+    return type.startsWith(QLatin1Char('t')); // tar, tgz, tbz, tlz, txz, tarz
+#else
+    Q_UNUSED(type)
+    return false;
+#endif
+}
+
 QMap<QString, QString>* KrArcHandler::slaveMap = nullptr;
 KWallet::Wallet * KrArcHandler::wallet = nullptr;
 
@@ -111,6 +137,13 @@ QStringList KrArcHandler::supportedPackers()
     if (KrServices::cmdExist("dpkg")) packers.append("dpkg");
     if (KrServices::cmdExist("7z") || KrServices::cmdExist("7za")) packers.append("7z");
     if (KrServices::cmdExist("rpm") && KrServices::cmdExist("rpm2cpio")) packers.append("rpm");
+#ifdef Q_OS_WIN
+    if (packers.contains(QLatin1String("7z"))) { // the bundled 7-Zip (see by7z())
+        packers << QStringLiteral("zip") << QStringLiteral("unzip") << QStringLiteral("cbz") << QStringLiteral("unrar")
+                << QStringLiteral("gzip") << QStringLiteral("bzip2") << QStringLiteral("lzma") << QStringLiteral("xz");
+        packers.removeDuplicates();
+    }
+#endif
     // qDebug() << "Supported Packers:";
     //QStringList::Iterator it;
     //for( it = packers.begin(); it != packers.end(); ++it )
@@ -124,6 +157,22 @@ QStringList KrArcHandler::configuredPackers()
     KConfigGroup group(krConfig, "Archives");
     if (!group.hasKey("Supported Packers"))
         group.writeEntry("Supported Packers", supportedPackers());
+#ifdef Q_OS_WIN
+    // Panero: what the bundled 7-Zip and Windows' tar do, also after an upgrade
+    // from a version without them (the list was stored on the first start)
+    static const QStringList detected = supportedPackers();
+    QStringList stored = group.readEntry("Supported Packers", QStringList());
+    bool added = false;
+    for (const QString &packer : detected) {
+        if (!stored.contains(packer)) {
+            stored << packer;
+            added = true;
+        }
+    }
+    if (added)
+        group.writeEntry("Supported Packers", stored);
+    return stored;
+#endif
     return group.readEntry("Supported Packers", QStringList());
 }
 
@@ -175,8 +224,10 @@ qulonglong KrArcHandler::arcFileCount(const QString& archive, const QString& typ
 
     // set the right lister to do the job
     QStringList lister;
+    const QString tool = by7z(type) ? QStringLiteral("7z") : type;
 
-    if (type == "zip") lister << KrServices::fullPathName("unzip") << "-ZTs";
+    if (by7z(type)) lister << find7zExecutable() << "-ba" << "-y" << "l"; // -ba: one line per entry
+    else if (type == "zip") lister << KrServices::fullPathName("unzip") << "-ZTs";
     else if (type == "tar") lister << KrServices::fullPathName("tar") << "-tvf";
     else if (type == "tgz") lister << KrServices::fullPathName("tar") << "-tvzf";
     else if (type == "tarz") lister << KrServices::fullPathName("tar") << "-tvzf";
@@ -201,7 +252,7 @@ qulonglong KrArcHandler::arcFileCount(const QString& archive, const QString& typ
     if (!password.isNull()) {
         if (type == "arj")
             lister << QString("-g%1").arg(password);
-        if (type == "ace" || type == "rar" || type == "7z")
+        if (type == "ace" || type == "rar" || tool == "7z")
             lister << QString("-p%1").arg(password);
     }
 
@@ -227,7 +278,7 @@ qulonglong KrArcHandler::arcFileCount(const QString& archive, const QString& typ
 
     observer->subJobStopped();
 
-    if (list.exitStatus() != QProcess::NormalExit || !checkStatus(type, list.exitCode())) {
+    if (list.exitStatus() != QProcess::NormalExit || !checkStatus(tool, list.exitCode())) {
         observer->detailedError(i18n("Failed to list the content of the archive (%1).", archive),
                                 QString::fromLocal8Bit(list.readAllStandardError()));
         return 0;
@@ -263,8 +314,10 @@ bool KrArcHandler::unpack(QString archive, const QString& type, const QString& p
     QString cpioName;
     QStringList packer;
 
+    const QString tool = by7z(type) ? QStringLiteral("7z") : type;
     // set the right packer to do the job
-    if (type == "zip") packer << KrServices::fullPathName("unzip") << "-o";
+    if (by7z(type)) packer << find7zExecutable() << "-y" << "-bb1" << "x"; // -bb1: a line per file (progress)
+    else if (type == "zip") packer << KrServices::fullPathName("unzip") << "-o";
     else if (type == "tar") packer << KrServices::fullPathName("tar") << "-xvf";
     else if (type == "tgz") packer << KrServices::fullPathName("tar") << "-xvzf";
     else if (type == "tarz") packer << KrServices::fullPathName("tar") << "-xvzf";
@@ -317,18 +370,18 @@ bool KrArcHandler::unpack(QString archive, const QString& type, const QString& p
     } else return false;
 
     if (!password.isNull()) {
-        if (type == "zip")
+        if (tool == "zip")
             packer << "-P" << password;
         if (type == "arj")
             packer << QString("-g%1").arg(password);
-        if (type == "ace" || type == "rar" || type == "7z")
+        if (type == "ace" || type == "rar" || tool == "7z")
             packer << QString("-p%1").arg(password);
     }
 
     // unpack the files
     KrLinecountingProcess proc;
     proc << packer << archive;
-    if (type == "bzip2" || type == "gzip" || type == "lzma" || type == "xz") {
+    if (tool == "bzip2" || tool == "gzip" || tool == "lzma" || tool == "xz") {
         QString arcname = archive.mid(archive.lastIndexOf("/") + 1);
         if (arcname.contains(".")) arcname = arcname.left(arcname.lastIndexOf("."));
             proc.setStandardOutputFile(dest + '/' + arcname);
@@ -342,7 +395,7 @@ bool KrArcHandler::unpack(QString archive, const QString& type, const QString& p
     observer->subJobStarted(i18n("Unpacking File(s)"), count);
     if (count != 0) {
         connect(&proc, &KrLinecountingProcess::newOutputLines, observer, &KrArcObserver::incrementProgress);
-        if (type == "rpm")
+        if (type == "rpm" || progressOnStderr(type))
             connect(&proc, &KrLinecountingProcess::newErrorLines, observer, &KrArcObserver::incrementProgress);
     }
 
@@ -363,7 +416,7 @@ bool KrArcHandler::unpack(QString archive, const QString& type, const QString& p
         QFile(cpioName).remove();      /* remove the cpio file */
 
     // check the return value
-    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(type, proc.exitCode())) {
+    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(tool, proc.exitCode())) {
         observer->detailedError(i18n("Failed to unpack %1.", archive),
                                 observer->wasCancelled() ? i18n("User cancelled.") : proc.getErrorMsg());
         return false;
@@ -376,8 +429,10 @@ bool KrArcHandler::test(const QString& archive, const QString& type, const QStri
     // choose the right packer for the job
     QStringList packer;
 
+    const QString tool = by7z(type) ? QStringLiteral("7z") : type;
     // set the right packer to do the job
-    if (type == "zip") packer << KrServices::fullPathName("unzip") << "-t";
+    if (by7z(type)) packer << find7zExecutable() << "-y" << "-bb1" << "t";
+    else if (type == "zip") packer << KrServices::fullPathName("unzip") << "-t";
     else if (type == "tar") packer << KrServices::fullPathName("tar") << "-tvf";
     else if (type == "tgz") packer << KrServices::fullPathName("tar") << "-tvzf";
     else if (type == "tarz") packer << KrServices::fullPathName("tar") << "-tvzf";
@@ -397,11 +452,11 @@ bool KrArcHandler::test(const QString& archive, const QString& type, const QStri
     else return false;
 
     if (!password.isNull()) {
-        if (type == "zip")
+        if (tool == "zip")
             packer << "-P" << password;
         if (type == "arj")
             packer << QString("-g%1").arg(password);
-        if (type == "ace" || type == "rar" || type == "7z")
+        if (type == "ace" || type == "rar" || tool == "7z")
             packer << QString("-p%1").arg(password);
     }
 
@@ -414,8 +469,11 @@ bool KrArcHandler::test(const QString& archive, const QString& type, const QStri
 
     // tell the user to wait
     observer->subJobStarted(i18n("Testing Archive"), count);
-    if (count != 0)
+    if (count != 0) {
         connect(&proc, &KrLinecountingProcess::newOutputLines, observer, &KrArcObserver::incrementProgress);
+        if (progressOnStderr(type))
+            connect(&proc, &KrLinecountingProcess::newErrorLines, observer, &KrArcObserver::incrementProgress);
+    }
 
     // start the unpacking process
     proc.start();
@@ -431,7 +489,7 @@ bool KrArcHandler::test(const QString& archive, const QString& type, const QStri
     observer->subJobStopped();
 
     // check the return value
-    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(type, proc.exitCode()))
+    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(tool, proc.exitCode()))
         return false;
 
     return true; // SUCCESS
@@ -442,7 +500,10 @@ bool KrArcHandler::pack(QStringList fileNames, QString type, const QString& dest
     // set the right packer to do the job
     QStringList packer;
 
-    if (type == "zip") {
+    if ((type == "zip" || type == "cbz") && by7z(QStringLiteral("zip"))) {
+        packer << find7zExecutable() << "-tzip" << "-y" << "-bb1" << "a"; // folders with their content
+        type = "zip";
+    } else if (type == "zip") {
         packer << KrServices::fullPathName("zip") << "-ry";
     } else if (type == "cbz") {
         packer << KrServices::fullPathName("zip") << "-ry";
@@ -475,12 +536,15 @@ bool KrArcHandler::pack(QStringList fileNames, QString type, const QString& dest
     } else return false;
 
     QString password;
+    const QString tool = by7z(type) ? QStringLiteral("7z") : type;
 
     if (extraProps.count("Password") > 0) {
         password = extraProps[ "Password" ];
 
         if (!password.isNull()) {
-            if (type == "zip")
+            if (tool == "7z")
+                packer << QString("-p%1").arg(password);
+            else if (type == "zip")
                 packer << "-P" << password;
             else if (type == "arj")
                 packer << QString("-g%1").arg(password);
@@ -519,10 +583,10 @@ bool KrArcHandler::pack(QStringList fileNames, QString type, const QString& dest
         } else if (type == "arj") {
             static const int arjLevels[] = { 0, 4, 4, 3, 3, 2, 2, 1, 1 };
             packer << QString("-m%1").arg(arjLevels[ level ]);
-        } else if (type == "zip") {
+        } else if (type == "zip" && tool != "7z") {
             static const int zipLevels[] = { 0, 1, 2, 4, 5, 6, 7, 8, 9 };
             packer << QString("-%1").arg(zipLevels[ level ]);
-        } else if (type == "7z") {
+        } else if (tool == "7z") {
             static const int sevenZipLevels[] = { 0, 1, 2, 4, 5, 6, 7, 8, 9 };
             packer << QString("-mx%1").arg(sevenZipLevels[ level ]);
         }
@@ -541,8 +605,11 @@ bool KrArcHandler::pack(QStringList fileNames, QString type, const QString& dest
 
     // tell the user to wait
     observer->subJobStarted(i18n("Packing File(s)"), count);
-    if (count != 0)
+    if (count != 0) {
         connect(&proc, &KrLinecountingProcess::newOutputLines, observer, &KrArcObserver::incrementProgress);
+        if (progressOnStderr(type))
+            connect(&proc, &KrLinecountingProcess::newErrorLines, observer, &KrArcObserver::incrementProgress);
+    }
 
     // start the packing process
     proc.start();
@@ -558,7 +625,7 @@ bool KrArcHandler::pack(QStringList fileNames, QString type, const QString& dest
     observer->subJobStopped();
 
     // check the return value
-    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(type, proc.exitCode())) {
+    if (proc.exitStatus() != QProcess::NormalExit || !checkStatus(tool, proc.exitCode())) {
         observer->detailedError(i18n("Failed to pack %1.", dest),
                                 observer->wasCancelled() ? i18n("User cancelled.") : proc.getErrorMsg());
         return false;
@@ -720,6 +787,19 @@ QString KrArcHandler::registeredProtocol(const QString& mimetype)
             // for example, the file is a text one (therefore, it's not an archive)
         }
     }
+#ifdef Q_OS_WIN
+    // Panero (Windows): no tar:/zip: KIO workers; krarc opens these with the bundled 7-Zip
+    static const QSet<QString> windowsKrarc = {
+        "application/x-tar", "application/x-compressed-tar", "application/x-bzip-compressed-tar",
+        "application/x-bzip1-compressed-tar", "application/x-bzip2-compressed-tar", "application/x-xz-compressed-tar",
+        "application/x-lzma-compressed-tar", "application/x-tbz", "application/x-tbz2", "application/x-tgz",
+        "application/gzip", "application/x-gzip", "application/x-bzip", "application/x-bzip2", "application/x-xz",
+        "application/x-lzma", "application/zip", "application/x-zip", "application/x-zip-compressed",
+        "application/vnd.rar", "application/x-rar", "application/x-7z-compressed"};
+    if ((protocol.isEmpty() || protocol == QLatin1String("tar") || protocol == QLatin1String("zip"))
+        && windowsKrarc.contains(mimetype) && !find7zExecutable().isEmpty())
+        return QStringLiteral("krarc");
+#endif
     return protocol;
 }
 

@@ -48,6 +48,9 @@ protected:
 
 public:
     KrArcBaseManager();
+    /// QStandardPaths::findExecutable(); on Windows Panero's own folder first (the
+    /// bundled 7-Zip in "7-Zip"), then Windows' System32 (tar.exe), then PATH.
+    static QString findExecutable(const QString &name);
     QString detectArchive(bool &, const QString&, bool = true, bool = false);
     virtual void checkIf7zIsEncrypted(bool &, QString) = 0;
     static QString getShortTypeFromMime(const QString &);

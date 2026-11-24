@@ -47,6 +47,7 @@ public slots:
 signals:
     void openUrl(const QUrl&);
     void newTab(const QUrl&);
+    void openInOtherPanel(const QUrl &); ///< Panero (Windows drive menu)
     void aboutToShow();
 
 protected:
@@ -61,6 +62,8 @@ private:
     void umount(const QString&);
     void eject(QString);
     void rightClickMenu(const QString& udi, QPoint pos);
+    /// Windows: Explorer's menu of the drive @p root with Panero's items on top
+    void driveShellMenu(const QString &root, const QPoint &globalPos);
 
     QList<Solid::Device> storageDevices;
 

@@ -138,6 +138,10 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     connect(mediaButton, &MediaButton::aboutToShow, this, [=]() { slotFocusOnMe(); });
     connect(mediaButton, &MediaButton::openUrl, [=](const QUrl & _t1) { func->openUrl(_t1); });
     connect(mediaButton, &MediaButton::newTab, this, [=](const QUrl &url) { duplicateTab(url); });
+    connect(mediaButton, &MediaButton::openInOtherPanel, this, [=](const QUrl &url) {
+        otherPanel()->func->openUrl(url);
+        otherPanel()->gui->slotFocusOnMe();
+    });
     ADD_WIDGET(mediaButton);
 
     // status bar

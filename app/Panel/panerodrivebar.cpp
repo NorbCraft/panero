@@ -50,6 +50,7 @@
 #include "../Cloud/panerocloud.h"
 #else
 #include "panerowinshell.h"
+#include "panerowinshellmenu.h"
 #include <QInputDialog>
 #include <windows.h>
 #endif
@@ -611,7 +612,20 @@ void PaneroDriveBar::showMenu(const PaneroDrive &drive, QToolButton *button, con
     const int hiddenCount = hiddenIds().size();
     if (hiddenCount > 0)
         showAll = menu.addAction(Icon(QStringLiteral("view-visible")), i18np("Show the Hidden Button", "Show the %1 Hidden Buttons", hiddenCount));
-    QAction *chosen = menu.exec(button->mapToGlobal(pos));
+    QAction *chosen = nullptr;
+#ifdef Q_OS_WIN
+    // Explorer's drive menu (Open, Properties, Format, Eject, BitLocker, ...) with these on top
+    QAction openHere(this);
+    const bool shellMenu = drive.url.isLocalFile() && drive.kind != PaneroDrive::NetworkPlaces
+        && PaneroWinShell::execItemMenu(this, drive.url.toLocalFile(), &menu, button->mapToGlobal(pos), &chosen, &openHere);
+    if (shellMenu && chosen == &openHere) {
+        open(drive);
+        updateChecked();
+        return;
+    }
+    if (!shellMenu)
+#endif
+        chosen = menu.exec(button->mapToGlobal(pos));
     if (!chosen)
         return;
     if (chosen == openOther) {

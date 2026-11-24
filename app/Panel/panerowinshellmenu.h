@@ -13,6 +13,8 @@
 #include <QString>
 #include <QStringList>
 
+class QAction;
+class QMenu;
 class QWidget;
 
 namespace PaneroWinShell
@@ -28,7 +30,24 @@ struct MenuExtra {
     QIcon icon;
     bool checkable = false;
     bool checked = false;
+    bool enabled = true;
 };
+
+/// False when the user chose Panero's own menu (Quick Settings > Right-click menu,
+/// "Look&Feel" / "Explorer Menu") or PANERO_NO_EXPLORER_MENU is set.
+bool explorerMenuEnabled();
+
+/**
+ * Explorer's menu of a drive (or another item given by its full path, "E:/")
+ * with the items of @p panero on top: their texts, icons, check marks and
+ * enabled states, separators; submenus are left out. A chosen shell command
+ * (Properties, Format, Eject, BitLocker, ...) runs here; the shell's "Open"
+ * returns @p openAction instead (Panero opens the drive in a panel).
+ * @return false when Explorer's menu is off or the shell has none: the caller
+ * shows @p panero itself. @p chosen: the action of @p panero, or nullptr.
+ */
+bool execItemMenu(QWidget *owner, const QString &path, const QMenu *panero, const QPoint &globalPos, QAction **chosen,
+                  QAction *openAction = nullptr);
 
 /**
  * Windows build only (D-019): the Windows shell's (Explorer's) context menu of
@@ -45,6 +64,9 @@ public:
     /// @p names: items in @p folder; empty for the folder's background menu.
     /// @p extendedVerbs: the menu Explorer shows with Shift held.
     ShellMenu(QWidget *owner, const QString &folder, const QStringList &names, bool extendedVerbs);
+    /// The menu of items given by their full paths (all in one parent, e.g. drives
+    /// in "This PC"), without the shell's Rename.
+    ShellMenu(QWidget *owner, const QStringList &paths, bool extendedVerbs);
     ~ShellMenu();
     ShellMenu(const ShellMenu &) = delete;
     ShellMenu &operator=(const ShellMenu &) = delete;

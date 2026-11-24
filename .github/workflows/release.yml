@@ -232,7 +232,7 @@ jobs:
             --add-file=extra/GPL-3.0-referenced-by-LGPL-3.0.txt \
             --add-file=extra/rclone-dependencies.txt "$COMMIT" \
             LICENSING.md LICENSES debian/copyright AUTHORS CREDITS \
-            dev/PROVENANCE.md dev/ICON-PROVENANCE.md dev/rclone \
+            dev/PROVENANCE.md dev/ICON-PROVENANCE.md dev/rclone dev/windows/7-Zip \
             | gzip -n -9 > "release/panero-$VERSION-licenses.tar.gz"
 
           (cd release && sha256sum -- * > SHA256SUMS && sha256sum -c SHA256SUMS)
