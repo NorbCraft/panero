@@ -30,7 +30,7 @@ conf="${PANERO_VM_CONF:-$HOME/.config/panero-dev/vm.env}"
 # shellcheck disable=SC1090
 source "$conf"
 : "${PANERO_VM_HOST:?}" "${PANERO_VM_USER:?}" "${PANERO_VM_KEY:?}" "${PANERO_VM_ROOT:?}"
-ssh_opts=(-i "$PANERO_VM_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10)
+ssh_opts=(-i "$PANERO_VM_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=20)
 target="$PANERO_VM_USER@$PANERO_VM_HOST"
 winroot=$(echo "$PANERO_VM_ROOT" | sed -E 's|^/([a-z])/|\U\1:/|')
 
