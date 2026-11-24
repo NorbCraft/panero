@@ -54,6 +54,7 @@
 #endif
 #include "Panel/paneroappearance.h"
 #include "GUI/panerodialogplacement.h"
+#include "Dialogs/panerofirststart.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
@@ -327,6 +328,8 @@ int main(int argc, char *argv[])
     PaneroAppearance::instance()->apply();
     // dialogs without a parent open centred on the Panero window
     PaneroDialogPlacement::install();
+    // new users: the first-start assistant (look, drives, mouse) before the window opens
+    PaneroFirstStart::runOnFirstStart();
 
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;

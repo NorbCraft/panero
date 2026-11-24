@@ -9,6 +9,8 @@
 
 #include <QDockWidget>
 
+#include <functional>
+
 #ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE)
 #include "Cloud/panerocloud.h"
 #endif
@@ -57,6 +59,21 @@ public:
     void saveSettings() const;
     void restoreSettings();
 
+    /**
+     * The Pinned list as a menu (Bookmarks keys Ctrl+D, the panel's bookmarks
+     * button, D-022): the pins, then "Pin Current Folder" and "Show in Sidebar".
+     * @p open opens a pin's URL (default: the active panel).
+     */
+    void fillPinMenu(QMenu *menu, const std::function<void(const QUrl &)> &open = nullptr);
+
+    /**
+     * Imports Krusader's bookmarks (panero/krbookmarks.xml, folders flattened)
+     * into the Pinned list once; the file is kept and a backup copy
+     * krbookmarks.xml.before-pinned is written. Returns the number of new pins.
+     * Exposed for tests.
+     */
+    static int importBookmarks(const QString &bookmarksFile, QList<QPair<QUrl, QString>> *pins);
+
 public slots:
     /// The active panel changed or navigated.
     void activeLocationChanged(const QUrl &url, bool leftPanel);
@@ -91,6 +108,7 @@ private:
     void addPin(const Pin &pin);
     void savePins() const;
     void loadPins();
+    void importBookmarksOnce();
     void openUrlInActivePanel(const QUrl &url);
     bool tryMountAndOpen(const Pin &pin);
     Pin pinFromItem(const QListWidgetItem *item) const;

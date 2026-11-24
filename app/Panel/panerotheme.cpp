@@ -94,7 +94,7 @@ Scheme defaultScheme(bool dark)
         s.text = QColor(0x1f, 0x23, 0x28);
         s.markForeground = QColor(0xc6, 0x28, 0x28);
         s.markBackground = QColor(0xfd, 0xe8, 0xe8);
-        s.currentBackground = QColor(0xdd, 0xe9, 0xfc);
+        s.currentBackground = QColor(Qt::transparent); // only the frame shows the cursor row (D-022)
         s.currentFrame = QColor(0x25, 0x63, 0xeb);
         s.inactiveCurrentFrame = QColor(0x9c, 0xa3, 0xaf);
         s.accent = QColor(DefaultAccent);
@@ -104,12 +104,28 @@ Scheme defaultScheme(bool dark)
         s.text = QColor(0xe4, 0xe7, 0xeb);
         s.markForeground = QColor(0xff, 0x6b, 0x6b);
         s.markBackground = QColor(0x41, 0x22, 0x26);
-        s.currentBackground = QColor(0x1e, 0x36, 0x5c);
+        s.currentBackground = QColor(Qt::transparent);
         s.currentFrame = QColor(0x5b, 0x9c, 0xff);
         s.inactiveCurrentFrame = QColor(0x6b, 0x72, 0x80);
         s.accent = QColor(DefaultAccent);
     }
     return s;
+}
+
+QColor suggestedColor(bool dark, QColor Scheme::*member)
+{
+    const QColor c = defaultScheme(dark).*member;
+    if (c.alpha() > 0)
+        return c;
+    // transparent by default: the fill offered when the user switches "Transparent" off
+    if (member == &Scheme::currentBackground)
+        return dark ? QColor(0x1e, 0x36, 0x5c) : QColor(0xdd, 0xe9, 0xfc);
+    return dark ? QColor(0x1d, 0x20, 0x25) : QColor(0xff, 0xff, 0xff);
+}
+
+bool canBeTransparent(QColor Scheme::*member)
+{
+    return member == &Scheme::currentBackground || member == &Scheme::markBackground;
 }
 
 QColor readColor(const QString &value)

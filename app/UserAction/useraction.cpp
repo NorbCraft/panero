@@ -103,6 +103,14 @@ void UserAction::populateMenu(KActionMenu* menu, const QUrl *currentURL)
     };
 }
 
+bool UserAction::userDefinedActions()
+{
+    QFile file(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1Char('/') + ACTION_XML);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    return file.readAll().contains("<action ");
+}
+
 QStringList UserAction::allCategories()
 {
     QStringList actionCategories;

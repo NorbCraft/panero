@@ -48,6 +48,7 @@
 #include "ActionMan/actionman.h"
 #include "BookMan/krbookmarkbutton.h"
 #include "BookMan/krbookmarkhandler.h"
+#include "paneronavigation.h"
 #include "Dialogs/krdialogs.h"
 #include "Dialogs/krspecialwidgets.h"
 #include "Dialogs/krspwidgets.h"
@@ -375,9 +376,9 @@ void KrSlots::refresh(const QUrl &u)
     ACTIVE_FUNC->openUrl(u);
 }
 
-void KrSlots::runKonfigurator(bool firstTime)
+void KrSlots::runKonfigurator(bool firstTime, const QString &startPage)
 {
-    auto *konfigurator = new Konfigurator(firstTime);
+    auto *konfigurator = new Konfigurator(firstTime, startPage);
     connect(konfigurator, &Konfigurator::configChanged, this, &KrSlots::configChanged);
 
     //FIXME - no need to exec
@@ -844,6 +845,16 @@ void KrSlots::trashPopupMenu()
 
 void KrSlots::addBookmark()
 {
+    // Panero: "Add Bookmark" (Ctrl+B) pins the folder in the Pinned list (D-022)
+    if (PaneroNavigationDock *dock = PaneroNavigationDock::instance()) {
+        const QUrl url = ACTIVE_PANEL->virtualPath();
+        const QString name = url.toDisplayString(QUrl::PreferLocalFile | QUrl::StripTrailingSlash);
+        if (dock->pinUrl(url))
+            krApp->statusBarUpdate(i18n("Pinned: %1", name));
+        else
+            krApp->statusBarUpdate(i18n("Already pinned: %1", name));
+        return;
+    }
     krBookMan->bookmarkCurrent(ACTIVE_PANEL->virtualPath());
 }
 

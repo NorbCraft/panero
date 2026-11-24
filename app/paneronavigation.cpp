@@ -20,6 +20,7 @@
 
 #include "icon.h"
 #include "krglobal.h"
+#include "krusader.h"
 #include "krusaderview.h"
 #include "Panel/krfiletreeview.h"
 #include "Panel/krpanel.h"
@@ -34,6 +35,8 @@
 #include <memory>
 
 #include <QDir>
+#include <QDomDocument>
+#include <QFile>
 #include <QFileInfo>
 #include <QProgressDialog>
 #include <QStandardPaths>
@@ -56,6 +59,7 @@
 #include <QVBoxLayout>
 
 #include <KConfigCore/KConfigGroup>
+#include <KXmlGui/KActionCollection>
 #include <KI18n/KLocalizedString>
 #include <KWidgetsAddons/KMessageBox>
 #include <Solid/Device>
@@ -957,6 +961,7 @@ void PaneroNavigationDock::loadPins()
             addPin(pin);
         }
 #endif
+        importBookmarksOnce();
         return;
     }
     const QStringList urls = g.readEntry("Urls", QStringList());
@@ -972,6 +977,118 @@ void PaneroNavigationDock::loadPins()
         if (pin.url.isValid())
             addPin(pin);
     }
+    importBookmarksOnce();
+}
+
+namespace
+{
+void collectBookmarks(const QDomElement &parent, QList<QPair<QUrl, QString>> *out)
+{
+    for (QDomElement e = parent.firstChildElement(); !e.isNull(); e = e.nextSiblingElement()) {
+        if (e.tagName() == QLatin1String("folder")) {
+            collectBookmarks(e, out); // Pinned is one flat list
+        } else if (e.tagName() == QLatin1String("bookmark") && e.hasAttribute(QStringLiteral("href"))) {
+            const QUrl url = QUrl::fromUserInput(e.attribute(QStringLiteral("href")), QString(), QUrl::AssumeLocalFile);
+            if (url.isValid() && !url.isRelative())
+                out->append({url, e.firstChildElement(QStringLiteral("title")).text()});
+        }
+    }
+}
+} // namespace
+
+int PaneroNavigationDock::importBookmarks(const QString &bookmarksFile, QList<QPair<QUrl, QString>> *pins)
+{
+    QFile file(bookmarksFile);
+    if (!file.open(QIODevice::ReadOnly))
+        return 0;
+    const QByteArray data = file.readAll();
+    file.close();
+    QDomDocument doc;
+    if (!doc.setContent(data))
+        return 0;
+    const QString backup = bookmarksFile + QStringLiteral(".before-pinned");
+    if (!QFileInfo::exists(backup))
+        QFile::copy(bookmarksFile, backup);
+    QList<QPair<QUrl, QString>> found;
+    collectBookmarks(doc.documentElement(), &found);
+    int added = 0;
+    for (const auto &bookmark : qAsConst(found)) {
+        const QUrl url = bookmark.first.adjusted(QUrl::StripTrailingSlash);
+        bool known = false;
+        for (const auto &pin : qAsConst(*pins))
+            known = known || pin.first.adjusted(QUrl::StripTrailingSlash) == url;
+        if (known)
+            continue;
+        pins->append({url, bookmark.second});
+        ++added;
+    }
+    return added;
+}
+
+void PaneroNavigationDock::importBookmarksOnce()
+{
+    KConfigGroup g(krConfig, PIN_GROUP);
+    if (g.readEntry("Bookmarks Imported", false))
+        return;
+    g.writeEntry("Bookmarks Imported", true);
+    const QString file = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/panero/krbookmarks.xml");
+    QList<QPair<QUrl, QString>> pins;
+    for (int i = 0; i < m_pins->count(); ++i)
+        pins.append({m_pins->item(i)->data(UrlRole).toUrl(), m_pins->item(i)->text()});
+    const int before = pins.size();
+    if (importBookmarks(file, &pins) > 0) {
+        for (int i = before; i < pins.size(); ++i) {
+            Pin pin;
+            pin.url = pins[i].first;
+            pin.label = pins[i].second;
+            if (pin.label.isEmpty())
+                pin.label = pin.url.isLocalFile() ? QFileInfo(pin.url.toLocalFile()).fileName() : pin.url.fileName();
+            if (pin.label.isEmpty())
+                pin.label = pin.url.toDisplayString(QUrl::PreferLocalFile);
+            addPin(pin);
+        }
+        savePins();
+    }
+    g.sync();
+}
+
+void PaneroNavigationDock::fillPinMenu(QMenu *menu, const std::function<void(const QUrl &)> &open)
+{
+    for (int i = 0; i < m_pins->count(); ++i) {
+        QListWidgetItem *item = m_pins->item(i);
+        QAction *action = menu->addAction(item->icon(), item->text());
+        action->setToolTip(item->toolTip());
+        const QUrl url = item->data(UrlRole).toUrl();
+        QPointer<QListWidget> pins(m_pins);
+        connect(action, &QAction::triggered, this, [this, url, open, pins]() {
+            if (url.isLocalFile() && !QFileInfo(url.toLocalFile()).isDir()) {
+                // missing folder: the sidebar's way (mount the drive, retry or unpin)
+                for (int row = 0; pins && row < pins->count(); ++row) {
+                    if (pins->item(row)->data(UrlRole).toUrl() == url) {
+                        openPin(pins->item(row));
+                        return;
+                    }
+                }
+            }
+            if (open)
+                open(url);
+            else
+                openUrlInActivePanel(url);
+        });
+    }
+    if (m_pins->count() == 0)
+        menu->addAction(i18n("No pinned folders"))->setEnabled(false);
+    menu->addSeparator();
+    QAction *pin = menu->addAction(Icon(QStringLiteral("list-add")), i18n("Pin Current Folder"));
+    if (QAction *add = krApp ? krApp->actionCollection()->action(QStringLiteral("add bookmark")) : nullptr)
+        pin->setShortcut(add->shortcut()); // shown in the menu; the action itself has the key
+    connect(pin, &QAction::triggered, this, &PaneroNavigationDock::pinCurrentFolder);
+    QAction *sidebar = menu->addAction(Icon(QStringLiteral("view-list-tree")), i18n("Show Pinned Folders in the Sidebar"));
+    connect(sidebar, &QAction::triggered, this, [this]() {
+        show();
+        raise();
+    });
 }
 
 void PaneroNavigationDock::saveSettings() const

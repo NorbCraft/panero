@@ -50,6 +50,12 @@ KgDependencies::KgDependencies(bool first, QWidget* parent) :
     addApplication("mailer",   pathsGrid, 1, general_tab, PAGE_GENERAL);
     addApplication("diff utility",  pathsGrid, 2, general_tab, PAGE_GENERAL);
     addApplication("krename",  pathsGrid, 3, general_tab, PAGE_GENERAL);
+    // Panero: Multi-Rename (Ctrl+M) is built in and finds KRename itself
+    for (int column = 0; column <= 1; ++column) {
+        if (QLayoutItem *item = pathsGrid->itemAtPosition(3, column))
+            if (item->widget())
+                item->widget()->hide();
+    }
     addApplication("locate",   pathsGrid, 4, general_tab, PAGE_GENERAL);
     addApplication("mount",    pathsGrid, 5, general_tab, PAGE_GENERAL);
     addApplication("umount",   pathsGrid, 6, general_tab, PAGE_GENERAL);

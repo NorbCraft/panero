@@ -18,6 +18,7 @@
 #include <KWidgetsAddons/KToggleAction>
 #include <KWidgetsAddons/KToolBarPopupAction>
 #include <KXmlGui/KToggleToolBarAction>
+#include <KXmlGui/KToolBar>
 #include <KXmlGui/KXMLGUIFactory>
 
 #include "defaults.h"
@@ -27,7 +28,8 @@
 #include "paneroimport.h"
 #include "Panel/krpanel.h"
 #include "Panel/panelfunc.h"
-#include "Dialogs/paneroviewcolorsdialog.h"
+#include "Dialogs/paneroquicksettings.h"
+#include "Dialogs/panerofirststart.h"
 #include "icon.h"
 #include "krusaderview.h"
 #include "krslots.h"
@@ -284,17 +286,32 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actSyncDirs, i18n("Synchronize Fol&ders..."), "folder-sync", Qt::CTRL + Qt::Key_Y, SLOTS, SLOT(slotSynchronizeDirs()), "sync dirs");
 #endif
     NEW_KACTION(actDiskUsage, i18n("D&isk Usage..."), "kr_diskusage", Qt::ALT + Qt::SHIFT + Qt::Key_S, SLOTS, SLOT(slotDiskUsage()), "disk usage");
-    NEW_KACTION(actKonfigurator, i18n("Configure &Panero..."), "configure", KStandardShortcut::shortcut(KStandardShortcut::Preferences), SLOTS, SLOT(startKonfigurator()), "konfigurator");
+    NEW_KACTION(actKonfigurator, i18n("&Settings..."), "configure", KStandardShortcut::shortcut(KStandardShortcut::Preferences), SLOTS, SLOT(startKonfigurator()), "konfigurator");
+    // Panero: one Settings window (D-022), Ctrl+, as in most applications; KDE's Ctrl+Shift+, stays
+    {
+        QList<QKeySequence> settingsKeys = {QKeySequence(Qt::CTRL + Qt::Key_Comma)};
+        for (const QKeySequence &key : KStandardShortcut::shortcut(KStandardShortcut::Preferences))
+            if (!settingsKeys.contains(key))
+                settingsKeys << key;
+        krusaderApp->actionCollection()->setDefaultShortcuts(actKonfigurator, settingsKeys);
+    }
+    auto *firstStart = new QAction(Icon("tools-wizard"), i18n("&First-Start Assistant..."), krusaderApp);
+    firstStart->setToolTip(i18n("Choose the look, drive buttons and mouse selection again"));
+    krusaderApp->actionCollection()->addAction("panero first start", firstStart);
+    QObject::connect(firstStart, &QAction::triggered, krusaderApp, [krusaderApp]() {
+        PaneroFirstStart::showFromHelp(krusaderApp);
+    });
     actImportKrusader = new QAction(Icon("document-import"), i18n("Import &Krusader Settings..."), krusaderApp);
     krusaderApp->actionCollection()->addAction("panero import krusader settings", actImportKrusader);
     QObject::connect(actImportKrusader, &QAction::triggered, krusaderApp, [krusaderApp]() {
         PaneroImport::requestImportFromMenu(krusaderApp);
     });
-    actViewColors = new QAction(Icon("configure"), i18n("&Quick Settings..."), krusaderApp);
-    actViewColors->setToolTip(i18n("Quick Settings: look, icons, file list, mouse and colors"));
+    actViewColors = new QAction(Icon("configure"), i18n("&Quick Settings"), krusaderApp);
+    actViewColors->setToolTip(i18n("Quick Settings: light or dark, icons, density, hidden files, drives, cloud"));
     krusaderApp->actionCollection()->addAction("panero view colors", actViewColors);
     QObject::connect(actViewColors, &QAction::triggered, krusaderApp, [krusaderApp]() {
-        PaneroViewColorsDialog::showDialog(krusaderApp);
+        // a popup under the toolbar's gear (centred on the window from the menu)
+        PaneroQuickSettings::popup(krusaderApp, krusaderApp->toolBar()->widgetForAction(actViewColors));
     });
     NEW_KACTION(actSavePosition, i18n("Save &Position"), nullptr, 0, krusaderApp, SLOT(savePosition()), "save position");
     NEW_KACTION(actCompare, i18n("Compare b&y Content..."), "kr_comparedirs", 0, SLOTS, SLOT(compareContent()), "compare");
@@ -302,7 +319,8 @@ void KrActions::setupActions(Krusader *krusaderApp)
     // Panero: Ctrl+M as in Total Commander (D-019); Shift+F2 stays
     krusaderApp->actionCollection()->setDefaultShortcuts(actMultiRename, {QKeySequence(Qt::CTRL + Qt::Key_M), QKeySequence(Qt::SHIFT + Qt::Key_F2)});
 
-    NEW_KACTION(actAddBookmark, i18n("Add Bookmark"), "bookmark-new", KStandardShortcut::addBookmark(), SLOTS, SLOT(addBookmark()), "add bookmark");
+    NEW_KACTION(actAddBookmark, i18n("Pin Current Folder"), "bookmark-new", KStandardShortcut::addBookmark(), SLOTS, SLOT(addBookmark()), "add bookmark");
+    actAddBookmark->setToolTip(i18n("Add the active panel's folder to the Pinned list (Krusader: Add Bookmark)"));
     NEW_KACTION(actVerticalMode, i18n("Vertical Mode"), "view-split-top-bottom", Qt::ALT + Qt::CTRL + Qt::Key_R, MAIN_VIEW, SLOT(toggleVerticalMode()), "toggle vertical mode");
     actUserMenu = new KActionMenu(i18n("User&actions"), krusaderApp);
     krusaderApp->actionCollection()->addAction("useractionmenu", actUserMenu);

@@ -1,7 +1,9 @@
 set(Dialogs_SRCS
     paneromultirenamerules.cpp
     paneromultirenamedialog.cpp
-    paneroviewcolorsdialog.cpp
+    panerosettings.cpp
+    paneroquicksettings.cpp
+    panerofirststart.cpp
     krsqueezedtextlabel.cpp
     packgui.cpp
     packguibase.cpp
