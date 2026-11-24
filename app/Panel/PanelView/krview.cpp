@@ -175,6 +175,9 @@ void KrViewOperator::saveDefaultSettings()
 // ----------------------------- krview
 
 const KrView::IconSizes KrView::iconSizes;
+// ~12-20 % per step (the list sizes jump 64 -> 128 -> 256); 48 is the smallest
+// thumbnail (Ctrl+wheel below it returns to Details)
+const QVector<int> KrView::thumbnailSizes = {48, 56, 64, 72, 80, 96, 112, 128, 144, 160, 192, 224, 256, 320, 384};
 
 KrView::KrView(KrViewInstance &instance, KConfig *cfg)
     : _config(cfg), _properties(nullptr), _focused(false), _fileIconSize(0),
@@ -887,21 +890,30 @@ bool KrView::handleKeyEvent(QKeyEvent *e)
 
 void KrView::zoomIn()
 {
-    int idx = iconSizes.indexOf(_fileIconSize);
-    if(idx >= 0 && (idx+1) < iconSizes.count())
-        setFileIconSize(iconSizes[idx+1]);
+    const QVector<int> &sizes = zoomSizes();
+    // the next bigger step (also from a size between two steps)
+    for (int s : sizes) {
+        if (s > _fileIconSize) {
+            setFileIconSize(s);
+            return;
+        }
+    }
 }
 
 void KrView::zoomOut()
 {
-    int idx = iconSizes.indexOf(_fileIconSize);
-    if(idx > 0)
-        setFileIconSize(iconSizes[idx-1]);
+    const QVector<int> &sizes = zoomSizes();
+    for (int i = sizes.count() - 1; i >= 0; --i) {
+        if (sizes[i] < _fileIconSize) {
+            setFileIconSize(sizes[i]);
+            return;
+        }
+    }
 }
 
 void KrView::setFileIconSize(int size)
 {
-    if(iconSizes.indexOf(size) < 0)
+    if(zoomSizes().indexOf(size) < 0)
         return;
     _fileIconSize = size;
     if(_previews) {

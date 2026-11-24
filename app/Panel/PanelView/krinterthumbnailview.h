@@ -35,6 +35,10 @@ public:
     bool ensureVisibilityAfterSelect() override { return false; }
     void setSortMode(KrViewProperties::ColumnType sortColumn, bool descending) override;
     void setFileIconSize(int size) override;
+    const QVector<int> &zoomSizes() const override
+    {
+        return thumbnailSizes;
+    }
 
     // selections are handled by the mouse handler
     void setSelection(const QRect &, QItemSelectionModel::SelectionFlags) override {}

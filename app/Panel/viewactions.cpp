@@ -160,9 +160,9 @@ void ViewActions::togglePreviews(bool show)
 void ViewActions::refreshActions()
 {
     actDefaultZoom->setEnabled(view()->defaultFileIconSize() != view()->fileIconSize());
-    int idx = KrView::iconSizes.indexOf(view()->fileIconSize());
-    actZoomOut->setEnabled(idx > 0);
-    actZoomIn->setEnabled(idx < (KrView::iconSizes.count() - 1));
+    const QVector<int> &sizes = view()->zoomSizes();
+    actZoomOut->setEnabled(!sizes.isEmpty() && view()->fileIconSize() > sizes.first());
+    actZoomIn->setEnabled(!sizes.isEmpty() && view()->fileIconSize() < sizes.last());
     actRestoreSelection->setEnabled(view()->canRestoreSelection());
     actTogglePreviews->setChecked(view()->previewsShown());
 }
