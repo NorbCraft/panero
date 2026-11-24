@@ -378,9 +378,9 @@ void PaneroJobWindow::notify(const QString &title, const QString &text, bool fai
     }
     tray->show();
     tray->showMessage(title, text, failed ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information, 8000);
-    QTimer::singleShot(15000, tray, [t = tray]() {
-        if (t)
-            t->hide();
+    QTimer::singleShot(15000, tray, []() {
+        if (tray)
+            tray->hide();
     });
 #else
     auto *notification = new KNotification(QStringLiteral("jobFinished"), KNotification::CloseOnTimeout);

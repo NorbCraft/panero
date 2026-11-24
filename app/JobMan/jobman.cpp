@@ -114,12 +114,19 @@ protected slots:
                        const QPair<QString, QString> &field1,
                        const QPair<QString, QString> &field2)
     {
-        const QPair<QString, QString> textField = !field2.first.isEmpty() ? field2 : field1;
-        QString text = m_krJob ? PaneroJobWindow::summary(m_krJob) : description;
-        if (!textField.first.isEmpty()) {
-            text += QString(" - %1: %2").arg(textField.first, textField.second);
+        // Panero: the summary stays short ("Copying 3 items to Documents"); the file being
+        // worked on is in the tooltip and in the progress window
+        if (m_krJob)
+            m_description->setText(PaneroJobWindow::summary(m_krJob));
+        else
+            m_description->setText(description);
+        QStringList details;
+        for (const auto &field : {field1, field2}) {
+            if (!field.first.isEmpty())
+                details << QString("%1: %2").arg(field.first, field.second);
         }
-        m_description->setText(text);
+        m_description->setToolTip(details.join('\n') + (details.isEmpty() ? QString() : QStringLiteral("\n"))
+                                  + i18n("Click to show the progress window"));
 
         if (!field2.first.isEmpty() && !field1.first.isEmpty()) {
             // NOTE: tooltips for QAction items in menu are not shown
@@ -469,7 +476,8 @@ void JobMan::managePrivate(KrJob *job, KJob *kJob)
     auto *menuAction = new JobMenuAction(job, m_controlAction, kJob);
     connect(menuAction, &QObject::destroyed, this, &JobMan::slotUpdateControlAction);
     connect(menuAction, &JobMenuAction::showRequested, this, &JobMan::showJobWindow);
-    m_controlAction->menu()->insertAction(m_noJobsAction, menuAction);
+    // newest job first
+    m_controlAction->menu()->insertAction(m_controlAction->menu()->actions().value(0, m_noJobsAction), menuAction);
     cleanupMenu();
 
     // Panero: Krusader's progress window for every job (D-022)
@@ -501,7 +509,9 @@ void JobMan::cleanupMenu() {
             n += dynamic_cast<JobMenuAction *>(a) ? 1 : 0;
         return n;
     };
-    for (QAction *action : actions) {
+    // newest entries are on top: drop finished ones from the bottom
+    for (auto it = actions.crbegin(); it != actions.crend(); ++it) {
+        QAction *action = *it;
         if (jobEntries() <= MAX_OLD_MENU_ACTIONS)
             break;
         auto *jobAction = dynamic_cast<JobMenuAction *>(action);
