@@ -203,6 +203,13 @@ def windows_of(pid):
         try:
             if w.process_id() == pid and w.is_visible() and w.window_text():
                 out.append(w)
+                # dialogs owned by the main window (Panero gives parentless dialogs the
+                # main window as parent) sit below it in the UI Automation tree
+                for c in w.children(control_type='Window'):
+                    h = c.handle
+                    if h and h != w.handle and win32gui.GetWindow(h, win32con.GW_OWNER) and c.is_visible() \
+                            and c.window_text():
+                        out.append(c)
         except Exception:  # window vanished
             pass
     return out
@@ -1827,8 +1834,11 @@ else:
     def pinned_drive():
         pins = c_drive_items('ListItem')
         if pins:
-            pins[0].iface_scroll_item.ScrollIntoView()
-            time.sleep(0.4)
+            try:
+                pins[0].iface_scroll_item.ScrollIntoView()
+                time.sleep(0.4)
+            except Exception:  # noqa: BLE001  (no ScrollItem pattern: visible already)
+                pass
             right_click(pins[0])
     drive_menu_check('pinned-drive', pinned_drive, ['open in other panel', 'unpin'])
 

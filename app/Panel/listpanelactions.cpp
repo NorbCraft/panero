@@ -82,8 +82,16 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actProperties = action(i18n("&Properties..."), "document-properties", Qt::ALT + Qt::Key_Return, _func, SLOT(properties()), "properties");
     actCompDirs = action(i18n("&Compare Folders"), "kr_comparedirs", Qt::ALT + Qt::SHIFT + Qt::Key_C, _gui, SLOT(compareDirs()), "compare dirs");
     actCalculate = action(i18n("Calculate &Occupied Space"), "accessories-calculator", 0, _func, SLOT(calcSpace()), "calculate");
+#ifdef Q_OS_WIN
+    // Panero (Windows): also Total Commander's Alt+F5 / Alt+F9
+    actPack = action(i18n("Pac&k..."), "archive-insert", {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_P), QKeySequence(Qt::ALT + Qt::Key_F5)},
+                     _func, SLOT(pack()), "pack");
+    actUnpack = action(i18n("&Unpack..."), "archive-extract", {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_U), QKeySequence(Qt::ALT + Qt::Key_F9)},
+                       _func, SLOT(unpack()), "unpack");
+#else
     actPack = action(i18n("Pac&k..."), "archive-insert", Qt::ALT + Qt::SHIFT + Qt::Key_P, _func, SLOT(pack()), "pack");
     actUnpack = action(i18n("&Unpack..."), "archive-extract", Qt::ALT + Qt::SHIFT + Qt::Key_U, _func, SLOT(unpack()), "unpack");
+#endif
     actCreateChecksum = action(i18n("Create Checksum..."), "document-edit-sign", 0, _func, SLOT(createChecksum()), "create checksum");
     actMatchChecksum = action(i18n("Verify Checksum..."), "document-edit-decrypt-verify", 0, _func, SLOT(matchChecksum()), "match checksum");
     action(i18n("New Symlink..."), nullptr, Qt::CTRL + Qt::ALT + Qt::Key_S, _func, SLOT(krlink()), "new symlink");
