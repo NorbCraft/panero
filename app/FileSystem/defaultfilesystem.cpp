@@ -49,9 +49,7 @@
 #include "../krservices.h"
 #include "../JobMan/krjob.h"
 
-namespace
-{
-/// Result of reading a cloud/network folder in a worker thread.
+/// A cloud/network folder as read in a worker thread (Panero, D-018)
 struct SlowListing {
     bool exists = false;
     bool opened = false;
@@ -59,6 +57,10 @@ struct SlowListing {
     QList<FileSystem::LocalStat> entries;
     quint64 signature = 0;
 };
+
+namespace
+{
+/// Result of reading a cloud/network folder in a worker thread.
 
 /// Reads @p path: names, then the status of each entry (no file opens).
 void readSlowFolder(SlowListing &listing, const QString &path, bool showHidden)
@@ -152,6 +154,51 @@ protected:
         return true;
     }
 };
+
+/// Panero: the last listing of each visited cloud/network folder (D-022). Going
+/// back into a folder shows it at once; the background check that follows
+/// (checkSlowFolder) replaces it if the provider reports changes.
+struct CachedListing {
+    std::shared_ptr<SlowListing> listing;
+    qint64 time = 0;
+};
+QHash<QString, CachedListing> &slowListingCache()
+{
+    static QHash<QString, CachedListing> cache;
+    return cache;
+}
+QString cacheKey(const QString &path, bool showHidden)
+{
+    return (showHidden ? QLatin1String("h:") : QLatin1String("-:")) + path;
+}
+void rememberListing(const QString &path, bool showHidden, const std::shared_ptr<SlowListing> &listing)
+{
+    if (!listing->accessible)
+        return;
+    QHash<QString, CachedListing> &cache = slowListingCache();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (cache.size() >= 300) { // drop the oldest quarter
+        QList<qint64> times;
+        for (const CachedListing &c : qAsConst(cache))
+            times << c.time;
+        std::sort(times.begin(), times.end());
+        const qint64 cut = times.at(times.size() / 4);
+        for (auto it = cache.begin(); it != cache.end();)
+            it = it->time <= cut ? cache.erase(it) : ++it;
+    }
+    CachedListing entry;
+    entry.listing = listing;
+    entry.time = now;
+    cache.insert(cacheKey(path, showHidden), entry);
+}
+std::shared_ptr<SlowListing> cachedListing(const QString &path, bool showHidden)
+{
+    const auto it = slowListingCache().constFind(cacheKey(path, showHidden));
+    // older than 30 minutes: list again (the check would replace it anyway)
+    if (it == slowListingCache().constEnd() || QDateTime::currentMSecsSinceEpoch() - it->time > 30 * 60 * 1000)
+        return nullptr;
+    return it->listing;
+}
 } // namespace
 
 DefaultFileSystem::DefaultFileSystem()
@@ -613,11 +660,17 @@ bool DefaultFileSystem::refreshSlow(const QUrl &directory, const QString &path, 
     // mount if needed
     emit aboutToOpenDir(path);
 
+    const bool enteringAnotherFolder = !_currentDirectory.matches(directory, QUrl::StripTrailingSlash);
     _currentDirectory = directory;
     _currentDirectory.setPath(QDir::cleanPath(_currentDirectory.path()));
 
-    auto listing = std::make_shared<SlowListing>();
     const bool showHidden = showHiddenFiles();
+    // a folder visited before: its last listing at once (not when refreshing the
+    // same folder, e.g. after Panero's own copy: that must show the new state)
+    std::shared_ptr<SlowListing> listing = enteringAnotherFolder ? cachedListing(path, showHidden) : nullptr;
+    if (listing)
+        return showSlowListing(listing, path, onlyScan);
+    listing = std::make_shared<SlowListing>();
     QFutureWatcher<void> watcher;
     auto *job = new PaneroListJob;
     QPointer<PaneroListJob> jobGuard(job);
@@ -640,7 +693,12 @@ bool DefaultFileSystem::refreshSlow(const QUrl &directory, const QString &path, 
         return false;
     }
     job->finish(); // deletes itself
+    rememberListing(path, showHidden, listing);
+    return showSlowListing(listing, path, onlyScan);
+}
 
+bool DefaultFileSystem::showSlowListing(const std::shared_ptr<SlowListing> &listing, const QString &path, bool onlyScan)
+{
     if (!listing->exists) {
         emit error(i18n("The folder %1 does not exist.", path));
         return false;
@@ -729,6 +787,7 @@ void DefaultFileSystem::checkSlowFolder()
         _slowChecking = false;
         if (_isRefreshing || _currentDirectory.toLocalFile() != path || !listing->accessible)
             return;
+        rememberListing(path, showHiddenFiles(), listing);
         if (listing->signature != _slowSignature)
             refresh();
     });

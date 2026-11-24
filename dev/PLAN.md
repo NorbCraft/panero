@@ -390,22 +390,29 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 
 ## Phase 17 — Preview 13 (owner decisions D-022)
 
-- [ ] Windows VM over SSH (key ~/.ssh/panero-vm_ed25519 on the host, setup
+- [x] Windows VM over SSH (key ~/.ssh/panero-vm_ed25519 on the host, setup
       script ~/VM-Share/setup-panero-ssh.ps1 run by the owner); MSYS2,
-      Python, Inno Setup in the VM.
-- [ ] Fixes: drag & drop via the document portal; Cloud section migration
-      (Windows); folder ticks from the provider status (Windows); special
-      folder icons everywhere; icon theme resets folder colour.
-- [ ] Drive right-click (Windows shell menu; Linux Panero drive menu).
-- [ ] Selection cleared after operations; app icon bigger; splitter
-      double-click 50/50; Back/Forward on the toolbar; right-click menu
-      choice; transparent marked background and cursor row; thumbnail frame.
+      Python, Inno Setup in the VM; dev/windows/vm.sh (full build 2m49s,
+      incremental ~2 min). VM-safe GUI test mode: helper (feature/p13-windows).
+- [x] Drag & drop via the document portal (verified with the Flatpak
+      Firefox sandbox); Cloud section migration (Windows); special folder
+      icons everywhere; krarc:/ error inside archives; dialogs centred on
+      the main window (owner findings 2026-11-23).
+- [ ] Folder ticks from the provider status (helper p13-windows); icon
+      theme resets folder colour (helper p13-settings).
+- [x] Linux drive menu (PaneroDriveActions). [ ] Windows: helper p13-windows.
+- [x] App icon bigger; splitter double-click 50/50; Back/Forward on the
+      toolbar (layout 33); thumbnail frame.
+- [ ] Selection cleared (helper p13-jobs); right-click menu choice
+      (p13-windows); transparent colours (p13-settings).
 - [ ] Quick View (Ctrl+Q) with images, text/code, folders, archives, PDF,
       audio/video.
 - [ ] Copy progress window + toolbar jobs button.
 - [ ] Settings window (Panero pages + Advanced) and short Quick Settings.
-- [ ] Ideas: undo, folder size on Space, first-start assistant, bookmarks
-      into Pinned, Tools menu cleanup, background thumbnails / faster start /
-      cloud listing cache.
+- [x] Faster start (no full udev scans: 200k -> 3.6k syscalls), thumbnails
+      not on cloud drives + known mime type, cloud listing cache; context
+      menu freeze on cloud files fixed.
+- [ ] Ideas: undo, folder size on Space (p13-jobs); first-start assistant,
+      bookmarks into Pinned, Tools menu cleanup (p13-settings).
 - [ ] Windows: zip/7z/tar packing and unpacking.
 - [ ] Release v0.1.0-preview.13 (Linux + Windows round).

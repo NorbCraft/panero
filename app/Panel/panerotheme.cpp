@@ -191,7 +191,7 @@ void invalidate()
     cache().valid = false;
 }
 
-void paintCurrentFrame(QPainter *painter, const QRect &rect, bool activePanel)
+void paintCurrentFrame(QPainter *painter, const QRect &rect, bool activePanel, bool accentBar)
 {
     if (!rect.isValid())
         return;
@@ -203,8 +203,8 @@ void paintCurrentFrame(QPainter *painter, const QRect &rect, bool activePanel)
     painter->setPen(QPen(color, activePanel ? 1.5 : 1.0));
     painter->setBrush(Qt::NoBrush);
     painter->drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), 3, 3);
-    if (activePanel) {
-        // leading accent bar
+    if (activePanel && accentBar) {
+        // leading accent bar (rows; thumbnail tiles get the plain frame)
         const qreal barWidth = 3.0;
         const QRectF bar(r.left() + 1.5, r.top() + 2.5, barWidth, qMax<qreal>(2.0, r.height() - 5.0));
         painter->setPen(Qt::NoPen);

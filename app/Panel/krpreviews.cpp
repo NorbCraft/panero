@@ -6,6 +6,7 @@
 */
 
 #include "krpreviews.h"
+#include "../FileSystem/paneroslowpaths.h"
 #ifdef Q_OS_WIN
 #include "../FileSystem/panerocloudfiles.h"
 #endif
@@ -63,10 +64,15 @@ void KrPreviews::deletePreview(KrViewItem *item)
 
 void KrPreviews::updatePreview(KrViewItem *item)
 {
+    const QUrl url = item->getFileItem()->getUrl();
 #ifdef Q_OS_WIN
     // Panero: no previews of cloud placeholders (making one downloads the file, D-020)
-    const QUrl url = item->getFileItem()->getUrl();
     if (url.isLocalFile() && PaneroCloudFiles::avoidReading(url.toLocalFile()))
+        return;
+#else
+    // Panero: no automatic thumbnails on cloud and network drives - each one
+    // downloads the whole file (D-022: browsing never downloads); the type icon stays
+    if (url.isLocalFile() && PaneroSlowPaths::isSlowPath(url.toLocalFile()))
         return;
 #endif
     if(!_job) {

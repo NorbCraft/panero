@@ -112,7 +112,8 @@ void KrViewItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &op
             _dontDraw = false;
             paintTile(painter, option, index);
             if (PaneroTheme::usePaneroColors() && list->currentIndex() == index)
-                PaneroTheme::paintCurrentFrame(painter, option.rect, index.data(ListModel::ActivePanelRole).toBool());
+                PaneroTheme::paintCurrentFrame(painter, option.rect, index.data(ListModel::ActivePanelRole).toBool(),
+                                               false); // same width on all four sides
             return;
         }
     }

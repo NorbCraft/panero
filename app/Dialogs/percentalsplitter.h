@@ -24,6 +24,8 @@ public:
 
 protected:
     void showEvent(QShowEvent * event) override;
+    /// Panero: a double-click on the handle shares the space evenly (50 / 50)
+    QSplitterHandle *createHandle() override;
 
 protected slots:
     void slotSplitterMoved(int pos, int index);

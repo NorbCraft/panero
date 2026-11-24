@@ -73,3 +73,8 @@ if(WIN32)
     target_link_libraries(panerojobstest advapi32 shell32)
 endif()
 set_tests_properties(panerojobstest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+ecm_add_test(percentalsplittertest.cpp ../app/Dialogs/percentalsplitter.cpp
+    TEST_NAME percentalsplittertest
+    LINK_LIBRARIES Qt5::Test Qt5::Widgets)
+target_include_directories(percentalsplittertest PRIVATE ${CMAKE_SOURCE_DIR}/app/Dialogs)
