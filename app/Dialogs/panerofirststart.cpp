@@ -68,7 +68,7 @@ void PaneroFirstStart::showFromHelp(QWidget *parent)
     const QString restartBefore = PaneroSettings::restartSignature();
     const QString selectionBefore = PaneroSettings::mouseSelection();
     assistant.save();
-    PaneroSettings::applyLive();
+    PaneroSettings::applyLive(PaneroSettings::restartSignature() != restartBefore);
     if (PaneroSettings::mouseSelection() != selectionBefore)
         PaneroSettings::recreatePanels();
     if (PaneroSettings::restartSignature() != restartBefore)

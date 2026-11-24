@@ -107,7 +107,7 @@ PaneroQuickSettings::PaneroQuickSettings(QWidget *window)
         if (value == PaneroSettings::theme())
             return;
         PaneroSettings::setTheme(value);
-        PaneroSettings::applyLive();
+        PaneroSettings::applyLive(true);
         updateRestartRow();
     });
 
@@ -123,7 +123,7 @@ PaneroQuickSettings::PaneroQuickSettings(QWidget *window)
         m_form->addRow(i18n("Icons:"), m_iconTheme);
         connect(m_iconTheme, QOverload<int>::of(&QComboBox::activated), this, [this]() {
             PaneroSettings::setIconTheme(m_iconTheme->currentData().toString());
-            PaneroSettings::applyLive();
+            PaneroSettings::applyLive(true);
             updateRestartRow();
         });
     } else {

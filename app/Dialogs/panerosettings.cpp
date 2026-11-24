@@ -351,11 +351,12 @@ void applyDetailsPreviews(bool on)
     });
 }
 
-void applyLive()
+void applyLive(bool look)
 {
     krConfig->sync();
     PaneroTheme::invalidate();
-    PaneroAppearance::instance()->apply();
+    if (look) // (not for the other switches: a new application style sheet re-polishes every widget)
+        PaneroAppearance::instance()->apply();
     KrColorCache::getColorCache().refreshColors();
     const int size = iconSize();
     forEachView([size](KrView *view) {

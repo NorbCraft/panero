@@ -45,6 +45,8 @@ protected:
     /// Writes the own (non-Konfigurator) widgets; returns true if the panels must be recreated.
     virtual bool save() { return false; }
     virtual void defaults() {}
+    /// The page changes the style, palette or icons (Appearance).
+    virtual bool changesLook() const { return false; }
 
     QGroupBox *addGroup(const QString &title, QFormLayout **form);
     /// A note with links ("settings:<page>") that open another Settings page.
@@ -65,6 +67,7 @@ public:
     explicit KgPaneroAppearance(bool first, QWidget *parent = nullptr);
 
 protected:
+    bool changesLook() const override { return true; }
     void load() override;
     bool save() override;
     void defaults() override;

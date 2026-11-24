@@ -68,7 +68,7 @@ Konfigurator::Konfigurator(bool f, const QString &startPage) : KPageDialog((QWid
     if (sx != -1 && sy != -1)
         resize(sx, sy);
     else
-        resize(900, 680);
+        resize(1080, 740);
 
     if (group.readEntry("Window Maximized",  false))
         showMaximized();

@@ -82,9 +82,10 @@ void setRowHeightAndIconSize(int rowHeight, int iconSize);
 void applyShowHidden(bool on);
 /// Previews in the details view: default for new tabs + all open details views.
 void applyDetailsPreviews(bool on);
-/// Palette, colours, icon size and row height of all panels, sidebar sections,
-/// drive buttons (emits PaneroAppearance::settingsChanged).
-void applyLive();
+/// Colours, icon size and row height of all panels, sidebar sections, drive
+/// buttons (emits PaneroAppearance::settingsChanged). @p look: the style,
+/// palette and icon theme changed too (re-applies the application style sheet).
+void applyLive(bool look = false);
 /// Views pick the mouse selection mode up when they are created.
 void recreatePanels();
 

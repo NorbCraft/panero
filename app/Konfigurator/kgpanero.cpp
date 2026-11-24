@@ -130,7 +130,7 @@ bool KgPaneroPage::apply()
         recreate = save() || recreate;
     m_changed = false;
     krConfig->sync();
-    PaneroSettings::applyLive();
+    PaneroSettings::applyLive(changesLook());
     emit sigChanged();
     if (PaneroSettings::restartSignature() != restartBefore && PaneroSettings::askRestart(this))
         return false;
