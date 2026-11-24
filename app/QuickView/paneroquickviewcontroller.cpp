@@ -123,6 +123,7 @@ void PaneroQuickViewController::open()
     qApp->installEventFilter(this);
     if (m_action)
         m_action->setChecked(true);
+    PaneroQuickView::trace(QStringLiteral("opened"));
     updateNow(); // the first item at once
 }
 
@@ -150,6 +151,7 @@ void PaneroQuickViewController::close()
     if (viewHadFocus)
         focusSource();
     m_source = nullptr;
+    PaneroQuickView::trace(QStringLiteral("closed"));
 }
 
 void PaneroQuickViewController::scheduleUpdate()
@@ -186,6 +188,7 @@ void PaneroQuickViewController::updateNow()
 
 void PaneroQuickViewController::focusSource()
 {
+    PaneroQuickView::trace(QStringLiteral("focus=panel"));
     if (ListPanel *panel = sourcePanel()) {
         panel->slotFocusOnMe();
         if (panel->view && panel->view->widget())

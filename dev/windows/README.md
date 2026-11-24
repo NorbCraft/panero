@@ -13,18 +13,21 @@ is D-015 (branch `experiment/windows`, merged through `feature/windows-main`).
   from the live MSYS2 repository.
 - **KDE Frameworks 5.116**, the final KF5 release. MSYS2 removed the KF5 (`*-qt5`)
   packages from its database after moving to KF6. The final builds are still
-  served by `repo.msys2.org`. `install-kf5.sh` downloads the 31 files listed in
+  served by `repo.msys2.org`. `install-kf5.sh` downloads the 32 files listed in
   `kf5-packages.sha256`, checks every SHA-256 and installs them with `pacman -U`.
   The dependency closure and DLL imports were checked against the live
   repository on 2026-11-20 (`kf5-closure.py`). The only unresolved import is
   `kwalletd5.exe` → `libgpgmepp-6.dll`, a daemon Panero does not use.
+  `syntax-highlighting-qt5` (Quick View's code colours, preview 13) was added on
+  2026-11-24; its only dependency is `qt5-base`. Qt Multimedia (Quick View's
+  player) is still in the live repository (`qt5-multimedia`).
 - If the files ever disappear from the mirror, rebuild them from the MSYS2
   `MINGW-packages` history, or move Panero to Qt 6 / KF6 (MSYS2 ships KF6).
 
 ## Build locally (Windows, MSYS2 UCRT64 shell)
 
 ```sh
-pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,pkgconf,extra-cmake-modules,qt5-base,qt5-svg,qt5-tools,qt5-winextras,qt5-imageformats,gettext-tools,zlib,bzip2,xz,dbus} curl zip
+pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,pkgconf,extra-cmake-modules,qt5-base,qt5-svg,qt5-tools,qt5-winextras,qt5-imageformats,qt5-multimedia,gettext-tools,zlib,bzip2,xz,dbus} curl zip
 dev/windows/install-kf5.sh
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
 ninja -C build && (cd build && QT_QPA_PLATFORM=offscreen ctest --output-on-failure)

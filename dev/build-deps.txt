@@ -28,6 +28,10 @@ libkf5widgetsaddons-dev
 libkf5windowsystem-dev
 libkf5xmlgui-dev
 libkf5guiaddons-dev
+# Quick View (D-022): code colours, PDF pages, audio/video
+libkf5syntaxhighlighting-dev
+libpoppler-qt5-dev
+qtmultimedia5-dev
 libkf5i18n-dev
 libacl1-dev
 libattr1-dev

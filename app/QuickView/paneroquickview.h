@@ -77,6 +77,8 @@ public:
     /// The page on screen: "empty", "waiting", "loading", "image", "text", "folder",
     /// "archive", "pdf", "media", "info" (used by tests and the GUI test log).
     QString pageName() const;
+    /// PANERO_QUICKVIEW_TRACE=1: one line per event on stderr (GUI tests)
+    static void trace(const QString &line);
 
 signals:
     void closeRequested();

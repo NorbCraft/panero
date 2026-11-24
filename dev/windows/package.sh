@@ -32,6 +32,10 @@ cp "$P/bin/kioslave5.exe" "$P/bin/kiod5.exe" "$out/"
 for d in platforms styles imageformats iconengines; do
     cp -r "$P/share/qt5/plugins/$d" "$out/plugins/"
 done
+# Quick View audio/video (Qt Multimedia: DirectShow / Media Foundation backends)
+for d in mediaservice audio playlistformats; do
+    [ -d "$P/share/qt5/plugins/$d" ] && cp -r "$P/share/qt5/plugins/$d" "$out/plugins/"
+done
 # KDE plugins: KIO workers (file, trash = Recycle Bin, ftp, http, ...) and kiod modules
 cp -r "$P/share/qt5/plugins/kf5/kio" "$P/share/qt5/plugins/kf5/kiod" "$out/plugins/kf5/"
 # Panero's own KIO worker (krarc: browse archives)

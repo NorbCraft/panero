@@ -14,6 +14,8 @@
 #include "../icon.h"
 
 #include <QApplication>
+
+#include <cstdio>
 #include <QFileInfo>
 #include <QFontDatabase>
 #include <QFormLayout>
@@ -39,6 +41,7 @@
 
 #include <KCoreAddons/KFormat>
 #include <KI18n/KLocalizedString>
+#include <KWidgetsAddons/KAcceleratorManager>
 
 #ifdef PANERO_HAVE_SYNTAX
 #include <KSyntaxHighlighting/Definition>
@@ -174,7 +177,7 @@ PaneroQuickView::PaneroQuickView(QWidget *parent)
     m_name->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     m_details = new QLabel(header);
     m_details->setTextFormat(Qt::PlainText);
-    m_details->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_details->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred); // the name gives way
     m_details->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     m_details->setForegroundRole(QPalette::PlaceholderText);
     m_close = new QToolButton(header);
@@ -184,8 +187,8 @@ PaneroQuickView::PaneroQuickView(QWidget *parent)
     m_close->setFocusPolicy(Qt::NoFocus);
     connect(m_close, &QToolButton::clicked, this, &PaneroQuickView::closeRequested);
     hl->addWidget(m_icon);
-    hl->addWidget(m_name, 3);
-    hl->addWidget(m_details, 2);
+    hl->addWidget(m_name, 1);
+    hl->addWidget(m_details);
     hl->addWidget(m_close);
     layout->addWidget(header);
 
@@ -390,7 +393,8 @@ QWidget *PaneroQuickView::buildPdfPage()
     m_pdfScroll = new QScrollArea(page);
     m_pdfScroll->setFrameShape(QFrame::NoFrame);
     m_pdfScroll->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
-    m_pdfScroll->setBackgroundRole(QPalette::Dark);
+    m_pdfScroll->viewport()->setBackgroundRole(QPalette::Mid); // the page stands out
+    m_pdfScroll->viewport()->setAutoFillBackground(true);
     m_pdfImage = new QLabel(m_pdfScroll);
     m_pdfImage->setAlignment(Qt::AlignCenter);
     m_pdfScroll->setWidget(m_pdfImage);
@@ -503,6 +507,7 @@ QWidget *PaneroQuickView::buildInfoPage()
     l->addWidget(m_hex, 1);
     l->addStretch();
     scroll->setWidget(page);
+    KAcceleratorManager::setNoAccel(page); // no automatic &-shortcuts in the field names
     return scroll;
 }
 
@@ -532,10 +537,19 @@ QString PaneroQuickView::pageName() const
     return QStringLiteral("info");
 }
 
+void PaneroQuickView::trace(const QString &line)
+{
+    static const bool enabled = qEnvironmentVariableIsSet("PANERO_QUICKVIEW_TRACE");
+    if (enabled) {
+        fprintf(stderr, "quickview: %s\n", line.toLocal8Bit().constData());
+        fflush(stderr);
+    }
+}
+
 void PaneroQuickView::setPage(QWidget *page)
 {
     m_stack->setCurrentWidget(page);
-    setProperty("paneroPage", pageName()); // for tests (QObject inspection)
+    trace(QStringLiteral("page=%1 item=%2").arg(pageName(), m_item.name));
 }
 
 void PaneroQuickView::setDetails(const QString &text)
@@ -666,6 +680,7 @@ void PaneroQuickView::startLoad(bool force)
     const QString path = localPath();
     const bool isDir = m_item.isDir;
     const int pdfWidth = qMax(200, int((m_stack->width() - 24) * devicePixelRatioF()));
+    trace(QStringLiteral("load item=%1 forced=%2").arg(m_item.name).arg(force));
     setPage(m_loadingPage);
     auto cancel = m_cancel;
     runAsync(
@@ -1040,6 +1055,7 @@ void PaneroQuickView::showFolderStats(const FolderStats &s)
         }
     }
     if (s.finished) {
+        trace(QStringLiteral("folder done item=%1 files=%2 folders=%3 size=%4").arg(m_item.name).arg(s.files).arg(s.folders).arg(s.totalSize));
         m_folderStop->setText(i18n("Calculate Again"));
         setDetails(shortSize(s.totalSize));
     } else {
@@ -1124,6 +1140,7 @@ void PaneroQuickView::focusContent()
         target = m_mediaPlay;
     else if (page == m_infoPage)
         target = m_hex->isVisible() ? static_cast<QWidget *>(m_hex) : m_openButton;
+    trace(QStringLiteral("focus=view"));
     if (target) {
         if (target->focusPolicy() == Qt::NoFocus)
             target->setFocusPolicy(Qt::StrongFocus);
