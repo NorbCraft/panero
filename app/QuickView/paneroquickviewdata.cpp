@@ -29,6 +29,7 @@
 #include <KCodecs/KEncodingProber>
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 
 #ifdef PANERO_HAVE_POPPLER

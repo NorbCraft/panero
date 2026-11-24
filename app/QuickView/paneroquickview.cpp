@@ -711,6 +711,13 @@ void PaneroQuickView::startLoad(bool force)
             if (fi.isSymLink())
                 r->linkTarget = fi.symLinkTarget();
             const QMimeDatabase db;
+            if (!fi.isDir() && !fi.isFile()) {
+                // pipes, sockets, devices: reading could wait forever
+                r->mime = db.mimeTypeForFile(fi, QMimeDatabase::MatchExtension).name();
+                r->mimeComment = db.mimeTypeForName(r->mime).comment();
+                r->kind = Kind::Other;
+                return r;
+            }
             r->mime = isDir || fi.isDir() ? QStringLiteral("inode/directory") : mimeTypeOf(path);
             r->mimeComment = db.mimeTypeForName(r->mime).comment();
             if (*cancel)
@@ -965,7 +972,7 @@ void PaneroQuickView::showInfo(const QString &note)
     addRow(i18n("Location:"), m_item.url.adjusted(QUrl::RemoveFilename | QUrl::StripTrailingSlash).toDisplayString(QUrl::PreferLocalFile));
     m_infoNote->setText(note);
     m_infoNote->setVisible(!note.isEmpty());
-    m_hexButton->setVisible(!m_item.isDir && !localPath().isEmpty() && r);
+    m_hexButton->setVisible(!m_item.isDir && !localPath().isEmpty() && r && !r->mime.startsWith(QLatin1String("inode/")));
     m_openButton->setVisible(!m_item.isDir);
     setPage(m_infoPage);
     if (r) {
