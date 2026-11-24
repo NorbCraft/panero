@@ -46,9 +46,15 @@ qint64 toFileTime(const QDateTime &time)
     return time.toMSecsSinceEpoch() * 10000 + FileTimeEpochOffset;
 }
 
+/// Windows paths on every platform (the record parser is tested on Linux too)
+QString backslashes(QString path)
+{
+    return path.replace(QLatin1Char('/'), QLatin1Char('\\'));
+}
+
 QString normalized(const QString &path)
 {
-    QString p = QDir::toNativeSeparators(QDir::cleanPath(QDir::fromNativeSeparators(path)));
+    QString p = QDir::cleanPath(QString(path).replace(QLatin1Char('\\'), QLatin1Char('/')));
     return p.toLower();
 }
 } // namespace
@@ -105,7 +111,7 @@ QByteArray PaneroRecycleBin::makeInfo(const Info &info)
 
 QString PaneroRecycleBin::infoPathFor(const QString &recycledPath)
 {
-    const QString native = QDir::toNativeSeparators(recycledPath);
+    const QString native = backslashes(recycledPath);
     const int slash = native.lastIndexOf(QLatin1Char('\\'));
     const QString name = native.mid(slash + 1);
     if (!name.startsWith(QLatin1String("$R")) || name.size() < 3)

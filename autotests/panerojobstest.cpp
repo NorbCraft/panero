@@ -23,6 +23,7 @@
 #include <KIO/CopyJob>
 #include <KIO/FileUndoManager>
 #include <KIO/SimpleJob>
+#include <KLocalizedString>
 
 namespace
 {
@@ -30,7 +31,10 @@ namespace
 class YesUi : public KIO::FileUndoManager::UiInterface
 {
 public:
-    bool confirmDeletion(const QList<QUrl> &, KIO::FileUndoManager::UiInterface::ConfirmationType) override { return true; }
+    bool confirmDeletion(const QList<QUrl> &) override { return true; }
+    bool copiedFileWasModified(const QUrl &, const QUrl &, const QDateTime &, const QDateTime &) override { return true; }
+    // no asynchronous question (KIO's widget handler): confirmDeletion() answers
+    void virtual_hook(int, void *) override {}
     void jobError(KIO::Job *job) override { qWarning() << "undo job error" << job->errorString(); }
 };
 
@@ -241,6 +245,7 @@ int main(int argc, char **argv)
     qputenv("XDG_CACHE_HOME", (home.path() + QStringLiteral("/cache")).toLocal8Bit());
 #endif
     QApplication app(argc, argv);
+    KLocalizedString::setApplicationDomain("panero");
     app.setApplicationName(QStringLiteral("panerojobstest"));
     PaneroJobsTest test;
     return QTest::qExec(&test, argc, argv);
