@@ -11,6 +11,7 @@ set(Konfigurator_SRCS
     kgadvanced.cpp
     kguseractions.cpp
     kgprotocols.cpp
+    kgpanero.cpp
     krresulttable.cpp
     krresulttabledialog.cpp
     searchobject.cpp)
@@ -26,5 +27,8 @@ target_link_libraries(Konfigurator
     KF5::ConfigWidgets
     KF5::WidgetsAddons
     KF5::GuiAddons
+    KF5::Notifications
+    KF5::Parts
+    KF5::XmlGui
     Qt5::Xml
 )

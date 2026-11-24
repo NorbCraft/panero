@@ -72,7 +72,7 @@ public slots:
     /** called by actExec* actions to choose the built-in command line mode */
     void execTypeSetup();
     void refresh(const QUrl &u);
-    void runKonfigurator(bool firstTime = false);
+    void runKonfigurator(bool firstTime = false, const QString &startPage = QString());
     void startKonfigurator() {
         runKonfigurator(false);
     }

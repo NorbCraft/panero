@@ -32,8 +32,9 @@ struct Scheme {
     QColor alternateBackground;  ///< second stripe
     QColor text;                 ///< normal text
     QColor markForeground;       ///< text of marked rows (red by default)
-    QColor markBackground;       ///< background of marked rows
+    QColor markBackground;       ///< background of marked rows (may be transparent)
     QColor currentBackground;    ///< fill of the cursor row in the active panel
+                                 ///< (transparent by default: only the frame is drawn)
     QColor currentFrame;         ///< frame + accent bar of the cursor row (active panel)
     QColor inactiveCurrentFrame; ///< frame of the cursor row in the inactive panel
     QColor accent;               ///< active panel colour (status rows, card outline) and
@@ -61,6 +62,11 @@ Mode mode();
 /// Effective dark/light decision (forced mode or the application palette).
 bool isDark();
 Scheme defaultScheme(bool dark);
+/// The default colour, or for a colour that is transparent by default (the cursor
+/// row fill) the fill colour offered when "Transparent" is switched off.
+QColor suggestedColor(bool dark, QColor Scheme::*member);
+/// Colours with a "Transparent" choice: cursor row fill and marked background.
+bool canBeTransparent(QColor Scheme::*member);
 /// Effective scheme including user overrides for the current light/dark mode.
 const Scheme &scheme();
 QString keyPrefix(bool dark);

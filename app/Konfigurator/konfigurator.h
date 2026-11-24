@@ -13,6 +13,7 @@
 #include "konfiguratorpage.h"
 
 // QtCore
+#include <QHash>
 #include <QTimer>
 
 #include <KWidgetsAddons/KPageDialog>
@@ -29,13 +30,21 @@ signals:
     void configChanged(bool isGUIRestartNeeded);
 
 public:
-    explicit Konfigurator(bool f = false, int startPage = 0); // true if Konfigurator is run for the first time
+    explicit Konfigurator(bool f = false, const QString &startPage = QString()); // true if Konfigurator is run for the first time
 
     void reject() override;
 
+    /// Panero: shows a page by id ("appearance", "panels", "mouse", "drives", "windows",
+    /// "advanced", "startup", "panel", "colors", "general", "fine-tuning", "archives",
+    /// "dependencies", "useractions", "protocols"), optionally "<id>-<sub page>".
+    void showPage(const QString &id);
+
 protected:
-    void newPage(KonfiguratorPage *, const QString &, const QString &, const QIcon &); // adds widget and connects to slot
-    void createLayout(int startPage);
+    KPageWidgetItem *newPage(KonfiguratorPage *, const QString &, const QString &, const QIcon &,
+                             const QString &id, KPageWidgetItem *parent = nullptr); // adds widget and connects to slot
+    void createLayout(const QString &startPage);
+    /// after an Apply: unchanged pages show the new values (several pages share keys)
+    void reloadOtherPages(KonfiguratorPage *applied);
     void closeDialog();
 
     void resizeEvent(QResizeEvent *e) override;
@@ -53,6 +62,7 @@ protected slots:
 
 private:
     QList<KPageWidgetItem*>     kgPages;
+    QHash<QString, KPageWidgetItem*> pageIds;
     bool                        firstTime;
     KPageWidgetItem            *lastPage;
     bool                        internalCall;

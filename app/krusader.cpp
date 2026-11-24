@@ -335,12 +335,8 @@ Krusader::Krusader(const QCommandLineParser &parser) : KParts::MainWindow(nullpt
         _popularUrls->load();
     }
 
-#ifndef Q_OS_WIN
-    // (Windows: no first-run Konfigurator and no search for Linux tools - the
-    // panels come straight up with Windows defaults, D-019)
-    if (runKonfig)
-        SLOTS->runKonfigurator(true);
-#endif
+    // (first run: the first-start assistant ran before the window was created,
+    // main.cpp; no Konfigurator, D-022)
 
     KConfigGroup viewerModuleGrp(krConfig, "ViewerModule");
     if (viewerModuleGrp.readEntry("FirstRun", true)) {
@@ -421,16 +417,8 @@ bool Krusader::versionControl()
     const bool firstRun = nogroup.readEntry("First Time", true);
     KrGlobal::sCurrentConfigVersion = nogroup.readEntry("Config Version", -1);
 
-    // first installation of krusader
-    // (Windows: no welcome box - it announces the Linux tool search and the Konfigurator)
-#ifndef Q_OS_WIN
-    if (firstRun) {
-        KMessageBox::information(
-            krApp, i18n("<qt><b>Welcome to Panero.</b><p>As this is your first run, your machine "
-                        "will now be checked for external applications. Then the Konfigurator will "
-                        "be launched where you can customize Panero to your needs.</p></qt>"));
-    }
-#endif
+    // first installation: Panero's first-start assistant replaces Krusader's welcome
+    // box and first-run Konfigurator (main.cpp, PaneroFirstStart, D-022)
     nogroup.writeEntry("Version", VERSION);
     nogroup.writeEntry("First Time", false);
     krConfig->sync();

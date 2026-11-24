@@ -91,6 +91,17 @@ public:
     virtual int activeSubPage() { return FIRST_PAGE; }
 
     /**
+      * Panero: shows a sub page (tab) by name, for links between Settings pages.
+      */
+    virtual void showSubPage(const QString &name) { Q_UNUSED(name) }
+
+    /**
+      * Panero: a label whose links "settings:<page>[-<sub page>]" open that page of
+      * the Settings window (e.g. "settings:appearance", "settings:panel-mouse").
+      */
+    static QLabel *createSettingsLink(const QString &html, QWidget *parent);
+
+    /**
       * Adds a new checkbox item to the page.
       * <br>The checkbox widget's name is QString(configGroup + "/" + name).ascii()<br>
       *

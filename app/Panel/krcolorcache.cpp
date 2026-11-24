@@ -382,11 +382,15 @@ static KrColorGroup paneroColors(const KrColorItemType &type)
     const bool stripe = PaneroTheme::alternatingRows() && type.m_alternateBackgroundColor;
     result.setBackground(stripe ? s.alternateBackground : s.background);
     result.setText(s.text);
-    result.setHighlight(s.markBackground);
+    // "Transparent" marked background: marked rows keep the row background (red text only)
+    const bool markFill = s.markBackground.alpha() > 0;
+    result.setHighlight(markFill ? s.markBackground : result.background());
     result.setHighlightedText(s.markForeground);
     // "Transparent" cursor fill: the row keeps its own background, only the frame shows
     if (type.m_currentItem && type.m_activePanel && s.currentBackground.alpha() > 0) {
-        if (type.m_selectedItem) {
+        if (type.m_selectedItem && !markFill) {
+            result.setHighlight(s.currentBackground);
+        } else if (type.m_selectedItem) {
             // keep the mark visible on the cursor row: blend mark and cursor fills
             const QColor m = s.markBackground, c = s.currentBackground;
             result.setHighlight(QColor((m.red() * 3 + c.red() * 2) / 5, (m.green() * 3 + c.green() * 2) / 5,
@@ -743,6 +747,9 @@ void KrColorCache::getColors(KrColorGroup  & result, const KrColorItemType & typ
 
 bool KrColorCache::getDimSettings(QColor & dimColor, int & dimFactor)
 {
+    // Panero colours never dim the inactive panel (the option is hidden then)
+    if (PaneroTheme::usePaneroColors())
+        return false;
     if (m_impl->m_colorSettings.getBoolValue("Dim Inactive Colors", false)) {
         dimFactor = m_impl->m_colorSettings.getNumValue("Dim Factor", 100);
         dimColor = m_impl->m_colorSettings.getColorValue("Dim Target Color");

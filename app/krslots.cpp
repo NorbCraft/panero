@@ -375,9 +375,9 @@ void KrSlots::refresh(const QUrl &u)
     ACTIVE_FUNC->openUrl(u);
 }
 
-void KrSlots::runKonfigurator(bool firstTime)
+void KrSlots::runKonfigurator(bool firstTime, const QString &startPage)
 {
-    auto *konfigurator = new Konfigurator(firstTime);
+    auto *konfigurator = new Konfigurator(firstTime, startPage);
     connect(konfigurator, &Konfigurator::configChanged, this, &KrSlots::configChanged);
 
     //FIXME - no need to exec

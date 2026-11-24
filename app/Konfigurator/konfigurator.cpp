@@ -37,13 +37,15 @@
 #include "kgcolors.h"
 #include "kguseractions.h"
 #include "kgprotocols.h"
+#include "kgpanero.h"
 
-Konfigurator::Konfigurator(bool f, int startPage) : KPageDialog((QWidget *)nullptr),
+Konfigurator::Konfigurator(bool f, const QString &startPage) : KPageDialog((QWidget *)nullptr),
         firstTime(f), internalCall(false), sizeX(-1), sizeY(-1)
 {
-    setWindowTitle(PANERO_TEXT(i18n("Konfigurator - Creating Your Own Panero"), i18n("Panero Settings")));
+    // Panero: one Settings window - Panero's pages first, Krusader's under "Advanced" (D-022)
+    setWindowTitle(i18n("Settings"));
     setWindowModality(Qt::ApplicationModal);
-    setFaceType(KPageDialog::List);
+    setFaceType(KPageDialog::Tree);
 
     setStandardButtons(QDialogButtonBox::Help|QDialogButtonBox::RestoreDefaults|QDialogButtonBox::Close|
                        QDialogButtonBox::Apply|QDialogButtonBox::Reset);
@@ -98,44 +100,93 @@ void Konfigurator::reject()
     QDialog::reject();
 }
 
-void Konfigurator::newPage(KonfiguratorPage *page, const QString &name, const QString &desc, const QIcon &icon)
+KPageWidgetItem *Konfigurator::newPage(KonfiguratorPage *page, const QString &name, const QString &desc, const QIcon &icon,
+                                       const QString &id, KPageWidgetItem *parent)
 {
     auto *item = new KPageWidgetItem(page, name);
     item->setIcon(icon);
     item->setHeader(desc);
-    addPage(item);
+    if (parent)
+        addSubPage(parent, item);
+    else
+        addPage(item);
 
     kgPages.append(item);
+    pageIds.insert(id, item);
     connect(page, &KonfiguratorPage::sigChanged, this, &Konfigurator::slotApplyEnable);
+    return item;
 }
 
-void Konfigurator::createLayout(int startPage)
+void Konfigurator::createLayout(const QString &startPage)
 {
+    // Panero's pages (the everyday settings, D-022)
+    newPage(new KgPaneroAppearance(firstTime, this), i18n("Appearance"), i18n("Light or dark, style, icons and colors"),
+            Icon("preferences-desktop-theme"), QStringLiteral("appearance"));
+    newPage(new KgPaneroPanels(firstTime, this), i18n("Panels"), i18n("File list density, hidden files and thumbnails"),
+            Icon("view-choose"), QStringLiteral("panels"));
+    newPage(new KgPaneroMouse(firstTime, this), i18n("Mouse & Keys"), i18n("How the mouse selects files, keyboard shortcuts"),
+            Icon("input-mouse"), QStringLiteral("mouse"));
+    newPage(new KgPaneroDrives(firstTime, this), i18n("Drives & Cloud"), i18n("Drive buttons and the Cloud section"),
+            Icon("drive-harddisk"), QStringLiteral("drives"));
+#ifdef Q_OS_WIN
+    newPage(new KgPaneroWindows(firstTime, this), i18n("Windows Integration"), i18n("Right-click menu and Windows programs"),
+            Icon("preferences-system-windows"), QStringLiteral("windows"));
+#endif
+
+    // Krusader's original pages
+    KPageWidgetItem *advanced = newPage(new KgPaneroAdvancedIntro(firstTime, this), i18n("Advanced"),
+                                        i18n("Krusader's original settings"), Icon("configure"), QStringLiteral("advanced"));
     // startup
-    newPage(new KgStartup(firstTime, this), i18n("Startup"), i18n("Panero's settings upon startup"), Icon("go-home"));
+    newPage(new KgStartup(firstTime, this), i18n("Startup"), i18n("Panero's settings upon startup"), Icon("go-home"),
+            QStringLiteral("startup"), advanced);
     // panel
-    newPage(new KgPanel(firstTime, this), i18n("Panel"), i18n("Panel"), Icon("view-choose"));
+    newPage(new KgPanel(firstTime, this), i18n("Panel"), i18n("Panel"), Icon("view-choose"), QStringLiteral("panel"), advanced);
     // colors
-    newPage(new KgColors(firstTime, this), i18n("Colors"), i18n("Colors"), Icon("color-picker"));
+    newPage(new KgColors(firstTime, this), i18n("Colors"), i18n("Colors"), Icon("color-picker"), QStringLiteral("colors"), advanced);
     // general
-    newPage(new KgGeneral(firstTime, this), i18n("General"), i18n("Basic Operations"), Icon("system-run"));
-    // advanced
-    newPage(new KgAdvanced(firstTime, this), i18n("Advanced"), i18n("Be sure you know what you are doing."), Icon("dialog-messages"));
+    newPage(new KgGeneral(firstTime, this), i18n("General"), i18n("Basic Operations"), Icon("system-run"), QStringLiteral("general"),
+            advanced);
+    // Krusader's "Advanced" page (the node above is called Advanced now)
+    newPage(new KgAdvanced(firstTime, this), i18n("Fine-Tuning"), i18n("Be sure you know what you are doing."),
+            Icon("dialog-messages"), QStringLiteral("fine-tuning"), advanced);
     // archives
     newPage(new KgArchives(firstTime, this), i18n("Archives"), i18n("Customize the way Panero deals with archives"),
-            Icon("archive-extract"));
+            Icon("archive-extract"), QStringLiteral("archives"), advanced);
     // dependencies
     newPage(new KgDependencies(firstTime, this), i18n("Dependencies"), i18n("Set the full path of the external applications"),
-            Icon("debug-run"));
+            Icon("debug-run"), QStringLiteral("dependencies"), advanced);
     // useractions
     newPage(new KgUserActions(firstTime, this), i18n("User Actions"), i18n("Configure your personal actions"),
-            Icon("user-properties"));
+            Icon("user-properties"), QStringLiteral("useractions"), advanced);
     // protocols
     newPage(new KgProtocols(firstTime, this), i18n("Protocols"), i18n("Link MIMEs to protocols"),
-            Icon("document-preview"));
+            Icon("document-preview"), QStringLiteral("protocols"), advanced);
 
-    setCurrentPage(kgPages.at(startPage));
+    setCurrentPage(kgPages.at(0));
+    if (!startPage.isEmpty())
+        showPage(startPage);
     slotApplyEnable();
+}
+
+void Konfigurator::showPage(const QString &id)
+{
+    const int dash = id.indexOf(QLatin1Char('-'), id.startsWith(QLatin1String("fine-")) ? 5 : 0);
+    const QString pageId = dash > 0 ? id.left(dash) : id;
+    KPageWidgetItem *item = pageIds.value(pageId);
+    if (!item)
+        return;
+    setCurrentPage(item);
+    if (currentPage() == item && dash > 0) // (the switch can be refused for unsaved changes)
+        qobject_cast<KonfiguratorPage *>(item->widget())->showSubPage(id.mid(dash + 1));
+}
+
+void Konfigurator::reloadOtherPages(KonfiguratorPage *applied)
+{
+    for (KPageWidgetItem *item : qAsConst(kgPages)) {
+        auto *page = qobject_cast<KonfiguratorPage *>(item->widget());
+        if (page && page != applied && !page->isChanged())
+            page->loadInitialValues();
+    }
 }
 
 void Konfigurator::closeEvent(QCloseEvent *event)
@@ -178,6 +229,7 @@ bool Konfigurator::slotPageSwitch(KPageWidgetItem *current, KPageWidgetItem *bef
             break;
         case KMessageBox::Yes:
             emit configChanged(currentPg->apply());
+            reloadOtherPages(currentPg);
             break;
         default:
             restoreTimer.setSingleShot(true);
@@ -209,7 +261,9 @@ void Konfigurator::slotClose()
 
 void Konfigurator::slotApply()
 {
-    emit configChanged((qobject_cast<KonfiguratorPage*>(currentPage()->widget()))->apply());
+    auto *page = qobject_cast<KonfiguratorPage*>(currentPage()->widget());
+    emit configChanged(page->apply());
+    reloadOtherPages(page);
 }
 
 void Konfigurator::slotReset()

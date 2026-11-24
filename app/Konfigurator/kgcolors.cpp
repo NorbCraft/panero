@@ -8,6 +8,7 @@
 #include "kgcolors.h"
 #include "../defaults.h"
 #include "../Panel/krcolorcache.h"
+#include "../Panel/panerotheme.h"
 #include "../Synchronizer/synchronizercolors.h"
 
 // QtCore
@@ -268,6 +269,30 @@ KgColors::KgColors(bool first, QWidget* parent) :
     connect(exportBtn, &QPushButton::clicked, this, &KgColors::slotExportColors);
 
     slotDisable();
+
+    // Panero: while Panero's colours are on (Appearance), the file list colours,
+    // the dimming of the inactive panel and the colour schemes here are not used;
+    // the Synchronizer and quick search colours still are
+    if (PaneroTheme::usePaneroColors()) {
+        generalGrp->hide();
+        previewGrp->hide();
+        importBtn->hide();
+        exportBtn->hide();
+        for (int index : {activeTabIdx, inactiveTabIdx}) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+            colorTabWidget->setTabVisible(index, false);
+#else
+            colorTabWidget->setTabEnabled(index, false);
+#endif
+        }
+        colorTabWidget->setCurrentIndex(otherTabIdx);
+        kgColorsLayout->addWidget(createSettingsLink(i18n("<p>The file list uses Panero's colors: "
+                                                          "<b>Set in <a href=\"settings:appearance\">Panero › Appearance</a></b>. "
+                                                          "Switch to the classic colors there to edit the panel colors "
+                                                          "on this page.</p>"),
+                                                     innerWidget),
+                                  0, 0, 1, 3);
+    }
 }
 
 int KgColors::addColorSelector(const QString& cfgName, QString name, QColor defaultValue, const QString& dfltName,

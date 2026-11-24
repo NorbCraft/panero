@@ -9,6 +9,7 @@
 #include "../panerowording.h"
 #include "../defaults.h"
 #include "../krglobal.h"
+#include "../Panel/panerotheme.h"
 #include "../Dialogs/krdialogs.h"
 
 // QtGui
@@ -326,6 +327,23 @@ void KgPanel::setupLayoutTab()
                          "default", frameShadow, 4, l, tab, true, false,
                          QString(), PAGE_LAYOUT);
     grid->addWidget(cmb, 3, 1);
+
+    // Panero: with Panero's look and colours the panel frames come from the style
+    // sheet ("None" would also lose the active panel's highlighted status row)
+    const bool paneroFrames = PaneroTheme::usePaneroColors()
+        && KConfigGroup(krConfig, PaneroTheme::GROUP).readEntry("Panero Style", true);
+    if (paneroFrames) {
+        for (int row = 1; row <= 3; ++row) {
+            for (int column = 0; column <= 1; ++column) {
+                if (QLayoutItem *item = grid->itemAtPosition(row, column))
+                    if (item->widget())
+                        item->widget()->hide();
+            }
+        }
+        grid->addWidget(createSettingsLink(i18n("Panel frames and colors follow Panero's look: "
+                                                "<a href=\"settings:appearance\">Panero › Appearance</a>."), tab),
+                        1, 0, 1, 3);
+    }
 }
 
 void KgPanel::setupView(KrViewInstance *instance, QWidget *parent)
@@ -430,6 +448,9 @@ void KgPanel::setupPanelTab()
     };
 
     KonfiguratorCheckBoxGroup *panelSett = createCheckBoxGroup(2, 0, panelSettings, 5 /*count*/, panelGrp, PAGE_VIEW);
+    // Panero: with Panero's colours the inactive panel always shows its cursor frame
+    if (PaneroTheme::usePaneroColors())
+        panelSett->find("Always Show Current Item")->hide();
 
     panelGrid->addWidget(panelSett, 3, 0, 1, 2);
 
@@ -557,6 +578,9 @@ void KgPanel::setupButtonsTab()
     buttonsCheckboxes = createCheckBoxGroup(1, 0, buttonsParams, 7/*count*/, tab, PAGE_PANELTOOLBAR);
     connect(buttonsCheckboxes->find("Panel Toolbar visible"), &KonfiguratorCheckBox::stateChanged, this, &KgPanel::slotEnablePanelToolbar);
     tabLayout->addWidget(buttonsCheckboxes, 0, Qt::Alignment());
+    // Panero: the drive list button is set with the drive buttons
+    buttonsCheckboxes->find("Media Button Visible")->hide();
+    tabLayout->addWidget(createSettingsLink(i18n("The drive list button: <a href=\"settings:drives\">Panero › Drives &amp; Cloud</a>."), tab));
 
     QGroupBox * panelToolbarGrp = createFrame(i18n("Visible Panel Toolbar buttons"), tab);
     QGridLayout * panelToolbarGrid = createGridLayout(panelToolbarGrp);
@@ -742,6 +766,14 @@ void KgPanel::setupMediaMenuTab()
                             sizeof(mediaMenuParams) / sizeof(*mediaMenuParams),
                             tab, PAGE_MEDIA_MENU);
     tabLayout->addWidget(mediaMenuCheckBoxes, 0, Qt::Alignment());
+    // Panero: squashfs (snaps) and other system mounts are never listed
+    mediaMenuCheckBoxes->find("HideSquashFS")->hide();
+#ifdef Q_OS_WIN
+    // Panero: on Windows the drive list shows Explorer's drives; these options do not apply
+    tab->setEnabled(false);
+    tabLayout->addWidget(new QLabel(i18n("On Windows the drive list shows the drives as Explorer does; "
+                                         "these options apply on Linux only."), scrollArea));
+#endif
 
     auto *showSizeHBox = new QHBoxLayout();
     QLabel *labelShowSize = new QLabel(i18n("Show Size:"), tab);
@@ -855,6 +887,15 @@ void KgPanel::slotSelectionModeChanged()
 void KgPanel::slotMouseCheckBoxChanged()
 {
     mouseRadio->selectButton("3");    //custom selection mode
+}
+
+void KgPanel::showSubPage(const QString &name)
+{
+    static const QStringList names = {QStringLiteral("general"), QStringLiteral("view"), QStringLiteral("buttons"),
+                                      QStringLiteral("mouse"), QStringLiteral("media"), QStringLiteral("layout")};
+    const int index = names.indexOf(name);
+    if (index >= 0)
+        tabWidget->setCurrentIndex(index);
 }
 
 int KgPanel::activeSubPage()
