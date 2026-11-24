@@ -559,3 +559,24 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
     a previously chosen colour persists across icon theme changes.
 - Proposal page with 12 decisions given to the owner (private artifact):
   https://claude.ai/artifact/P3K5pkJobatqem4De4Uyoc. Waiting for decisions.
+
+## 2026-11-23/24 — Preview 13 implementation (branch feature/preview13)
+
+- Owner decisions recorded as D-022. VM set up: OpenSSH (host-only firewall
+  rule, key auth), MSYS2 + pinned KF5, Python 3.12 + pywinauto, Inno Setup;
+  GUI runs on the VM desktop via a scheduled task (/it) — dev/windows/vm.sh.
+  The CI GUI test is not VM-safe (renames C:\msys64, real profile, Recycle
+  Bin, fake sync root): VM mode is being added by a helper.
+- Owner findings: "krarc:/ does not exist" (folder tree root inside an
+  archive) fixed; parentless dialogs reparented to the main window on Polish
+  (centred; Wayland transient). gui-dialog-test.sh (fails on the old code).
+- Drag & drop: FileTransfer portal key (paneroportaldrag), verified that the
+  Flatpak Firefox sandbox reads a file through the key while the plain path
+  is "not found" there.
+- Done by the main session: special folder icons, Windows Show Cloud
+  migration, Linux drive menu, 50/50 double-click, Back/Forward, bigger icon
+  (+ .ico), even thumbnail frame, startup (KMountMan allDevices/Block scans
+  removed), thumbnails on cloud drives off, cloud listing cache, context
+  menu freeze on cloud files (KFileItemListProperties stat).
+- Four helpers in worktrees: p13-windows, p13-quickview, p13-jobs,
+  p13-settings. All stopped at the 5-hour usage limit and were resumed.

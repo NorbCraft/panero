@@ -4,7 +4,8 @@
 #
 # Window test (Xvfb, temporary HOME): inside an archive no "krarc:/ does not
 # exist" error pops up (the folder tree followed the panel to "krarc:/"), and
-# a dialog without a parent (New Folder, F7) opens centred on the Panero window.
+# a dialog without a parent (New Folder, F7) opens centred on the Panero window;
+# the System drive button's right-click menu has Properties and Disks (Linux).
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export PANERO_DEV_HOME="$ROOT/build/dev-cloud"
@@ -14,6 +15,7 @@ SHOTS="$ROOT/build/dialog-shots"
 rm -rf "$SHOTS" "$DEVHOME/Archives"; mkdir -p "$SHOTS" "$DEVHOME/Archives/src/inner"
 echo hello > "$DEVHOME/Archives/src/inner/a.txt"
 (cd "$DEVHOME/Archives/src" && zip -qr ../test.zip inner)
+grep -q 'Show Drive Buttons' "$DEVHOME/config/panerorc" 2>/dev/null || printf '\n[Panero Appearance]\nShow Drive Buttons=true\n' >> "$DEVHOME/config/panerorc"
 PASS=0; FAIL=0
 check() { local name="$1"; shift
   if "$@"; then echo "PASS  $name"; PASS=$((PASS+1)); else echo "FAIL  $name"; FAIL=$((FAIL+1)); fi; }
@@ -62,6 +64,19 @@ if [ -n "$DLG" ]; then
   xdotool key Escape
 else
   check "New Folder dialog opened" false
+fi
+# right-click on the left panel's System drive button (the first button of the drive bar)
+SYS="$((M_X+305)) $((M_Y+70))"   # "System", first button of the left drive bar
+if [ -n "$SYS" ]; then
+  xdotool mousemove $SYS click 3; sleep 1.5; shot 04-drive-menu
+  MENU=$(xdotool search --onlyvisible --class panero 2>/dev/null | while read w; do n=$(xdotool getwindowname $w); [ -z "$n" ] && echo $w; done | tail -1)
+  # pick "Properties": first item after Open in Other Panel; type its accelerator-free way: arrow keys
+  xdotool key Down Down Return; sleep 2; shot 05-properties
+  PROP=$(xdotool search --onlyvisible --name 'Properties' 2>/dev/null | head -1)
+  check "drive menu: Properties opens the drive's properties" test -n "$PROP"
+  [ -n "$PROP" ] && xdotool key Escape
+else
+  check "found the System drive button" false
 fi
 kill $APID 2>/dev/null; sleep 2; kill -9 $APID 2>/dev/null; kill $XPID 2>/dev/null
 echo "passed $PASS, failed $FAIL (screenshots: $SHOTS)"

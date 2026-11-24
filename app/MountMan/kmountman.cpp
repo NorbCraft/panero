@@ -82,7 +82,10 @@ KMountMan::KMountMan(QWidget *parent) : _operational(false), waiting(false), mou
 
     connect(Solid::DeviceNotifier::instance(), &Solid::DeviceNotifier::deviceAdded, this, &KMountMan::deviceAdded);
 
-    for (Solid::Device &device : Solid::Device::allDevices()) {
+    // Panero: only the devices that can be mounted. allDevices() also walks every
+    // udev device (hundreds of thousands of file accesses, ~0.4 s in the GUI
+    // thread at every start)
+    for (Solid::Device &device : Solid::Device::listFromType(Solid::DeviceInterface::StorageAccess)) {
         if (device.isValid()) {
             QPointer<Solid::StorageAccess> access = device.as<Solid::StorageAccess>();
             if (access) {
@@ -421,7 +424,11 @@ QString KMountMan::findUdiForPath(const QString& path, const Solid::DeviceInterf
             return QString();
     }
     QString dev = QDir(mp->mountedFrom()).canonicalPath();
-    QList<Solid::Device> storageDevices = Solid::Device::listFromType(Solid::DeviceInterface::Block);
+    // Panero: list only the requested kind (StorageAccess, OpticalDrive, ...: a few
+    // ms); every such device is a block device. Listing all block devices goes
+    // through udev (0.3-0.7 s in the GUI thread, each time a panel changes drive).
+    QList<Solid::Device> storageDevices = Solid::Device::listFromType(
+        expType != Solid::DeviceInterface::Unknown ? expType : Solid::DeviceInterface::Block);
 
     for (int p = storageDevices.count() - 1 ; p >= 0; p--) {
         Solid::Device device = storageDevices[ p ];
