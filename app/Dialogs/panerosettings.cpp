@@ -256,7 +256,25 @@ QString mouseSelection()
     return lookAndFeel().readEntry("Mouse Selection", QString::number(_MouseSelection));
 }
 
+bool explorerMenu()
+{
+    return lookAndFeel().readEntry("Explorer Menu", true);
+}
+
 // ---- writing
+
+void setExplorerMenu(bool on)
+{
+    lookAndFeel().writeEntry("Explorer Menu", on);
+}
+
+void fillRightClickMenuCombo(QComboBox *combo)
+{
+    combo->addItem(i18n("Explorer menu (default)"), true);
+    combo->addItem(i18n("Panero menu"), false);
+    combo->setToolTip(i18n("The menu of files, folders and drives. The Explorer menu has Panero's items "
+                           "on top and \"Panero Menu\" for the rest."));
+}
 
 void setTheme(int value)
 {

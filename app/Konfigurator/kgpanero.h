@@ -146,6 +146,14 @@ class KgPaneroWindows : public KgPaneroPage
     Q_OBJECT
 public:
     explicit KgPaneroWindows(bool first, QWidget *parent = nullptr);
+
+protected:
+    void load() override;
+    bool save() override;
+    void defaults() override;
+
+private:
+    QComboBox *m_rightClickMenu;
 };
 #endif
 

@@ -115,6 +115,8 @@ if [ -n "$SET" ]; then
   xdotool windowactivate --sync "$SET" 2>/dev/null
   eval "$(xdotool getwindowgeometry --shell "$SET" | sed 's/^/S_/')"
   # the page tree: Appearance, Panels, Mouse & Keys, Drives & Cloud, Advanced (~20 px rows from the top)
+  xdotool mousemove $((S_X+60)) $((S_Y+28+1*20)) click 1; sleep 1; shot 20b-settings-panels
+  xdotool mousemove $((S_X+60)) $((S_Y+28+2*20)) click 1; sleep 1; shot 20c-settings-mouse
   xdotool mousemove $((S_X+60)) $((S_Y+28+3*20)) click 1; sleep 1
   shot 21-settings-drives
   echo "      settings window at ${S_X},${S_Y} ${S_WIDTH}x${S_HEIGHT}"

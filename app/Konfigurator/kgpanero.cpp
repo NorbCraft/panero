@@ -540,9 +540,11 @@ KgPaneroWindows::KgPaneroWindows(bool first, QWidget *parent)
     : KgPaneroPage(first, parent)
 {
     QFormLayout *form;
-    // (the right-click menu choice Explorer / Panero goes into this group)
     QGroupBox *menuBox = addGroup(i18n("Right-click menu"), &form);
-    form->addRow(QString(), addNote(i18n("The right-click menu shows Explorer's items (Open with, Send to, "
+    m_rightClickMenu = new QComboBox(menuBox);
+    PaneroSettings::fillRightClickMenuCombo(m_rightClickMenu);
+    form->addRow(i18n("Right-click menu:"), m_rightClickMenu);
+    form->addRow(QString(), addNote(i18n("The Explorer menu shows Explorer's items (Open with, Send to, "
                                          "the cloud apps...) with Panero's own items on top."),
                                     menuBox));
 
@@ -560,6 +562,22 @@ KgPaneroWindows::KgPaneroWindows(bool first, QWidget *parent)
                                            _RenameSelectsExtension, i18n("Rename (F2) selects the extension too"), filesBox,
                                            false, i18n("Off: only the name is selected, as in Explorer.")));
     finishSetup();
+}
+
+void KgPaneroWindows::load()
+{
+    m_rightClickMenu->setCurrentIndex(PaneroSettings::explorerMenu() ? 0 : 1);
+}
+
+bool KgPaneroWindows::save()
+{
+    PaneroSettings::setExplorerMenu(m_rightClickMenu->currentData().toBool());
+    return false;
+}
+
+void KgPaneroWindows::defaults()
+{
+    m_rightClickMenu->setCurrentIndex(0);
 }
 #endif
 

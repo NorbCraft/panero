@@ -173,7 +173,17 @@ PaneroQuickSettings::PaneroQuickSettings(QWidget *window)
         PaneroSettings::applyDetailsPreviews(on);
     });
 
-    // (Windows: the right-click menu choice Explorer / Panero is added here)
+#ifdef Q_OS_WIN
+    // Windows: Explorer's right-click menu (Panero's items on top) or Panero's own
+    auto *rightClick = new QComboBox(this);
+    PaneroSettings::fillRightClickMenuCombo(rightClick);
+    rightClick->setCurrentIndex(PaneroSettings::explorerMenu() ? 0 : 1);
+    m_form->addRow(i18n("Right-click:"), rightClick);
+    connect(rightClick, QOverload<int>::of(&QComboBox::activated), this, [rightClick]() {
+        PaneroSettings::setExplorerMenu(rightClick->currentData().toBool());
+        krConfig->sync();
+    });
+#endif
 
     // ---- restart (look changes)
     m_restartRow = new QWidget(this);

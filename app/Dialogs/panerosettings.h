@@ -63,6 +63,9 @@ bool showDriveButtons();
 bool showCloud();
 bool detailsPreviews(); ///< thumbnails instead of icons in the details view
 QString mouseSelection();
+/// Windows: Explorer's right-click menu (with Panero's items on top) or Panero's own
+/// ("Look&Feel/Explorer Menu", default true; feature/p13-windows).
+bool explorerMenu();
 
 // ---- writing (each writes its config key; call refresh()/applyLive() afterwards)
 void setTheme(int theme);
@@ -74,6 +77,9 @@ void setStoredFolderColor(const QString &value);
 void setShowDriveButtons(bool on);
 void setShowCloud(bool on);
 void setMouseSelection(const QString &mode);
+void setExplorerMenu(bool on);
+/// "Explorer menu (default)" / "Panero menu" (item data: the stored bool).
+void fillRightClickMenuCombo(QComboBox *combo);
 /// Writes the row height and icon size (density).
 void setRowHeightAndIconSize(int rowHeight, int iconSize);
 
