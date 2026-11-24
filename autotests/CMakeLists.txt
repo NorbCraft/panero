@@ -63,3 +63,13 @@ ecm_add_test(panerocloudfilestest.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Gui PaneroCloudFiles)
 target_include_directories(panerocloudfilestest PRIVATE ${CMAKE_SOURCE_DIR}/app/FileSystem)
 set_tests_properties(panerocloudfilestest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Quick View (D-022): classification, encodings, EXIF, folder sizes, archives, PDF, hex.
+ecm_add_test(paneroquickviewtest.cpp
+    TEST_NAME paneroquickviewtest
+    LINK_LIBRARIES Qt5::Test Qt5::Gui KF5::Archive QuickViewData)
+target_include_directories(paneroquickviewtest PRIVATE ${CMAKE_SOURCE_DIR}/app/QuickView)
+if(PANERO_HAVE_POPPLER)
+    target_compile_definitions(paneroquickviewtest PRIVATE PANERO_HAVE_POPPLER)
+endif()
+set_tests_properties(paneroquickviewtest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

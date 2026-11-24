@@ -17,6 +17,7 @@
 #include <QEvent>
 #include <QPointer>
 #include <QUrl>
+#include <functional>
 // QtGui
 #include <QPixmap>
 #include <QPixmapCache>
@@ -115,6 +116,9 @@ public:
 
     void saveSettings(KConfigGroup cfg, bool saveHistory);
     void restoreSettings(KConfigGroup cfg);
+
+    /// Panero Quick View (D-022): called when a panel's current item changes
+    static std::function<void(ListPanel *)> cursorChangedHook;
 
     void setPinnedUrl(QUrl &pinnedUrl) { _pinnedUrl = pinnedUrl; };
     QUrl pinnedUrl() const { return _pinnedUrl; };
