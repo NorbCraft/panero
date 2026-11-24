@@ -18,6 +18,7 @@ add_subdirectory(JobMan)
 add_subdirectory(Locate)
 add_subdirectory(MountMan)
 add_subdirectory(Panel)
+add_subdirectory(QuickView)
 add_subdirectory(Search)
 add_subdirectory(Splitter)
 add_subdirectory(UserAction)
@@ -74,6 +75,7 @@ if(WIN32)
 endif()
 
 target_link_libraries(panero
+                      QuickView
                       Panel
                       PanelView
                       BookMan

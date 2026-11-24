@@ -74,6 +74,7 @@
    <Action name="toggle previews" />
    <Action name="panero view colors" />
    <Action name="panero toggle navigation" />
+   <Action name="panero quick view" />
    <Separator/>
    <Action name="changeremoteencoding" />
    <Separator/>
@@ -200,6 +201,7 @@
   <Separator name="separator_2" />
   <Action name="toggle hidden files" />
   <Action name="panero view mode" />
+  <Action name="panero quick view" />
   <Action name="panero toolbar spacer" />
   <Action name="panero jobs" />
   <Action name="panero view colors" />

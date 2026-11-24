@@ -67,6 +67,27 @@ find_package(KF5 ${MIN_KF_VERSION} REQUIRED COMPONENTS
 )
 
 
+# Quick View (D-022): optional viewers. Without them Quick View shows file
+# information instead (and an Open button).
+find_package(KF5SyntaxHighlighting ${MIN_KF_VERSION} CONFIG)
+set_package_properties(KF5SyntaxHighlighting PROPERTIES TYPE RECOMMENDED
+                       PURPOSE "Quick View: syntax colours for code")
+find_package(Qt5 ${MIN_QT_VERSION} CONFIG OPTIONAL_COMPONENTS Multimedia MultimediaWidgets)
+if(Qt5Multimedia_FOUND AND Qt5MultimediaWidgets_FOUND)
+    set(PANERO_HAVE_MULTIMEDIA ON)
+endif()
+add_feature_info("Quick View audio/video" PANERO_HAVE_MULTIMEDIA "Qt5 Multimedia player in Quick View")
+# PDF pages: Linux only for now (Windows shows the file information, D-022)
+option(PANERO_QUICKVIEW_PDF "PDF pages in Quick View (Poppler-Qt5)" ${UNIX})
+if(PANERO_QUICKVIEW_PDF)
+    find_package(Poppler COMPONENTS Qt5)
+    set_package_properties(Poppler PROPERTIES TYPE RECOMMENDED PURPOSE "Quick View: PDF pages")
+    if(Poppler_Qt5_FOUND)
+        set(PANERO_HAVE_POPPLER ON)
+    endif()
+endif()
+add_feature_info("Quick View PDF" PANERO_HAVE_POPPLER "PDF pages in Quick View (Poppler-Qt5)")
+
 # ===== Get GIT revision =====
 
 execute_process(COMMAND git log --pretty=format:%h -n 1

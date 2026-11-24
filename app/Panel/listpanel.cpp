@@ -1326,6 +1326,9 @@ void ListPanel::restoreSettings(KConfigGroup cfg)
 
 void ListPanel::slotCurrentChanged(KrViewItem *item)
 {
+    if (cursorChangedHook)
+        cursorChangedHook(this);
+
     // update status bar
     if (item)
         krApp->statusBarUpdate(item->description());
@@ -1342,6 +1345,8 @@ void ListPanel::slotCurrentChanged(KrViewItem *item)
 
     p->update(item ? func->files()->getFileItem(item->name()) : nullptr);
 }
+
+std::function<void(ListPanel *)> ListPanel::cursorChangedHook;
 
 void ListPanel::otherPanelChanged()
 {

@@ -42,6 +42,7 @@
 #include "MountMan/kmountman.h"
 #include "Panel/PanelView/krviewfactory.h"
 #include "UserAction/useraction.h"
+#include "QuickView/paneroquickviewcontroller.h"
 
 QAction *KrActions::actCompare = nullptr;
 QAction *KrActions::actDiskUsage = nullptr;
@@ -189,7 +190,9 @@ void KrActions::setupActions(Krusader *krusaderApp)
     krusaderApp->actionCollection()->addAction("toggle actions toolbar", actShowActionsToolBar);
 
     actShowStatusBar = KStandardAction::showStatusbar(SLOTS, SLOT(updateStatusbarVisibility()), krusaderApp->actionCollection());
-    KStandardAction::quit(krusaderApp, SLOT(quit()), krusaderApp->actionCollection());
+    // Panero: Ctrl+Q is Quick View (Total Commander, D-022); F10 and Alt+F4 quit
+    krusaderApp->actionCollection()->setDefaultShortcuts(KStandardAction::quit(krusaderApp, SLOT(quit()), krusaderApp->actionCollection()), {});
+    PaneroQuickViewController::setupActions(krusaderApp->actionCollection(), krusaderApp);
     KStandardAction::configureToolbars(krusaderApp, SLOT(configureToolbars()), krusaderApp->actionCollection());
     KStandardAction::keyBindings(krusaderApp->guiFactory(), SLOT(configureShortcuts()), krusaderApp->actionCollection());
 

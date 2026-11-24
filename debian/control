@@ -24,16 +24,19 @@ Build-Depends: debhelper-compat (= 13),
                libkf5notifications-dev,
                libkf5parts-dev,
                libkf5solid-dev,
+               libkf5syntaxhighlighting-dev,
                libkf5textwidgets-dev,
                libkf5wallet-dev,
                libkf5widgetsaddons-dev,
                libkf5windowsystem-dev,
                libkf5xmlgui-dev,
+               libpoppler-qt5-dev,
                libqt5network5t64 | libqt5network5,
                ninja-build,
                pkg-config,
                qtbase5-dev,
                qtbase5-dev-tools,
+               qtmultimedia5-dev,
                zlib1g-dev,
 Standards-Version: 4.6.2
 Homepage: https://github.com/NorbCraft/panero
@@ -60,16 +63,22 @@ Depends: breeze-icon-theme,
 #   and extra image format previews (same set the Ubuntu dolphin package recommends);
 # packagekit: Panero offers to install KDiff3 through PackageKit's D-Bus
 #   service (authorised by the desktop's polkit agent) when it is missing.
+# libqt5multimedia5-plugins, gstreamer1.0-plugins-good: Quick View plays audio and
+#   video through Qt Multimedia's GStreamer backend; qt5-image-formats-plugins:
+#   WebP and TIFF pictures in Quick View (kimageformat-plugins adds HEIC/AVIF);
 # fuse3: cloud drives are mounted with Panero's own rclone (FUSE);
 # gnome-keyring | kwalletmanager: the key of the encrypted cloud sign-ins is
 #   kept in the desktop keyring (Secret Service); Zorin/GNOME has gnome-keyring.
 Recommends: ffmpegthumbs,
             fuse3,
             gnome-keyring | kwalletmanager,
+            gstreamer1.0-plugins-good,
             kdegraphics-thumbnailers,
             kimageformat-plugins,
             kio-extras,
+            libqt5multimedia5-plugins,
             packagekit,
+            qt5-image-formats-plugins,
 # Optional helpers detected at runtime (mirrors the Ubuntu krusader package's
 # Suggests with noble package names). KDiff3 stays optional by design: when
 # it is missing, Panero offers to install it through PackageKit.
