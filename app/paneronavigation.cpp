@@ -6,6 +6,7 @@
 
 #include "paneronavigation.h"
 #include "FileSystem/panerospecialfolders.h"
+#include "GUI/panerodriveactions.h"
 #ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE); Windows: preview 12
 #include "Cloud/panerocloud.h"
 #include "Cloud/paneroaddclouddialog.h"
@@ -59,6 +60,7 @@
 #include <KWidgetsAddons/KMessageBox>
 #include <Solid/Device>
 #include <Solid/StorageAccess>
+#include <KIOCore/KMountPoint>
 #include <Solid/StorageVolume>
 
 namespace
@@ -868,6 +870,18 @@ void PaneroNavigationDock::pinContextMenu(const QPoint &pos)
         menu.addSeparator();
         unpin = menu.addAction(Icon(QStringLiteral("list-remove")), i18n("Unpin"));
         menu.addSeparator();
+#ifndef Q_OS_WIN
+        // a pinned drive (USB stick, partition, "/"): its system actions (D-022)
+        const QString udi = item->data(UdiRole).toString();
+        const QUrl url = item->data(UrlRole).toUrl();
+        bool drive = !udi.isEmpty();
+        if (!drive && url.isLocalFile()) {
+            const KMountPoint::Ptr mp = KMountPoint::currentMountPoints().findByPath(url.toLocalFile());
+            drive = mp && QDir::cleanPath(mp->mountPoint()) == QDir::cleanPath(url.toLocalFile());
+        }
+        if (drive && PaneroDriveActions::addTo(&menu, udi, url.isLocalFile() ? url.toLocalFile() : QString(), this) > 0)
+            menu.addSeparator();
+#endif
     }
     QAction *pinCurrent = menu.addAction(Icon(QStringLiteral("list-add")), i18n("Pin Active Panel's Folder"));
     QAction *chosen = menu.exec(m_pins->viewport()->mapToGlobal(pos));

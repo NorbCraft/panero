@@ -14,6 +14,7 @@
 
 #include "../krglobal.h"
 #include "../icon.h"
+#include "panerodriveactions.h"
 #ifdef Q_OS_WIN
 #include "../Panel/panerowinshell.h"
 #endif
@@ -381,17 +382,13 @@ void MediaButton::rightClickMenu(const QString& udi, QPoint pos)
     actOpenNewTab->setData(QVariant(2));
 
     myMenu->addSeparator();
-    if (!mounted) {
-        QAction * actMount = myMenu->addAction(i18n("Mount"));
-        actMount->setData(QVariant(3));
-    } else {
-        QAction * actUnmount = myMenu->addAction(i18n("Unmount"));
-        actUnmount->setData(QVariant(4));
-    }
-    if (ejectable) {
-        QAction * actEject = myMenu->addAction(i18n("Eject"));
-        actEject->setData(QVariant(5));
-    }
+    // Panero: Properties, Mount/Unmount, Safely Remove, Eject, Format or Edit in Disks
+    // (the same as the drive buttons, D-022); network mounts are "remote:<mount point>"
+    if (udi.startsWith(remotePrefix))
+        PaneroDriveActions::addTo(myMenu, QString(), mounted ? mountPoint : QString(), this);
+    else
+        PaneroDriveActions::addTo(myMenu, udi, mounted ? mountPoint : QString(), this);
+    Q_UNUSED(ejectable)
 
     QAction *act = myMenu->exec(pos);
     int result = -1;

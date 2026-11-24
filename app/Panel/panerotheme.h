@@ -93,7 +93,7 @@ int effectiveRowHeight(const QFontMetrics &fm, int iconSize, int configured);
 void invalidate();
 
 /// Draw the cursor-row frame (solid border + leading accent bar when active).
-void paintCurrentFrame(QPainter *painter, const QRect &rect, bool activePanel);
+void paintCurrentFrame(QPainter *painter, const QRect &rect, bool activePanel, bool accentBar = true);
 /// Draw the mark indicator (check badge) inside @p area (usually the icon rect).
 void paintMarkIndicator(QPainter *painter, const QRectF &area);
 }
