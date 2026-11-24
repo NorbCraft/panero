@@ -17,6 +17,8 @@
 // QtGui
 #include <QPixmap>
 #include <QResizeEvent>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <KConfigCore/KSharedConfig>
 #include <KConfigWidgets/KHelpClient>
@@ -65,10 +67,17 @@ Konfigurator::Konfigurator(bool f, const QString &startPage) : KPageDialog((QWid
     int sx = group.readEntry("Window Width", -1);
     int sy = group.readEntry("Window Height", -1);
 
-    if (sx != -1 && sy != -1)
+    // (a size saved by the narrower Konfigurator of Krusader/earlier Panero is not used)
+    if (sx >= 960 && sy != -1)
         resize(sx, sy);
     else
-        resize(1080, 740);
+    {
+        // Panero: roomy, but never larger than the screen (1024x768 test runners)
+        QSize size(1080, 740);
+        if (QScreen *screen = QGuiApplication::primaryScreen())
+            size = size.boundedTo(screen->availableGeometry().size() * 0.92);
+        resize(size);
+    }
 
     if (group.readEntry("Window Maximized",  false))
         showMaximized();

@@ -1097,8 +1097,14 @@ except Exception as e:  # noqa: BLE001
 keys('{ESC}', 0.3)
 win.set_focus()
 before_wins = {w.handle for w in windows_of(proc.pid)}
-keys('^+,', 2.5)                       # Configure Panero (KDE's Preferences shortcut)
-new_wins = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+keys('^+,', 1.0)                       # Settings (KDE's Preferences shortcut; Ctrl+, too)
+new_wins = []
+for _ in range(20):                    # 15 pages: give the window time on a slow runner
+    new_wins = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+    if new_wins:
+        break
+    time.sleep(0.5)
+time.sleep(1)
 shot('settings-window')
 names = [w.window_text() for w in new_wins]
 record('The settings window is called "Panero Settings" (not Konfigurator)', any(n.startswith('Panero Settings') for n in names)
