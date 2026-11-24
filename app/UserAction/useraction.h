@@ -101,6 +101,13 @@ public:
      */
     void populateMenu(KActionMenu* menu, const QUrl *currentURL);
 
+    /**
+     * Panero: true when the user has own user actions (a useractions.xml in the
+     * user's data folder with at least one action). The shipped examples alone do
+     * not count; the User Actions menus stay hidden until then (D-022).
+     */
+    static bool userDefinedActions();
+
     QStringList allCategories();
     QStringList allNames();
 

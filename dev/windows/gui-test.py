@@ -145,7 +145,8 @@ def windows_of(pid):
 
 
 DIALOG_TITLES = ('Information', 'Search results', 'Konfigurator', 'Panero Settings', 'Missing Plugin', 'Warning',
-                 'Error', 'Import Krusader Settings', 'Quick Settings')
+                 'Error', 'Import Krusader Settings', 'Quick Settings', 'Welcome to Panero')
+ASSISTANT = 'Welcome to Panero'   # first-start assistant (D-022): new users only
 
 
 def is_main(w):
@@ -463,7 +464,8 @@ while time.time() < deadline and proc.poll() is None:
         if d.window_text() not in first_run_dialogs:
             first_run_dialogs.append(d.window_text())
         d.set_focus()
-        # Welcome box: OK. Konfigurator (opened by the first run): close it, keep defaults.
+        # First-start assistant: Enter goes Next ... Start Panero with the defaults.
+        # Konfigurator (opened by older first runs): close it, keep defaults.
         if d.window_text().startswith('Konfigurator'):
             d.close()
         else:
@@ -481,8 +483,9 @@ time.sleep(3)
 main.set_focus()
 shot('first-run-main-window')
 record('First run reaches the main window', True, 'windows on the way: ' + ' → '.join(seen_titles))
-record('First run goes straight to the panels (no welcome box, tool search or Konfigurator)',
-       not first_run_dialogs, f'dialogs: {first_run_dialogs}', must=True)
+record('First run: only the first-start assistant, then the panels (no welcome box, tool search or Konfigurator)',
+       all(t == ASSISTANT for t in first_run_dialogs), f'dialogs: {first_run_dialogs}', must=True)
+record('First run shows the first-start assistant', ASSISTANT in first_run_dialogs, f'dialogs: {first_run_dialogs}')
 r = main.rectangle()
 record('Main window size on first run', True, f'{r.width()}×{r.height()} on a {ImageGrab.grab().size[0]}×'
        f'{ImageGrab.grab().size[1]} screen; title "{main.window_text()}"')

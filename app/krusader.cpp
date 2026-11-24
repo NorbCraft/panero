@@ -647,6 +647,9 @@ void Krusader::updateUserActions() {
         userActionMenu->addAction(KrActions::actManageUseractions);
         userActionMenu->addSeparator();
         krUserAction->populateMenu(userActionMenu, nullptr);
+        // Panero: no User Actions menu until the user defines one (Tools > Manage
+        // User Actions, Settings > Advanced > User Actions) - D-022
+        userActionMenu->setVisible(UserAction::userDefinedActions());
     }
 }
 

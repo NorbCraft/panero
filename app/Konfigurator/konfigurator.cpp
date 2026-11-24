@@ -43,7 +43,7 @@ Konfigurator::Konfigurator(bool f, const QString &startPage) : KPageDialog((QWid
         firstTime(f), internalCall(false), sizeX(-1), sizeY(-1)
 {
     // Panero: one Settings window - Panero's pages first, Krusader's under "Advanced" (D-022)
-    setWindowTitle(i18n("Settings"));
+    setWindowTitle(i18n("Panero Settings"));
     setWindowModality(Qt::ApplicationModal);
     setFaceType(KPageDialog::Tree);
 

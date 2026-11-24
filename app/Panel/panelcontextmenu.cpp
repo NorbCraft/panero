@@ -63,6 +63,7 @@
 #include <QTimer>
 #endif
 #include "../UserAction/useractionpopupmenu.h"
+#include "../UserAction/useraction.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
 {
@@ -247,9 +248,12 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     addSeparator();
 
     // --------------- user actions
-    QAction *userAction = new UserActionPopupMenu(file->getUrl(), this);
-    userAction->setText(i18n("User Actions"));
-    addAction(userAction);
+    // (Panero: only once the user has defined user actions, D-022)
+    if (UserAction::userDefinedActions()) {
+        QAction *userAction = new UserActionPopupMenu(file->getUrl(), this);
+        userAction->setText(i18n("User Actions"));
+        addAction(userAction);
+    }
 
     // --------------- compress/extract actions
     // --------------- KDE file item actions

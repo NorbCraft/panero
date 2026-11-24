@@ -319,7 +319,8 @@ void KrActions::setupActions(Krusader *krusaderApp)
     // Panero: Ctrl+M as in Total Commander (D-019); Shift+F2 stays
     krusaderApp->actionCollection()->setDefaultShortcuts(actMultiRename, {QKeySequence(Qt::CTRL + Qt::Key_M), QKeySequence(Qt::SHIFT + Qt::Key_F2)});
 
-    NEW_KACTION(actAddBookmark, i18n("Add Bookmark"), "bookmark-new", KStandardShortcut::addBookmark(), SLOTS, SLOT(addBookmark()), "add bookmark");
+    NEW_KACTION(actAddBookmark, i18n("Pin Current Folder"), "bookmark-new", KStandardShortcut::addBookmark(), SLOTS, SLOT(addBookmark()), "add bookmark");
+    actAddBookmark->setToolTip(i18n("Add the active panel's folder to the Pinned list (Krusader: Add Bookmark)"));
     NEW_KACTION(actVerticalMode, i18n("Vertical Mode"), "view-split-top-bottom", Qt::ALT + Qt::CTRL + Qt::Key_R, MAIN_VIEW, SLOT(toggleVerticalMode()), "toggle vertical mode");
     actUserMenu = new KActionMenu(i18n("User&actions"), krusaderApp);
     krusaderApp->actionCollection()->addAction("useractionmenu", actUserMenu);
