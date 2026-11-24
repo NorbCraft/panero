@@ -23,7 +23,6 @@
         <layout type="horizontal">
             <frame type="horizontal" color="Statusbar" shape="Box" shadow="Raised">
                 <widget name="totals"/>
-                <widget name="jobRow"/>
                 <widget name="quickSizeCalcProgress"/>
                 <widget name="cancelQuickSizeCalcButton"/>
                 <widget name="previewProgress"/>
@@ -53,7 +52,6 @@
             <frame type="horizontal" color="Statusbar" shape="Box" shadow="Raised">
                 <widget name="totals"/>
                 <widget name="freeSpace"/>
-                <widget name="jobRow"/>
                 <widget name="quickSizeCalcProgress"/>
                 <widget name="cancelQuickSizeCalcButton"/>
                 <widget name="previewProgress"/>
@@ -86,7 +84,6 @@
             <frame type="horizontal" color="Statusbar" shape="Box" shadow="Raised">
                 <widget name="totals"/>
             </frame>
-            <widget name="jobRow"/>
                 <widget name="quickSizeCalcProgress"/>
             <widget name="cancelQuickSizeCalcButton"/>
             <widget name="previewProgress"/>
@@ -115,7 +112,6 @@
             <frame type="horizontal" color="Statusbar" shape="NoFrame" shadow="Plain">
                 <widget name="totals"/>
                 <widget name="freeSpace"/>
-                <widget name="jobRow"/>
                 <widget name="quickSizeCalcProgress"/>
                 <widget name="cancelQuickSizeCalcButton"/>
                 <widget name="previewProgress"/>

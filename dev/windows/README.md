@@ -313,3 +313,31 @@ downloaded: outline check, online only: cloud); `cloud-context-menu`,
 Explorer); `profile-with-cloud-folder` (the sync folder as a normal folder in
 the panel and the tree); `installed-panero` (started from
 `%LOCALAPPDATA%\Programs\Panero`).
+
+## Preview 13: file operations (D-022)
+
+Same code as Linux (`app/JobMan`); the Windows differences:
+
+- **Progress window and jobs button**: every copy/move/delete/pack job gets
+  Panero's progress window (`PaneroJobWindow`: what and where, bar, amount,
+  speed, time left, Pause/Resume, Keep in Background, Cancel; the close button
+  and Esc keep it in the background) and the jobs button with the progress
+  ring appears on the main toolbar while jobs run. When a job kept in the
+  background ends, a tray message (Windows notification) appears for a few
+  seconds; clicking it brings Panero to the front. No KNotification (no D-Bus).
+- **Move to Recycle Bin** runs in a worker thread (`PaneroRecycleJob`,
+  `QFile::moveToTrash` = `IFileOperation` with `FOFX_RECYCLEONDELETE`), with
+  progress and Cancel (stops after the item being moved); it used to block
+  the window. Errors are listed as before.
+- **Undo (Ctrl+Z)**: copy, move, rename and new folder through KIO's
+  FileUndoManager, as on Linux. Moves to the Recycle Bin are undone by
+  Panero (`PaneroUndo`, `PaneroRecycleBin::restore`): for every item it
+  recorded, the `$R...` item in `<drive>\$Recycle.Bin\<user SID>` is put back
+  at its original path after its `$I...` record confirmed the original path
+  and the deletion time (if Windows did not report the recycled path, the
+  record is searched by original path + time); the `$I` record is removed and
+  Explorer is notified. Nothing else in the Recycle Bin is touched; an item
+  whose original path exists again is not restored (message).
+- Unit test `panerojobstest` (`recycleBinRestore`): a file the test made is
+  moved to the Recycle Bin and restored by Undo (skipped where a drive has no
+  Recycle Bin).

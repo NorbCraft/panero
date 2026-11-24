@@ -26,7 +26,7 @@ class KrJob : public QObject
     Q_OBJECT
 public:
     /** Supported job types. Add other types if needed.*/
-    enum Type { Copy, Move, Link, Trash, Delete };
+    enum Type { Copy, Move, Link, Trash, Delete, Pack, Unpack, Test };
 
     /** Create a new copy, move, or link job. */
     static KrJob *createCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &src,
@@ -35,6 +35,9 @@ public:
     static KrJob *createDeleteJob(const QList<QUrl> &urls, bool moveToTrash);
     /** Create a drop job - the copy job is already started.*/
     static KrJob *createDropJob(KIO::DropJob *dropJob, KIO::CopyJob *job);
+    /** Panero: wrap an already started job (pack, unpack, test archives) for the job manager. */
+    static KrJob *createStartedJob(Type type, const QList<QUrl> &src, const QUrl &destination,
+                                   const QString &description, KIO::Job *job);
 
     /** Start or resume this job. If job was started started() is emitted. */
     void start();
@@ -54,7 +57,7 @@ public:
      * The KIO::Job emits a more detailed description after start.
      */
     QString description() const { return m_description; }
-    // Panero: for the progress row in the panels
+    // Panero: for the progress windows and the jobs button
     Type type() const { return m_type; }
     QUrl destination() const { return m_dest; }
     QList<QUrl> sources() const { return m_urls; }
@@ -68,7 +71,7 @@ signals:
 
 private:
     KrJob(Type type, const QList<QUrl> &urls, const QUrl &dest, KIO::JobFlags flags,
-          const QString &description, KIO::CopyJob *copyJob = nullptr,
+          const QString &description, KIO::Job *startedJob = nullptr,
           KIO::DropJob *dropJob = nullptr);
     static KrJob *createKrCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &src,
                               const QUrl &destination, KIO::JobFlags flags,

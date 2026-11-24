@@ -19,6 +19,7 @@
 #include <KI18n/KLocalizedString>
 #include <KIO/CopyJob>
 #include <KIO/DeleteJob>
+#include <KIO/FileUndoManager>
 #include <KIO/DirectorySizeJob>
 #include <KIO/StatJob>
 #include <KIOCore/KFileItem>
@@ -69,11 +70,12 @@ void VirtualFileSystem::copyFiles(const QList<QUrl> &urls, const QUrl &destinati
     emit fileSystemChanged(QUrl("virt:///" + dir), false); // may call refresh()
 }
 
-void VirtualFileSystem::dropFiles(const QUrl &destination, QDropEvent *event, QWidget * /*targetWidget*/)
+KIO::DropJob *VirtualFileSystem::dropFiles(const QUrl &destination, QDropEvent *event, QWidget * /*targetWidget*/)
 {
     const QList<QUrl> &urls = KUrlMimeData::urlsFromMimeData(event->mimeData());
     // dropping on virtual filesystem is always copy operation
     copyFiles(urls, destination);
+    return nullptr;
 }
 
 void VirtualFileSystem::addFiles(const QList<QUrl> &fileUrls, KIO::CopyJob::CopyMode /*mode*/,
@@ -156,6 +158,7 @@ void VirtualFileSystem::rename(const QString &fileName, const QString &newName)
     _virtFilesystemDict[currentDir()]->append(dest);
 
     KIO::Job *job = KIO::moveAs(item->getUrl(), dest, KIO::HideProgressInfo);
+    KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Rename, {item->getUrl()}, dest, job);
     connect(job, &KIO::Job::result, this, [=](KJob* job) { slotJobResult(job, false); });
     connect(job, &KIO::Job::result, this, [=]() { emit fileSystemChanged(currentDirectory(), false); });
 }

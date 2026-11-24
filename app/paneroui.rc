@@ -4,7 +4,7 @@
      NOTE: Always update the version in the gui tag below if you make changes to the menu bar and its actions!
            This will trigger an update of the ~/.local/share/kxmlgui5/krusader/krusaderui.rc file next time
            user opens the application: the menu bar will be replaced with the new version, toolbars updated.  -->
-<gui version="33" name="panero" >
+<gui version="34" name="panero" >
  <MenuBar>
   <Menu name="file" >
    <text>&amp;File</text>
@@ -28,6 +28,8 @@
   </Menu>
   <Menu name="edit">
    <text>&amp;Edit</text>
+   <Action name="job undo" />
+   <Separator/>
    <Action name="std_cut" />
    <Action name="std_copy" />
    <Action name="std_paste" />
@@ -199,6 +201,7 @@
   <Action name="toggle hidden files" />
   <Action name="panero view mode" />
   <Action name="panero toolbar spacer" />
+  <Action name="panero jobs" />
   <Action name="panero view colors" />
   <Action name="hamburger_menu" />
  </ToolBar>

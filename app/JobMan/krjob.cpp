@@ -5,6 +5,7 @@
 */
 
 #include "krjob.h"
+#include "panerorecyclebin.h"
 #include "../panerowording.h"
 
 #include <KI18n/KLocalizedString>
@@ -43,6 +44,12 @@ KrJob *KrJob::createDropJob(KIO::DropJob *dropJob, KIO::CopyJob *job)
                            KIO::DefaultFlags /*dummy*/, job, dropJob);
 }
 
+KrJob *KrJob::createStartedJob(Type type, const QList<QUrl> &src, const QUrl &destination,
+                               const QString &description, KIO::Job *job)
+{
+    return new KrJob(type, src, destination, KIO::DefaultFlags /*dummy*/, description, job);
+}
+
 KrJob *KrJob::createKrCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &src,
                               const QUrl &destination, KIO::JobFlags flags, KIO::CopyJob *job,
                               KIO::DropJob *dropJob)
@@ -68,9 +75,9 @@ KrJob *KrJob::createKrCopyJob(KIO::CopyJob::CopyMode mode, const QList<QUrl> &sr
 }
 
 KrJob::KrJob(Type type, const QList<QUrl> &urls, const QUrl &dest, KIO::JobFlags flags,
-             const QString &description, KIO::CopyJob *copyJob, KIO::DropJob *dropJob)
+             const QString &description, KIO::Job *startedJob, KIO::DropJob *dropJob)
     : m_type(type), m_urls(urls), m_dest(dest), m_flags(flags), m_description(description),
-      m_job(copyJob), m_dropJob(dropJob)
+      m_job(startedJob), m_dropJob(dropJob)
 {
     if (m_job) {
         connectStartedJob();
@@ -105,7 +112,17 @@ void KrJob::start()
         break;
     }
     case Trash: {
-        m_job = KIO::trash(m_urls, KIO::HideProgressInfo); // Panero: progress in the panel
+#ifdef Q_OS_WIN
+        // Windows: KIO 5's trash worker passes "\C:\..." to SHFileOperation, which fails, and
+        // reports success (kio_trash_win.cpp, doFileOp/translateError). Local files go to the
+        // Recycle Bin through IFileOperation in a worker thread; Undo restores them (PaneroUndo).
+        if (std::all_of(m_urls.cbegin(), m_urls.cend(), [](const QUrl &url) { return url.isLocalFile(); })) {
+            m_job = new PaneroRecycleJob(m_urls);
+            break;
+        }
+#endif
+        // Panero: progress in Panero's own window (PaneroJobWindow), not KIO's
+        m_job = KIO::trash(m_urls, KIO::HideProgressInfo);
         KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Trash, m_urls, QUrl("trash:/"),
                                                 m_job);
         break;

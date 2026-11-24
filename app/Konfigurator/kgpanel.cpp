@@ -102,7 +102,7 @@ void KgPanel::setupGeneralTab()
     KONFIGURATOR_CHECKBOX_PARAM operation_settings[] = { // cfg_class, cfg_name, default, text, restart, tooltip
         {"Look&Feel", "Mark Dirs",            _MarkDirs,          i18n("Autoselect folders"),   false,  i18n("When matching the select criteria, not only files will be selected, but also folders.") },
         {"Look&Feel", "Rename Selects Extension", _RenameSelectsExtension,          i18n("Rename selects extension"),   false,  i18n("When renaming a file, the whole text is selected. If you want Total-Commander like renaming of just the name, without extension, uncheck this option.") },
-        {"Look&Feel", "UnselectBeforeOperation", _UnselectBeforeOperation, i18n("Unselect files before copy/move"), false, i18n("Unselect files, which are to be copied/moved, before the operation starts.") },
+        {"Look&Feel", "UnselectBeforeOperation", _UnselectBeforeOperation, i18n("Unmark files after copy, move, pack and open"), false, i18n("Clear the marks of the files once a copy, move or pack has started or they were opened (as in Total Commander). Edit > Restore Selection marks them again.") },
         {"Look&Feel", "FilterDialogRemembersSettings", _FilterDialogRemembersSettings, i18n("Filter dialog remembers settings"), false, i18n("The filter dialog is opened with the last filter settings that where applied to the panel.") },
     };
     cbs = createCheckBoxGroup(2, 0, operation_settings, 4 /*count*/, groupBox, PAGE_GENERAL);

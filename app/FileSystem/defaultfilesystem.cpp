@@ -226,7 +226,7 @@ void DefaultFileSystem::copyFiles(const QList<QUrl> &urls, const QUrl &destinati
     krJobMan->manageJob(krJob, startMode);
 }
 
-void DefaultFileSystem::dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget)
+KIO::DropJob *DefaultFileSystem::dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget)
 {
     qDebug() << "destination=" << destination;
 
@@ -248,6 +248,7 @@ void DefaultFileSystem::dropFiles(const QUrl &destination, QDropEvent *event, QW
             connectJobToSources(kJob, kJob->srcUrls());
         }
     });
+    return job;
 }
 
 void DefaultFileSystem::addFiles(const QList<QUrl> &fileUrls, KIO::CopyJob::CopyMode mode,
@@ -270,11 +271,14 @@ void DefaultFileSystem::addFiles(const QList<QUrl> &fileUrls, KIO::CopyJob::Copy
 
 void DefaultFileSystem::mkDir(const QString &name)
 {
-    KJob *job;
+    KIO::Job *job;
+    // Panero: recorded for Undo (Ctrl+Z, D-022)
     if (name.contains('/')) {
         job = KIO::mkpath(getUrl(name));
+        KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Mkpath, {}, getUrl(name), job);
     } else {
         job = KIO::mkdir(getUrl(name));
+        KIO::FileUndoManager::self()->recordJob(KIO::FileUndoManager::Mkdir, {}, getUrl(name), job);
     }
     connectJobToDestination(job, currentDirectory());
 }
