@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QList>
+#include <QObject>
 #include <QPixmap>
 #include <QString>
 #include <QStringList>
@@ -49,8 +50,19 @@ enum class State { NotCloud, OnlineOnly, Available, Pinned };
 
 /// True when reading the content would download it (RECALL_ON_DATA_ACCESS, OFFLINE).
 bool isPlaceholder(quint32 attributes);
-/// The badge Explorer shows for an item inside a sync folder.
+/// The badge Explorer shows for an item inside a sync folder. For folders this
+/// is only the folder's own part; folderStateFromScan() adds its content.
 State stateFromAttributes(quint32 attributes, bool isDir);
+/// True when an entry found while scanning a folder is on this device: a file
+/// that is no placeholder, a folder whose listing is local (no RECALL_ON_OPEN).
+bool entryIsLocal(quint32 attributes, bool isDir);
+/**
+ * A folder's badge as Explorer shows it: the "available" tick only when all of
+ * its content is on this device. @p allLocal / @p complete: the result of the
+ * background scan of its content (complete = false: not scanned yet or too big,
+ * no badge then). A freed-up or not yet listed folder is online-only at once.
+ */
+State folderStateFromScan(quint32 folderAttributes, bool allLocal, bool complete);
 /// Paints the state badge onto @p icon (cloud; green outline check; green filled check).
 void decorate(QPixmap &icon, State state);
 /// Explorer's offline actions: "Always keep on this device" (checked = AlwaysKeep,
@@ -113,7 +125,18 @@ quint32 attributes(const QString &path);
 /// placeholder in a sync folder, anything on a streaming drive, or attributes unknown there.
 bool avoidReading(const QString &path);
 /// Badge of an item (NotCloud outside the sync folders and for the folders themselves).
+/// Folders: from a cache; an unknown folder is scanned in a worker thread
+/// (attributes only: nothing is read, no online-only folder is listed) and has
+/// no badge until notifier() reports the result.
 State state(const QString &path, bool isDir);
+/// Emits folderStatesChanged() in the GUI thread when folder badges are known.
+class Notifier : public QObject
+{
+    Q_OBJECT
+Q_SIGNALS:
+    void folderStatesChanged();
+};
+Notifier *notifier();
 /// Sets the pin state of files and folders (folders: everything inside, as
 /// Explorer does). Returns the number of items changed; @p error names the first failure.
 int setPinState(const QStringList &paths, Pin pin, QString *error = nullptr);

@@ -68,6 +68,45 @@ private slots:
         QCOMPARE(int(stateFromAttributes(attributes, isDir)), state);
     }
 
+    // folders: the tick only when everything inside is on this device (as Explorer)
+    void folderStates_data()
+    {
+        QTest::addColumn<quint32>("attributes");
+        QTest::addColumn<bool>("allLocal");
+        QTest::addColumn<bool>("complete");
+        QTest::addColumn<int>("state");
+        const quint32 dir = AttrDirectory | AttrReparsePoint | AttrReadOnly; // a OneDrive folder (0x411)
+        QTest::newRow("all content local") << dir << true << true << int(State::Available);
+        QTest::newRow("an online-only file inside") << dir << false << true << int(State::OnlineOnly);
+        QTest::newRow("not scanned yet: no badge") << dir << false << false << int(State::NotCloud);
+        QTest::newRow("too big to scan: no badge") << dir << true << false << int(State::NotCloud);
+        QTest::newRow("always kept, all local") << (dir | AttrPinned) << true << true << int(State::Pinned);
+        QTest::newRow("always kept, still downloading") << (dir | AttrPinned) << false << true << int(State::OnlineOnly);
+        QTest::newRow("freed up: no scan needed") << (dir | AttrUnpinned) << false << false << int(State::OnlineOnly);
+        QTest::newRow("listing not local: no scan needed") << (dir | AttrRecallOnOpen) << false << false << int(State::OnlineOnly);
+        QTest::newRow("unknown") << InvalidAttributes << true << true << int(State::NotCloud);
+    }
+    void folderStates()
+    {
+        QFETCH(quint32, attributes);
+        QFETCH(bool, allLocal);
+        QFETCH(bool, complete);
+        QFETCH(int, state);
+        QCOMPARE(int(folderStateFromScan(attributes, allLocal, complete)), state);
+    }
+
+    void scanEntries()
+    {
+        // what the content scan counts as "on this device" (attributes seen in a real OneDrive)
+        QVERIFY(entryIsLocal(0x420, false));                                   // a downloaded file
+        QVERIFY(entryIsLocal(0x80420, false));                                 // always kept
+        QVERIFY(!entryIsLocal(0x501620, false));                               // online-only (freed up): OFFLINE | UNPINNED | RECALL_ON_DATA_ACCESS
+        QVERIFY(!entryIsLocal(AttrRecallOnDataAccess | AttrPinned, false));    // kept, still downloading
+        QVERIFY(entryIsLocal(0x431, true));                                    // a listed folder
+        QVERIFY(!entryIsLocal(0x431 | AttrRecallOnOpen, true));                // its listing is in the cloud: never opened
+        QVERIFY(!entryIsLocal(InvalidAttributes, false));
+    }
+
     void pinActions()
     {
         const quint32 online = AttrRecallOnDataAccess | AttrUnpinned | AttrReparsePoint;

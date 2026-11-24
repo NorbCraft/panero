@@ -18,6 +18,7 @@
 #include "../krcolorcache.h"
 #include "../FileSystem/dirlisterinterface.h"
 #include "../FileSystem/fileitem.h"
+#include "../FileSystem/panerocloudfiles.h"
 
 KrInterView::KrInterView(KrViewInstance &instance, KConfig *cfg,
                          QAbstractItemView *itemView) :
@@ -28,6 +29,11 @@ KrInterView::KrInterView(KrViewInstance &instance, KConfig *cfg,
     // fix the context menu problem
     int j = QFontMetrics(_itemView->font()).height() * 2;
     _mouseHandler = new KrMouseHandler(this, j);
+#ifdef Q_OS_WIN
+    // OneDrive & co.: folder badges arrive from a background scan of their content
+    QObject::connect(PaneroCloudFiles::notifier(), &PaneroCloudFiles::Notifier::folderStatesChanged, _itemView->viewport(),
+                     [view = _itemView]() { view->viewport()->update(); });
+#endif
 }
 
 KrInterView::~KrInterView()

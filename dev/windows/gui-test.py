@@ -1452,6 +1452,18 @@ else:
                f'fetch requests by Panero: {got}', must=True)
         record('The placeholders stay online-only after browsing', not still_placeholders(),
                f'downloaded: {still_placeholders()}', must=True)
+        # preview 13: a folder gets the "available" tick only when all its content is local;
+        # "Shared" holds an online-only placeholder, so its badge is the (blue) cloud
+        time.sleep(2.0)                       # the folder scan runs in the background
+        shared = [el.rectangle() for el in main_w.descendants() if el.window_text() == 'Shared'
+                  and side_right < el.rectangle().left < mid]
+        if shared:
+            r = shared[0]
+            cy = (r.top + r.bottom) // 2
+            badge = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
+            crop_shot('p13-cloud-folder-badge', (r.left - 4, cy - 14, r.left + 160, cy + 14), 4)
+            record('A sync folder with online-only content shows the cloud badge, not the tick', badge['blue'] > 0.02,
+                   f'icon colours of "Shared": {badge}')
 
         # Explorer's offline actions on a file and on a folder
         for name, rel in (('report.pdf', 'report.pdf'), ('Shared', 'Shared')):
@@ -1576,6 +1588,314 @@ if provider is not None:
         provider.wait(30)
     except subprocess.TimeoutExpired:
         provider.kill()
+
+# --- phase D (preview 13): Pack / Unpack with the bundled 7-Zip and Windows' tar, archives as
+# folders, Explorer's drive menus, Quick Settings' right-click menu choice --------------------------
+ARC = WORK / 'arc'
+ARC_SRC, ARC_OUT = ARC / 'src', ARC / 'out'
+shutil.rmtree(ARC, ignore_errors=True)
+(ARC_SRC / 'sub').mkdir(parents=True)
+ARC_OUT.mkdir()
+for n in ('one.txt', 'two.txt'):
+    (ARC_SRC / n).write_text(f'Panero archive test {n}\n')
+(ARC_SRC / 'sub' / 'three.txt').write_text('three\n')
+SEVENZIP = Path(EXE).parent / '7-Zip' / '7z.exe'
+ARC_WANT = {'one.txt', 'two.txt', 'sub/three.txt'}
+
+
+def archive_names(path):
+    """Entries of an archive, as the bundled 7-Zip lists them (files and folders)."""
+    try:
+        out = subprocess.run([str(SEVENZIP), 'l', '-ba', '-slt', str(path)], capture_output=True, text=True,
+                             timeout=30).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    return {l[7:].strip().replace('\\', '/') for l in out.splitlines() if l.startswith('Path = ')}
+
+
+def new_dialog(before, timeout=10):
+    found = []
+    wait_for(lambda: found.extend(w for w in windows_of(proc.pid) if w.handle not in before and not is_main(w))
+             or found, timeout)
+    return found[0] if found else None
+
+
+def choose_in_combo(dlg, text):
+    """Selects @p text in the dialog's combo box that offers it (the packer type)."""
+    for c in dlg.descendants(control_type='ComboBox'):
+        try:
+            c.select(text)
+            if c.selected_text() == text or c.window_text() == text:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    for c in dlg.descendants(control_type='ComboBox'):   # fallback: open it and click the item
+        try:
+            c.click_input()
+            time.sleep(0.6)
+            for w in Desktop(backend='uia').windows(process=proc.pid):
+                for li in w.descendants(control_type='ListItem'):
+                    if li.window_text() == text:
+                        li.click_input()
+                        time.sleep(0.4)
+                        return True
+            keys('{ESC}', 0.3)
+        except Exception:  # noqa: BLE001
+            pass
+    return False
+
+
+def pack_as(kind):
+    before = {w.handle for w in windows_of(proc.pid)}
+    keys('%{F5}', 1.5)
+    dlg = new_dialog(before)
+    if dlg is None:
+        return f'no Pack dialog; windows {[w.window_text() for w in windows_of(proc.pid)]}'
+    chosen = choose_in_combo(dlg, kind)
+    shot(f'p13-pack-dialog-{kind}')
+    how = press_button(proc.pid, 'OK')
+    return f'dialog "{dlg.window_text()}", type chosen: {chosen}, OK {how}'
+
+
+def unpack_to(name, dest):
+    global ORDER
+    ORDER = panel_order(ARC_OUT)
+    go_to(name)
+    before = {w.handle for w in windows_of(proc.pid)}
+    keys('%{F9}', 1.5)
+    dlg = new_dialog(before)
+    if dlg is None:
+        return 'no Unpack dialog'
+    shot(f'p13-unpack-dialog-{name}')
+    keys('^a', 0.2)
+    keys(str(dest).replace('\\', '/'), 0.3)
+    keys('{ENTER}', 0.5)
+    return f'dialog "{dlg.window_text()}"'
+
+
+def unpacked_ok(dest):
+    try:
+        return (dest / 'one.txt').read_text() == 'Panero archive test one.txt\n' \
+            and (dest / 'sub' / 'three.txt').read_text() == 'three\n'
+    except OSError:
+        return False
+
+
+proc = start(['--left', str(ARC_SRC), '--right', str(ARC_OUT)], 'archives')
+app, win, main_w = None, None, None
+for _ in range(60):
+    time.sleep(1)
+    mains = [w for w in windows_of(proc.pid) if is_main(w)]
+    if mains:
+        app = Application(backend='uia')
+        app.connect(process=proc.pid)
+        win = app.window(handle=mains[0].handle)
+        main_w = Desktop(backend='uia').window(handle=mains[0].handle).wrapper_object()
+        break
+if win is None:
+    record('Panero starts for the archive checks', False, 'no main window', must=True)
+    proc.kill()
+else:
+    time.sleep(3)
+    win.set_focus()
+    title = lambda: app.top_window().window_text()
+    if title() != 'src':
+        keys('{TAB}', 0.8)
+    record('Bundled 7-Zip is in the Panero folder', SEVENZIP.exists(), str(SEVENZIP), must=True)
+    try:
+        # mark everything, pack as zip, 7z and tar.gz into the other panel (the dialog's default)
+        ORDER = panel_order(ARC_SRC)
+        go_to('sub')
+        keys('{INSERT}{INSERT}{INSERT}', 0.5)
+        for kind, must in (('zip', True), ('7z', True), ('tar.gz', False)):
+            note = pack_as(kind)
+            target = ARC_OUT / f'src.{kind}'
+            ok = wait_for(lambda: target.exists() and ARC_WANT <= archive_names(target), 40)
+            time.sleep(1.0)
+            shot(f'p13-packed-{kind}')
+            record(f'Pack (Alt+F5) as {kind} on Windows makes the archive with the marked files and folders', ok,
+                   f'{note}; {target.name}: {sorted(archive_names(target)) if target.exists() else "missing"}',
+                   must=must)
+            for w in windows_of(proc.pid):           # an error box would block the next step
+                if not is_main(w):
+                    record(f'No dialog left open after packing {kind}', False, w.window_text())
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+        win.set_focus()
+        keys('%-', 0.4)
+        # unpack each into its own folder (Alt+F9, the path typed into the dialog)
+        keys('{TAB}', 1.0)
+        if title() != 'out':
+            keys('{TAB}', 1.0)
+        keys('^r', 1.5)                               # the right panel shows the new archives
+        for kind, must in (('zip', True), ('7z', True), ('tar.gz', False)):
+            if not (ARC_OUT / f'src.{kind}').exists():
+                continue
+            dest = ARC / f'un-{kind}'
+            dest.mkdir(exist_ok=True)
+            note = unpack_to(f'src.{kind}', dest)
+            ok = wait_for(lambda: unpacked_ok(dest), 40)
+            shot(f'p13-unpacked-{kind}')
+            record(f'Unpack (Alt+F9) of a {kind} on Windows restores the files and folders', ok,
+                   f'{note}; {dest.name}: {sorted(str(p.relative_to(dest)) for p in dest.rglob("*"))}', must=must)
+            for w in windows_of(proc.pid):
+                if not is_main(w):
+                    record(f'No dialog left open after unpacking {kind}', False, w.window_text())
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+            win.set_focus()
+        # Enter on an archive opens it as a folder (krarc + 7-Zip)
+        for kind in ('zip', '7z'):
+            ORDER = panel_order(ARC_OUT)
+            go_to(f'src.{kind}')
+            keys('{ENTER}', 3.0)
+            t = title()
+            rows = [w.window_text() for w in win.descendants() if w.window_text() in ('one', 'two', 'sub')]
+            shot(f'p13-archive-browse-{kind}')
+            record(f'Enter on a {kind} opens it as a folder (krarc with the bundled 7-Zip)',
+                   t.startswith(f'src.{kind}') and {'one', 'two', 'sub'} <= set(rows),
+                   f'title "{t}"; rows {sorted(set(rows))}', must=True)
+            for w in windows_of(proc.pid):
+                if not is_main(w):
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+            win.set_focus()
+            if t.startswith(f'src.{kind}'):
+                keys('{BACKSPACE}', 2.0)
+    except Exception as e:  # noqa: BLE001
+        record('Archive checks', False, f'automation error: {e!r}', must=True)
+        close_menus()
+
+    # Explorer's drive menu (Properties, Format, Eject, BitLocker, ...) with Panero's items on top
+    def drive_menu_check(label, opener, panero_need):
+        try:
+            win.set_focus()
+            opener()
+            texts = wait_menu(proc.pid, want=tuple(panero_need[:1]))
+            time.sleep(0.8)
+            shot(f'p13-drive-menu-{label}')
+            have = {norm(t) for t in texts}
+            missing = [x for x in panero_need + ['properties'] if x not in have]
+            record(f'Drive menu ({label}): Explorer\'s drive menu with Panero\'s {panero_need} on top', not missing,
+                   f'missing: {missing}; menu: {texts}', must=True)
+        except Exception as e:  # noqa: BLE001
+            record(f'Drive menu ({label})', False, f'automation error: {e!r}', must=True)
+        close_menus()
+
+    def c_drive_items(control_type, where=None):
+        out = []
+        for el in main_w.descendants(control_type=control_type):
+            try:
+                if '(C:)' in el.window_text() and (where is None or where(el)):
+                    out.append(el)
+            except Exception:  # noqa: BLE001
+                pass
+        return sorted(out, key=lambda el: el.rectangle().left)
+
+    def right_click(el):
+        r = el.rectangle()
+        mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+        time.sleep(1.0)
+
+    def drive_list():
+        keys('%{F1}', 1.2)
+        items = []
+        for w in Desktop(backend='uia').windows(process=proc.pid):
+            try:
+                items += [i for i in w.descendants(control_type='MenuItem') if '(C:)' in i.window_text()]
+            except Exception:  # noqa: BLE001
+                pass
+        if items:
+            right_click(items[0])
+    drive_menu_check('drive-list', drive_list, ['open in other panel', 'open in a new tab'])
+
+    def path_bar_button():
+        buttons = c_drive_items('Button', lambda el: el.rectangle().height() < 40)
+        if buttons:
+            right_click(buttons[0])
+    drive_menu_check('path-bar-button', path_bar_button, ['open in other panel', 'open in a new tab'])
+
+    def pinned_drive():
+        pins = c_drive_items('ListItem')
+        if pins:
+            pins[0].iface_scroll_item.ScrollIntoView()
+            time.sleep(0.4)
+            right_click(pins[0])
+    drive_menu_check('pinned-drive', pinned_drive, ['open in other panel', 'unpin'])
+
+    # Quick Settings: drive buttons on; the right-click menu row (Windows only)
+    def quick_settings():
+        before = {w.handle for w in windows_of(proc.pid)}
+        qs = [b for b in main_w.descendants() if b.window_text() == 'Quick Settings'
+              and b.element_info.control_type in ('Button', 'MenuItem', 'SplitButton')]
+        if not qs:
+            return None
+        qs[0].click_input()
+        return new_dialog(before)
+
+    try:
+        dlg = quick_settings()
+        if dlg is None:
+            record('Quick Settings opens', False, 'no Quick Settings button or dialog', must=True)
+        else:
+            combos = {c.window_text(): c for c in dlg.descendants(control_type='ComboBox')}
+            labels = [t.window_text() for t in dlg.descendants(control_type='Text')]
+            shot('p13-quick-settings')
+            record('Quick Settings has the "Right-click menu" row (Explorer menu default / Panero menu)',
+                   'Right-click menu:' in labels and 'Explorer menu (default)' in combos,
+                   f'combos: {list(combos)}', must=True)
+            for cb in dlg.descendants(control_type='CheckBox'):
+                if cb.window_text() == 'Show drive buttons above each panel' and not cb.get_toggle_state():
+                    cb.click_input()
+                    time.sleep(0.4)
+            press_button(proc.pid, 'OK')
+            time.sleep(2.0)
+
+            def drive_button():
+                buttons = [b for b in c_drive_items('Button') if b.rectangle().height() < 40]
+                if len(buttons) > 1:
+                    right_click(buttons[0])
+            drive_menu_check('drive-button', drive_button, ['open in other panel', 'hide this button'])
+
+            # "Panero menu": files get Panero's own menu again (no Explorer items)
+            dlg = quick_settings()
+            if dlg is not None:
+                choose_in_combo(dlg, 'Panero menu')
+                shot('p13-quick-settings-panero-menu')
+                press_button(proc.pid, 'OK')
+                time.sleep(1.5)
+                win.set_focus()
+                keys('{TAB}', 0.8)
+                if title() != 'src':
+                    keys('{TAB}', 0.8)
+                ORDER = panel_order(ARC_SRC)
+                go_to('one.txt')
+                keys('{VK_APPS}', 0.5)
+                texts = wait_menu(proc.pid, want=('move to recycle bin',))
+                shot('p13-panero-menu-chosen')
+                have = {norm(t) for t in texts}
+                record('Quick Settings "Panero menu": the right-click menu is Panero\'s own (no Explorer items)',
+                       'move to recycle bin' in have and 'send to' not in have and 'panero menu' not in have,
+                       f'menu: {texts}', must=True)
+                close_menus()
+    except Exception as e:  # noqa: BLE001
+        record('Quick Settings checks', False, f'automation error: {e!r}', must=True)
+        close_menus()
+    try:
+        win.close()
+        proc.wait(15)
+    except Exception:  # noqa: BLE001
+        proc.kill()
+
 
 if VM:
     removed = purge_own_recycled()
