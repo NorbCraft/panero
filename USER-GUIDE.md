@@ -15,7 +15,7 @@ specific to Panero.
   that menu and drag the dotted grip.
 - **Menu** (☰) holds all menus (File, Edit, Go, View, ..., Help). If you prefer
   the classic menu bar (Alt+letter navigation), choose **Menus: Menu bar** in
-  Quick Settings.
+  Settings > Appearance.
 - The window title shows the active panel's folder ("Projects — Panero").
 - The **tab bar** appears when a panel has two or more tabs; the new-tab button
   sits next to the path.
@@ -26,7 +26,7 @@ specific to Panero.
   Ctrl+Shift+Left/Right). Snap images, /boot and other system mounts are not
   listed. On GNOME desktops (Zorin OS) Alt+F1 and Alt+F2 belong to the desktop
   unless you free them in its keyboard settings.
-- **Drive buttons** (Quick Settings > *Show drive buttons above each panel*,
+- **Drive buttons** (Quick Settings > *Drive buttons*, Settings > Drives & Cloud,
   off by default): a row of buttons above each panel, like Total Commander's
   drive bar: System, Home, disks and USB drives (also unmounted ones: a click
   mounts), network shares, your cloud drives and **Network** (Linux: the
@@ -71,9 +71,9 @@ specific to Panero.
 | Menu key or **Shift+F10** | context menu from the keyboard |
 
 To use the original Krusader way instead (left click selects, Ctrl+click adds),
-choose **Selection: Krusader** in **Quick Settings**. The hold time and more
-modes (Konqueror, Total Commander, custom) are in **Settings > Configure Panero
-> Panel > Selection Mode**.
+choose **Selection: Krusader** in **Settings > Mouse & Keys**. The hold time and
+more modes (Konqueror, Total Commander, custom) are in **Settings > Advanced >
+Panel > Selection Mode**.
 
 ## Folder tree and pins
 
@@ -152,35 +152,63 @@ Multi Rename). The patterns are Total Commander's:
 - **Trash** in the toolbar opens a menu: **Open Trash** (shows it in the active
   panel, where files can be restored) or **Empty Trash** (asks first).
 
-## Quick Settings
+## Quick Settings and Settings
 
-**Quick Settings** (cogwheel at the right of the toolbar, also in the View menu):
+**Quick Settings** (cogwheel at the right of the toolbar, also in the View
+menu) is a short popup; every change applies at once:
 
-- Appearance: follow the desktop's light/dark setting, or force light or dark.
-  Only Panero is affected.
-- Density: Compact / Comfortable / Spacious or a custom row height (16–48 px)
-  and icon size. Rows never get so small that text is cut off.
-- "Use Panero's look": the modern Panero look; unchecked, Panero uses the plain
-  system style like Krusader.
-- **Icons**: the system's icons or **Panero Line** (thin line icons for the
-  toolbar and sidebar). **Icon theme** (Linux): the desktop's icon theme or
-  **Windows 11** (the Win11 icon theme, shipped with Panero, light and dark). **Folder color**: keep the icon theme's folders or pick
-  a colour (or a custom one).
-- **Menus**: Menu button or the classic menu bar. **Cloud** section on or off.
-  **Drive buttons** above each panel on or off, with icon and name or only the
-  letter (Windows) / icon (Linux).
-- **Hold feedback** while the right button is held: pie, ring, bar or off.
-- Changing the appearance, icons or folder colour asks to **restart** Panero
-  (Restart / Later); folders and tabs are kept.
-- **Selection**: Panero (click moves the cursor, right click marks) or Krusader
-  (click selects).
-- Alternating row backgrounds and all colours (both stripes, marked text and
-  background, cursor fill (or *Transparent*: frame only) and frame, and the
-  **active panel and selection**
-  colour, which is also the colour of the current folder in the tree),
-  separately for light and dark. The default active colour is Krusader's blue.
-  **Restore Defaults** resets them.
-- "All Settings..." opens the complete original configuration.
+- **Light / Dark / System** (System follows the desktop's light/dark setting;
+  only Panero is affected).
+- **Icons** (Linux): the desktop's icon theme or **Windows 11** (the Win11 icon
+  theme, shipped with Panero). Choosing an icon theme shows its own folder
+  colour; a colour can be picked again in Settings > Appearance.
+- **Density**: Compact / Comfortable / Spacious.
+- **Hidden files**, **Drive buttons**, **Cloud section**, **Thumbnails**
+  (previews instead of icons in the Details view).
+- A look change shows **Restart** in the popup; folders and tabs are kept.
+- **All Settings...** opens the Settings window at Appearance.
+
+**Settings** (**Ctrl+,**, Settings menu) is one window. Panero's pages come
+first:
+
+- **Appearance**: light/dark, Panero's look (unchecked: the plain system style
+  like Krusader), toolbar icons (system or **Panero Line**), icon theme,
+  folder colour, menu button or classic menu bar, and the file list colours
+  separately for light and dark: both stripes, marked text and background
+  (or *Transparent*: marked files only by their red text), cursor fill
+  (*Transparent* by default: frame only) and frame, and the **active panel and
+  selection** colour (also the current folder in the tree). "Use the classic
+  Krusader color settings" switches to Advanced > Colors.
+- **Panels**: density, row height (16–48 px, rows never cut text off), icon
+  size, alternating rows, check badge on marked files, hidden files,
+  thumbnails in the Details view.
+- **Mouse & Keys**: selection (Panero or Krusader), hold feedback (pie, ring,
+  bar or off), keyboard shortcuts.
+- **Drives & Cloud**: drive buttons (icon and name, or only the letter/icon),
+  the drive list button next to the path, the Cloud section.
+- **Windows Integration** (Windows): right-click menu, terminal, editor, F2
+  renaming.
+- **Advanced**: Krusader's original pages (Startup, Panel, Colors, General,
+  Fine-Tuning, Archives, Dependencies, User Actions, Protocols). Options that
+  Panero sets on its own pages are hidden there or link to the Panero page.
+
+Changing the look, icons or folder colour asks to **restart** Panero.
+**Restore Defaults** resets the page shown.
+
+**First-start assistant**: new users choose the look, drive buttons, the Cloud
+section and the mouse selection before the window opens; **Help > First-Start
+Assistant** shows it again.
+
+**Pinned folders = bookmarks**: Krusader's bookmarks are copied into the
+Pinned list once (the bookmarks file is kept, with a backup
+`krbookmarks.xml.before-pinned`). **Ctrl+D** shows the Pinned list as a menu,
+**Ctrl+B** pins the current folder (both also in the Go menu).
+
+**Tools** menu: Search, Locate, Compare by Content, Synchronize Folders, Disk
+Usage, checksums, Split/Combine Files, network connections, terminals and
+Manage User Actions. The Mount Manager is not in the menus (drive buttons and
+the drive list replace it; **Alt+/** still opens it). The User Actions menu
+appears once you have defined a user action.
 
 ## Cloud sign-in and safety
 
