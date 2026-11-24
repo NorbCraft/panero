@@ -63,3 +63,8 @@ ecm_add_test(panerocloudfilestest.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Gui PaneroCloudFiles)
 target_include_directories(panerocloudfilestest PRIVATE ${CMAKE_SOURCE_DIR}/app/FileSystem)
 set_tests_properties(panerocloudfilestest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+ecm_add_test(percentalsplittertest.cpp ../app/Dialogs/percentalsplitter.cpp
+    TEST_NAME percentalsplittertest
+    LINK_LIBRARIES Qt5::Test Qt5::Widgets)
+target_include_directories(percentalsplittertest PRIVATE ${CMAKE_SOURCE_DIR}/app/Dialogs)

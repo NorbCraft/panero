@@ -91,7 +91,10 @@ void KrPreviewJob::slotStartJob()
 
     KFileItemList list;
     for(int i = 0; i < _scheduled.count() && i < MAX_CHUNK_SIZE; i++) {
-        KFileItem fi(_scheduled[i]->getFileItem()->getUrl(), nullptr, 0);
+        // Panero: pass the type Panero already knows; with none, KFileItem reads
+        // the start of every file again in the GUI thread to find it
+        auto *file = const_cast<FileItem *>(_scheduled[i]->getFileItem()); // getMime() caches
+        KFileItem fi(file->getUrl(), file->getMime(), file->getMode());
         list.append(fi);
         _hash.insert(fi, _scheduled[i]);
     }

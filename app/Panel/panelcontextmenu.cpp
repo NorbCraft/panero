@@ -7,6 +7,7 @@
 */
 
 #include "panelcontextmenu.h"
+#include "../FileSystem/paneroslowpaths.h"
 #include "../panerowording.h"
 #include <QClipboard>
 #include <QApplication>
@@ -253,7 +254,11 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     // --------------- compress/extract actions
     // --------------- KDE file item actions
     // workaround for Bug 372999: application freezes very long time if many files are selected
-    if (_items.length() < 1000) {
+    // Panero: not on cloud/network drives - KFileItemListProperties checks every
+    // item's permissions with a stat() in the GUI thread, which waits for the
+    // drive (a frozen window while rclone is busy, D-018)
+    const bool onSlowDrive = file->getUrl().isLocalFile() && PaneroSlowPaths::isSlowPath(file->getUrl().toLocalFile());
+    if (_items.length() < 1000 && !onSlowDrive) {
 #if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)
         // add compress and extract plugins (if available); newer KIO adds them in addActionsTo()
         addCompressAndExtractPluginActions();

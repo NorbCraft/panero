@@ -5,6 +5,7 @@
 */
 
 #include "panerodrivebar.h"
+#include "../GUI/panerodriveactions.h"
 
 #include "listpanel.h"
 #include "panelfunc.h"
@@ -589,12 +590,22 @@ void PaneroDriveBar::showMenu(const PaneroDrive &drive, QToolButton *button, con
     QAction *openOther = nullptr, *unmount = nullptr, *eject = nullptr, *hide = nullptr, *showAll = nullptr;
     if (drive.url.isValid() && drive.kind != PaneroDrive::Cloud)
         openOther = menu.addAction(Icon(QStringLiteral("view-split-left-right")), i18n("Open in Other Panel"));
+#ifdef Q_OS_WIN
     if (!drive.udi.isEmpty() && drive.url.isValid() && drive.removable) {
         if (drive.optical)
             eject = menu.addAction(Icon(QStringLiteral("media-eject")), i18n("Eject"));
         else
             unmount = menu.addAction(Icon(QStringLiteral("media-eject")), i18n("Safely Remove"));
     }
+#else
+    // Properties, Mount/Unmount, Safely Remove, Eject, Format or Edit in Disks (D-022)
+    if (drive.kind == PaneroDrive::System || drive.kind == PaneroDrive::Home || drive.kind == PaneroDrive::Volume
+        || drive.kind == PaneroDrive::Network) {
+        if (openOther)
+            menu.addSeparator();
+        PaneroDriveActions::addTo(&menu, drive.udi, drive.url.isLocalFile() ? drive.url.toLocalFile() : QString(), this);
+    }
+#endif
     if (!menu.isEmpty())
         menu.addSeparator();
     hide = menu.addAction(Icon(QStringLiteral("view-hidden")), i18n("Hide This Button"));
