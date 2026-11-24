@@ -149,8 +149,15 @@ void PaneroToolBar::migrateSettings()
             look.deleteEntry("Show Cloud");
     }
 #endif
-    if (version < 5) {
-        panero.writeEntry("Settings Version", 5);
+    if (version < 6) {
+        // preview 13 (D-022): marks are cleared after copy, move, pack and open for everybody
+        // (Total Commander); Krusader's old default was off and the settings dialog saved it
+        KConfigGroup look(KSharedConfig::openConfig(), QStringLiteral("Look&Feel"));
+        if (look.hasKey("UnselectBeforeOperation") && !look.readEntry("UnselectBeforeOperation", true))
+            look.deleteEntry("UnselectBeforeOperation");
+    }
+    if (version < 6) {
+        panero.writeEntry("Settings Version", 6);
         panero.sync();
     }
 }

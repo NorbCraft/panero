@@ -63,3 +63,13 @@ ecm_add_test(panerocloudfilestest.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Gui PaneroCloudFiles)
 target_include_directories(panerocloudfilestest PRIVATE ${CMAKE_SOURCE_DIR}/app/FileSystem)
 set_tests_properties(panerocloudfilestest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Undo for file operations and the Windows Recycle Bin records (D-022). No D-Bus, temporary HOME/XDG.
+ecm_add_test(panerojobstest.cpp ../app/JobMan/paneroundo.cpp ../app/JobMan/panerorecyclebin.cpp
+    TEST_NAME panerojobstest
+    LINK_LIBRARIES Qt5::Test Qt5::Widgets KF5::KIOWidgets KF5::I18n KF5::WidgetsAddons)
+target_include_directories(panerojobstest PRIVATE ${CMAKE_SOURCE_DIR}/app/JobMan ${CMAKE_SOURCE_DIR}/app)
+if(WIN32)
+    target_link_libraries(panerojobstest advapi32 shell32)
+endif()
+set_tests_properties(panerojobstest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

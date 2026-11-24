@@ -54,6 +54,8 @@
 
 #include "dirhistoryqueue.h"
 #include "krcalcspacedialog.h"
+#include "../JobMan/jobman.h"
+#include "../JobMan/krjob.h"
 #include "krerrordisplay.h"
 #include "krsearchbar.h"
 #include "listpanel.h"
@@ -170,10 +172,12 @@ void ListPanelFunc::openFileNameInternal(const QString &name, bool externallyExe
 #else
             KDesktopFileActions::runWithStartup(url, url.isLocalFile(), QByteArray());
 #endif
+            unselectAfterOperation();
             return;
         }
         if (KRun::isExecutableFile(url, mime)) {
             runCommand(KShell::quoteArg(url.path()));
+            unselectAfterOperation();
             return;
         }
 
@@ -729,10 +733,21 @@ void ListPanelFunc::copyFiles(bool enqueue, bool move)
     const KIO::CopyJob::CopyMode mode = move ? KIO::CopyJob::Move : KIO::CopyJob::Copy;
     FileSystemProvider::instance().startCopyFiles(fileUrls, destination, mode, true, startMode);
 
-    if(KConfigGroup(krConfig, "Look&Feel").readEntry("UnselectBeforeOperation", _UnselectBeforeOperation)) {
-        panel->view->saveSelection();
-        panel->view->unselectAll();
-    }
+    // the copied/moved files are unmarked once the job is started (Total Commander, D-022);
+    // a cancelled dialog returned above and kept them
+    unselectAfterOperation();
+}
+
+void ListPanelFunc::unselectAfterOperation(KrPanel *source)
+{
+    KrPanel *p = source ? source : panel;
+    if (!p || !p->view
+        || !KConfigGroup(krConfig, "Look&Feel").readEntry("UnselectBeforeOperation", _UnselectBeforeOperation))
+        return;
+    if (p->view->numSelected() == 0)
+        return;
+    p->view->saveSelection(); // Edit > Restore Selection brings them back
+    p->view->unselectAll();
 }
 
 // called from SLOTS to begin the renaming process
@@ -1067,9 +1082,11 @@ void ListPanelFunc::runService(const KService &service, const QList<QUrl>& urls)
     qDebug() << "service name=" << service.name();
     KIO::DesktopExecParser parser(service, urls);
     QStringList args = parser.resultingArguments();
-    if (!args.isEmpty())
+    if (!args.isEmpty()) {
         runCommand(KShell::joinArgs(args));
-    else
+        // opened: the marks are cleared (Total Commander, D-022)
+        unselectAfterOperation();
+    } else
         KMessageBox::error(nullptr, i18n("%1 cannot open %2", service.name(), KrServices::toStringList(urls).join(", ")));
 }
 
@@ -1158,11 +1175,17 @@ void ListPanelFunc::pack()
 
     PackJob * job = PackJob::createPacker(files()->currentDirectory(), destURL, fileNames, PackGUI::type, PackGUI::extraProps);
     job->setUiDelegate(new KIO::JobUiDelegate());
-    KIO::getJobTracker()->registerJob(job);
     job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    // Panero: progress window and jobs button like the other file operations (D-022)
+    krJobMan->manageStartedJob(KrJob::createStartedJob(KrJob::Pack, files()->getUrls(fileNames), destURL,
+                                                       i18n("Pack to %1", destURL.toDisplayString(QUrl::PreferLocalFile)), job),
+                               job);
 
     if (packToOtherPanel)
         connect(job, &PackJob::result, panel->otherPanel()->func, &ListPanelFunc::refresh);
+
+    // the packed files are unmarked (Total Commander, D-022)
+    unselectAfterOperation();
 
 }
 
@@ -1174,8 +1197,10 @@ void ListPanelFunc::testArchive()
 
     TestArchiveJob * job = TestArchiveJob::testArchives(files()->currentDirectory(), fileNames);
     job->setUiDelegate(new KIO::JobUiDelegate());
-    KIO::getJobTracker()->registerJob(job);
     job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    krJobMan->manageStartedJob(KrJob::createStartedJob(KrJob::Test, files()->getUrls(fileNames), QUrl(),
+                                                       i18n("Test archives"), job),
+                               job);
 }
 
 void ListPanelFunc::unpack()
@@ -1198,8 +1223,10 @@ void ListPanelFunc::unpack()
 
     UnpackJob * job = UnpackJob::createUnpacker(files()->currentDirectory(), dest, fileNames);
     job->setUiDelegate(new KIO::JobUiDelegate());
-    KIO::getJobTracker()->registerJob(job);
     job->uiDelegate()->setAutoErrorHandlingEnabled(true);
+    krJobMan->manageStartedJob(KrJob::createStartedJob(KrJob::Unpack, files()->getUrls(fileNames), dest,
+                                                       i18n("Unpack to %1", dest.toDisplayString(QUrl::PreferLocalFile)), job),
+                               job);
 
     if (packToOtherPanel)
         connect(job, &UnpackJob::result, panel->otherPanel()->func, &ListPanelFunc::refresh);

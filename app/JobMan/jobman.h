@@ -10,6 +10,8 @@
 
 // QtCore
 #include <QAction>
+#include <QHash>
+#include <QPointer>
 // QtWidgets
 #include <QMessageBox>
 #include <QPushButton>
@@ -19,6 +21,8 @@
 #include <KWidgetsAddons/KToolBarPopupAction>
 
 class KrJob;
+class PaneroJobWindow;
+class PaneroJobsAction;
 
 /**
  * @brief The job manager provides a progress dialog and control over (KIO) file operation jobs.
@@ -67,6 +71,8 @@ public:
     /** Toolbar action combo box for changing the .*/
     QAction *modeAction() const { return m_modeAction; }
     QAction *undoAction() const { return m_undoAction; }
+    /// Panero: the jobs button for the main toolbar (progress ring, job list)
+    QAction *jobsAction() const;
 
     /** Wait for all jobs to terminate (blocking!).
      *
@@ -105,6 +111,8 @@ protected slots:
     void slotUpdateControlAction();
     void slotUndoTextChange(const QString &text);
     void slotUpdateMessageBox();
+    /// Panero: show (again) the progress window of a job
+    void showJobWindow(KrJob *krJob);
 
 private:
     void managePrivate(KrJob *job, KJob *kJob = nullptr);
@@ -120,6 +128,11 @@ private:
     QAction *m_progressAction;
     QAction *m_modeAction;
     QAction *m_undoAction;
+
+    PaneroJobsAction *m_jobsAction;
+    QAction *m_noJobsAction;
+    QAction *m_pauseAllAction;
+    QHash<KrJob *, QPointer<PaneroJobWindow>> m_windows;
 
     QMessageBox *m_messageBox;
     bool m_autoCloseMessageBox;

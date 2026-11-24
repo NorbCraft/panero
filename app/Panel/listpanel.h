@@ -55,6 +55,7 @@ class KrSearchBar;
 class KrView;
 class KrViewItem;
 class ListPanelActions;
+namespace KIO { class DropJob; }
 class ListPanelFunc;
 class MediaButton;
 class Sidebar;
@@ -122,6 +123,8 @@ public:
 public slots:
     void handleDrop(QDropEvent *event, QWidget *targetFrame = nullptr); // handle drops on frame or view
     void handleDrop(const QUrl &destination, QDropEvent *event); // handle drops with destination
+    /// Panero: unmark the drag source panel once the drop's copy/move started (D-022)
+    void unselectDragSourceWhenStarted(QDropEvent *event, KIO::DropJob *job);
     void popRightClickMenu(const QPoint&);
     void popEmptyRightClickMenu(const QPoint &);
     void compareDirs(bool otherPanelToo = true);
@@ -230,7 +233,6 @@ protected:
     MediaButton *mediaButton;
     QToolButton *syncBrowseButton;
     QToolButton *newTabButton = nullptr;
-    class PaneroJobRow *jobRow = nullptr;
     QToolButton *cancelProgressButton; // for thumbnail previews and filesystem refresh
     KrErrorDisplay *fileSystemError;
 

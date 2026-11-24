@@ -27,6 +27,7 @@
 #include "paneroimport.h"
 #include "Panel/krpanel.h"
 #include "Panel/panelfunc.h"
+#include "Panel/listpanel.h"
 #include "Dialogs/paneroviewcolorsdialog.h"
 #include "icon.h"
 #include "krusaderview.h"
@@ -35,6 +36,7 @@
 #include "Dialogs/popularurls.h"
 #include "GUI/krremoteencodingmenu.h"
 #include "JobMan/jobman.h"
+#include "JobMan/paneroundo.h"
 #include "MountMan/kmountman.h"
 #include "Panel/PanelView/krviewfactory.h"
 #include "UserAction/useraction.h"
@@ -316,7 +318,8 @@ void KrActions::setupActions(Krusader *krusaderApp)
     NEW_KACTION(actF10Quit, i18n("Quit"), nullptr, Qt::Key_F10, krusaderApp, SLOT(quit()) , "F10_Quit");
     actF10Quit->setToolTip(i18n("Quit Panero."));
 
-    NEW_KACTION(actPopularUrls, i18n("Popular URLs..."), nullptr, Qt::CTRL + Qt::Key_Z, krusaderApp->popularUrls(), SLOT(showDialog()), "Popular_Urls");
+    // Panero: Ctrl+Z is Undo (D-022); Popular URLs moved to Ctrl+Alt+Z
+    NEW_KACTION(actPopularUrls, i18n("Popular URLs..."), nullptr, Qt::CTRL + Qt::ALT + Qt::Key_Z, krusaderApp->popularUrls(), SLOT(showDialog()), "Popular_Urls");
     NEW_KACTION(actSwitchFullScreenTE, i18n("Toggle Fullscreen Embedded Terminal"), nullptr,
                 Qt::CTRL + Qt::ALT + Qt::Key_F, MAIN_VIEW, SLOT(toggleFullScreenTerminalEmulator()),
                 "switch_fullscreen_te");
@@ -335,7 +338,16 @@ void KrActions::setupActions(Krusader *krusaderApp)
     krusaderApp->actionCollection()->addAction("job mode", actJobMode);
     actJobUndo = krJobMan->undoAction();
     krusaderApp->actionCollection()->addAction("job undo", actJobUndo);
-    krusaderApp->actionCollection()->setDefaultShortcut(actJobUndo, Qt::CTRL + Qt::ALT + Qt::Key_Z);
+    krusaderApp->actionCollection()->setDefaultShortcut(actJobUndo, Qt::CTRL + Qt::Key_Z);
+    // Panero (D-022): the jobs button with its progress ring (main toolbar, shown while jobs run)
+    krusaderApp->actionCollection()->addAction("panero jobs", krJobMan->jobsAction());
+    // after an undo the panels show the result also where no folder watcher runs (cloud folders)
+    QObject::connect(PaneroUndo::self(), &PaneroUndo::undone, krusaderApp, []() {
+        if (!MAIN_VIEW)
+            return;
+        LEFT_FUNC->refresh();
+        RIGHT_FUNC->refresh();
+    });
 
     // and at last we can set the tool-tips
     actKonfigurator->setToolTip(i18n("Setup Panero the way you like it"));

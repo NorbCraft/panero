@@ -23,8 +23,13 @@
 #include <kio_version.h>
 
 #include "krjob.h"
+#include "panerojobwindow.h"
+#include "paneroundo.h"
 #include "../krglobal.h"
 #include "../icon.h"
+
+#include <QEvent>
+#include <QToolButton>
 
 const int MAX_OLD_MENU_ACTIONS = 10;
 
@@ -38,10 +43,20 @@ public:
     {
         QWidget *container = new QWidget();
         auto *layout = new QGridLayout(container);
-        m_description = new QLabel(krJob->description());
+        // Panero: what and where in words; a click shows the job's progress window
+        m_description = new QLabel(PaneroJobWindow::summary(krJob));
+        m_description->setToolTip(i18n("Click to show the progress window"));
+        m_description->setCursor(Qt::PointingHandCursor);
+        m_description->installEventFilter(this);
         m_progressBar = new QProgressBar();
-        layout->addWidget(m_description, 0, 0, 1, 3);
+        layout->addWidget(m_description, 0, 0, 1, 4);
         layout->addWidget(m_progressBar, 1, 0);
+
+        m_showButton = new QPushButton();
+        m_showButton->setIcon(Icon("view-visible"));
+        m_showButton->setToolTip(i18n("Show the progress window"));
+        connect(m_showButton, &QPushButton::clicked, this, [this]() { requestShow(); });
+        layout->addWidget(m_showButton, 1, 3);
 
         m_pauseResumeButton = new QPushButton();
         updatePauseResumeButton();
@@ -69,13 +84,38 @@ public:
 
     bool isDone() { return !m_krJob; }
 
+signals:
+    void showRequested(KrJob *krJob);
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override
+    {
+        if (watched == m_description && event->type() == QEvent::MouseButtonRelease) {
+            requestShow();
+            return true;
+        }
+        return QWidgetAction::eventFilter(watched, event);
+    }
+
+    void requestShow()
+    {
+        if (!m_krJob)
+            return;
+        // close the menu first: the window comes up in front
+        for (QWidget *w = defaultWidget(); w; w = w->parentWidget()) {
+            if (auto *menu = qobject_cast<QMenu *>(w))
+                menu->close();
+        }
+        emit showRequested(m_krJob);
+    }
+
 protected slots:
     void slotDescription(KJob *, const QString &description,
                        const QPair<QString, QString> &field1,
                        const QPair<QString, QString> &field2)
     {
         const QPair<QString, QString> textField = !field2.first.isEmpty() ? field2 : field1;
-        QString text = description;
+        QString text = m_krJob ? PaneroJobWindow::summary(m_krJob) : description;
         if (!textField.first.isEmpty()) {
             text += QString(" - %1: %2").arg(textField.first, textField.second);
         }
@@ -112,6 +152,8 @@ protected slots:
     {
         qDebug() << "job description=" << m_krJob->description();
         m_pauseResumeButton->setEnabled(false);
+        m_showButton->setEnabled(false);
+        m_description->setCursor(Qt::ArrowCursor);
         m_cancelButton->setIcon(Icon("edit-clear"));
         m_cancelButton->setToolTip(i18n("Clear"));
 
@@ -160,6 +202,7 @@ private:
     QProgressBar *m_progressBar;
     QPushButton *m_pauseResumeButton;
     QPushButton *m_cancelButton;
+    QPushButton *m_showButton;
 };
 
 #include "jobman.moc" // required for class definitions with Q_OBJECT macro in implementation files
@@ -176,10 +219,24 @@ JobMan::JobMan(QObject *parent) : QObject(parent), m_messageBox(nullptr)
     connect(m_controlAction, &QAction::triggered, this, &JobMan::slotControlActionTriggered);
 
     auto *menu = new QMenu(krMainWindow);
-    menu->setMinimumWidth(300);
+    menu->setObjectName(QStringLiteral("panero_jobs_menu"));
+    menu->setMinimumWidth(360);
     // make scrollable if menu is too long
     menu->setStyleSheet("QMenu { menu-scrollable: 1; }");
     m_controlAction->setMenu(menu);
+
+    // Panero (D-022): the jobs button on the main toolbar, shown while jobs exist; the job
+    // list is followed by Pause All, queue mode and Undo
+    m_jobsAction = new PaneroJobsAction(menu, this);
+    m_jobsAction->setVisible(false);
+    m_noJobsAction = new QAction(i18n("No file operations"), this);
+    m_noJobsAction->setEnabled(false);
+    menu->addAction(m_noJobsAction);
+    menu->addSeparator();
+    m_pauseAllAction = new QAction(Icon("media-playback-pause"), i18n("Pause All Jobs"), this);
+    m_pauseAllAction->setVisible(false);
+    connect(m_pauseAllAction, &QAction::triggered, this, &JobMan::slotControlActionTriggered);
+    menu->addAction(m_pauseAllAction);
 
     // progress bar action
     m_progressBar = new QProgressBar();
@@ -205,17 +262,26 @@ JobMan::JobMan(QObject *parent) : QObject(parent), m_messageBox(nullptr)
         m_queueMode = checked;
         cfg.writeEntry("Queue Mode", m_queueMode);
     });
+    menu->addAction(m_modeAction);
 
     // undo action
     KIO::FileUndoManager *undoManager = KIO::FileUndoManager::self();
     undoManager->uiInterface()->setParentWidget(krMainWindow);
 
-    m_undoAction = new QAction(Icon("edit-undo"), i18n("Undo Last Job"), krMainWindow);
-    m_undoAction->setEnabled(false);
-    connect(m_undoAction, &QAction::triggered, undoManager, &KIO::FileUndoManager::undo);
-    connect(undoManager, static_cast<void(KIO::FileUndoManager::*)(bool)>(&KIO::FileUndoManager::undoAvailable),
-            m_undoAction, &QAction::setEnabled);
-    connect(undoManager, &KIO::FileUndoManager::undoTextChanged, this, &JobMan::slotUndoTextChange);
+    // Panero: Ctrl+Z, "Undo: Move" (also moves to the Windows Recycle Bin, PaneroUndo)
+    PaneroUndo *undo = PaneroUndo::self();
+    m_undoAction = new QAction(Icon("edit-undo"), undo->undoText(), krMainWindow);
+    m_undoAction->setEnabled(undo->isUndoAvailable());
+    connect(m_undoAction, &QAction::triggered, undo, &PaneroUndo::undo);
+    connect(undo, &PaneroUndo::undoAvailable, m_undoAction, &QAction::setEnabled);
+    connect(undo, &PaneroUndo::undoTextChanged, this, &JobMan::slotUndoTextChange);
+    slotUndoTextChange(undo->undoText());
+    menu->addAction(m_undoAction);
+}
+
+QAction *JobMan::jobsAction() const
+{
+    return m_jobsAction;
 }
 
 bool JobMan::waitForJobs(bool waitForUserInput)
@@ -293,8 +359,16 @@ void JobMan::slotKJobStarted(KJob *job)
 void JobMan::slotControlActionTriggered()
 {
     if (m_jobs.isEmpty()) {
-        m_controlAction->menu()->clear();
+        // clear the list of finished jobs (the footer stays)
+        const QList<QAction *> actions = m_controlAction->menu()->actions();
+        for (QAction *action : actions) {
+            if (dynamic_cast<JobMenuAction *>(action)) {
+                m_controlAction->menu()->removeAction(action);
+                action->deleteLater();
+            }
+        }
         m_controlAction->setEnabled(false);
+        m_noJobsAction->setVisible(true);
         return;
     }
 
@@ -333,6 +407,7 @@ void JobMan::slotTerminated(KrJob *krJob)
     qDebug() << "terminated, job description: " << krJob->description();
 
     m_jobs.removeAll(krJob);
+    m_windows.remove(krJob);
 
     // NOTE: ignoring queue mode here. We assume that if queue mode is turned off, the user created
     // jobs which were not already started with a "queue" option and still wants queue behaviour.
@@ -352,18 +427,18 @@ void JobMan::slotTerminated(KrJob *krJob)
 
 void JobMan::slotUpdateControlAction()
 {
-    m_controlAction->setEnabled(!m_controlAction->menu()->isEmpty());
+    bool entries = false;
+    const QList<QAction *> actions = m_controlAction->menu()->actions();
+    for (QAction *a : actions)
+        entries = entries || dynamic_cast<JobMenuAction *>(a);
+    m_controlAction->setEnabled(entries);
+    m_noJobsAction->setVisible(!entries);
 }
 
 void JobMan::slotUndoTextChange(const QString &text)
 {
-#if KIO_VERSION >= QT_VERSION_CHECK(5, 79, 0)
-    bool isUndoAvailable = KIO::FileUndoManager::self()->isUndoAvailable();
-#else
-    bool isUndoAvailable = KIO::FileUndoManager::self()->undoAvailable();
-#endif
-
-    m_undoAction->setToolTip(isUndoAvailable ? text : i18n("Undo Last Job"));
+    m_undoAction->setText(text);
+    m_undoAction->setToolTip(KLocalizedString::removeAcceleratorMarker(text));
 }
 
 void JobMan::slotUpdateMessageBox()
@@ -393,8 +468,14 @@ void JobMan::managePrivate(KrJob *job, KJob *kJob)
 {
     auto *menuAction = new JobMenuAction(job, m_controlAction, kJob);
     connect(menuAction, &QObject::destroyed, this, &JobMan::slotUpdateControlAction);
-    m_controlAction->menu()->addAction(menuAction);
+    connect(menuAction, &JobMenuAction::showRequested, this, &JobMan::showJobWindow);
+    m_controlAction->menu()->insertAction(m_noJobsAction, menuAction);
     cleanupMenu();
+
+    // Panero: Krusader's progress window for every job (D-022)
+    auto *window = new PaneroJobWindow(job, krMainWindow);
+    m_windows.insert(job, window);
+    connect(window, &PaneroJobWindow::finishedInBackground, this, &PaneroJobWindow::notify);
 
     slotUpdateControlAction();
 
@@ -404,13 +485,27 @@ void JobMan::managePrivate(KrJob *job, KJob *kJob)
     emit jobManaged(job);
 }
 
+void JobMan::showJobWindow(KrJob *krJob)
+{
+    const QPointer<PaneroJobWindow> window = m_windows.value(krJob);
+    if (window)
+        window->showNow();
+}
+
 void JobMan::cleanupMenu() {
     const QList<QAction *> actions = m_controlAction->menu()->actions();
+    auto jobEntries = [this]() {
+        int n = 0;
+        const QList<QAction *> all = m_controlAction->menu()->actions();
+        for (QAction *a : all)
+            n += dynamic_cast<JobMenuAction *>(a) ? 1 : 0;
+        return n;
+    };
     for (QAction *action : actions) {
-        if (m_controlAction->menu()->actions().count() <= MAX_OLD_MENU_ACTIONS)
+        if (jobEntries() <= MAX_OLD_MENU_ACTIONS)
             break;
         auto *jobAction = dynamic_cast<JobMenuAction *>(action);
-        if (jobAction->isDone()) {
+        if (jobAction && jobAction->isDone()) {
             m_controlAction->menu()->removeAction(action);
             action->deleteLater();
         }
@@ -436,6 +531,12 @@ void JobMan::updateUI()
         m_progressBar->setToolTip(i18np("%1 Job", "%1 Jobs", m_jobs.length()));
 
     const bool running = jobsAreRunning();
+    // Panero: the jobs button with its progress ring
+    m_jobsAction->setVisible(hasJobs);
+    m_jobsAction->setProgress(hasJobs ? totalPercent / m_jobs.length() : 0, m_jobs.length());
+    m_pauseAllAction->setVisible(hasJobs);
+    m_pauseAllAction->setText(running ? i18n("Pause All Jobs") : i18n("Resume All Jobs"));
+    m_pauseAllAction->setIcon(Icon(running ? "media-playback-pause" : "media-playback-start"));
     m_controlAction->setIcon(Icon(
         !hasJobs ? "edit-clear" : running ? "media-playback-pause" : "media-playback-start"));
     m_controlAction->setToolTip(!hasJobs ? i18n("Clear Job List") : running ?

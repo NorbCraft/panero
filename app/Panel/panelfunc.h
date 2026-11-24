@@ -24,6 +24,7 @@
 class DirHistoryQueue;
 class FileItem;
 class FileSystem;
+class KrPanel;
 class KrViewItem;
 class ListPanel;
 class SizeCalculator;
@@ -84,6 +85,9 @@ public slots:
     void calcSpace();
     /** Calculate the occupied space of the current item without dialog. */
     void quickCalcSpace();
+    /// Panero: clear the marks after copy, move, pack and open (Total Commander, D-022;
+    /// Look&Feel/UnselectBeforeOperation). The marks can be restored (Restore Selection).
+    void unselectAfterOperation(KrPanel *source = nullptr);
     void properties();
     void cut() {
         copyToClipboard(true);

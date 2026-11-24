@@ -142,28 +142,7 @@ bool FileSystem::scanOrRefresh(const QUrl &directory, bool onlyScan)
 
 void FileSystem::deleteFiles(const QList<QUrl> &urls, bool moveToTrash)
 {
-#ifdef Q_OS_WIN
-    // Windows: KIO 5's trash worker passes "\C:\..." to SHFileOperation, which fails, and
-    // reports success (kio_trash_win.cpp, doFileOp/translateError). Qt's moveToTrash uses
-    // IFileOperation and puts local files into the Recycle Bin.
-    if (moveToTrash && !urls.isEmpty() &&
-        std::all_of(urls.cbegin(), urls.cend(), [](const QUrl &url) { return url.isLocalFile(); })) {
-        QStringList failed;
-        for (const QUrl &url : urls) {
-            const QString path = QDir::toNativeSeparators(url.toLocalFile());
-            if (!QFile::moveToTrash(path))
-                failed << path;
-        }
-        emit fileSystemChanged(urls.first().adjusted(QUrl::RemoveFilename), true);
-        emit fileSystemChanged(QUrl("trash:/"), false);
-        if (!failed.isEmpty()) {
-            qWarning() << "Panero: could not move to the Recycle Bin:" << failed;
-            KMessageBox::errorList(krMainWindow, i18n("These items could not be moved to the Recycle Bin:"),
-                                   failed);
-        }
-        return;
-    }
-#endif
+    // (Windows: KrJob moves local files to the Recycle Bin in a worker thread, PaneroRecycleJob)
     KrJob *krJob = KrJob::createDeleteJob(urls, moveToTrash);
     connect(krJob, &KrJob::started, this, [=](KIO::Job *job) {
         connectJobToSources(job, urls);

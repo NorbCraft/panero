@@ -13,7 +13,6 @@ set(Panel_SRCS
     panerowinshell.cpp
     panerodrivebar.cpp
     paneroiconthemes.cpp
-    panerojobrow.cpp
     krlayoutfactory.cpp
     krpanel.cpp
     krpreviewjob.cpp
