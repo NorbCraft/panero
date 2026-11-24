@@ -425,7 +425,7 @@ KgPaneroMouse::KgPaneroMouse(bool first, QWidget *parent)
     m_holdFeedback = new QComboBox(mouseBox);
     PaneroSettings::fillHoldFeedbackCombo(m_holdFeedback);
     form->addRow(i18n("Hold feedback:"), m_holdFeedback);
-    form->addRow(QString(), addNote(i18n("Total Commander, Konqueror and custom modes, and the hold time: "
+    form->addRow(addNote(i18n("Total Commander, Konqueror and custom modes, and the hold time: "
                                          "<a href=\"settings:panel-mouse\">Advanced › Panel › Selection Mode</a>."),
                                     mouseBox));
 
@@ -436,7 +436,7 @@ KgPaneroMouse::KgPaneroMouse(bool first, QWidget *parent)
             keys->trigger();
     });
     form->addRow(i18n("Shortcuts:"), shortcuts);
-    form->addRow(QString(), addNote(i18n("The function key bar and the command line: "
+    form->addRow(addNote(i18n("The function key bar and the command line: "
                                          "<a href=\"settings:startup\">Advanced › Startup</a>."),
                                     keysBox));
     finishSetup();
@@ -544,7 +544,7 @@ KgPaneroWindows::KgPaneroWindows(bool first, QWidget *parent)
     m_rightClickMenu = new QComboBox(menuBox);
     PaneroSettings::fillRightClickMenuCombo(m_rightClickMenu);
     form->addRow(i18n("Right-click menu:"), m_rightClickMenu);
-    form->addRow(QString(), addNote(i18n("The Explorer menu shows Explorer's items (Open with, Send to, "
+    form->addRow(addNote(i18n("The Explorer menu shows Explorer's items (Open with, Send to, "
                                          "the cloud apps...) with Panero's own items on top."),
                                     menuBox));
 
