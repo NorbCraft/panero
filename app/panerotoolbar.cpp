@@ -139,8 +139,25 @@ void PaneroToolBar::migrateSettings()
         // preview 4: no check badge on marked files by default (the dialog used to save it)
         KConfigGroup(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance")).deleteEntry("Mark Indicator");
     }
-    if (version < 4) {
-        panero.writeEntry("Settings Version", 4);
+#ifdef Q_OS_WIN
+    if (version < 5) {
+        // preview 13: up to preview 11 the Cloud option was hidden and off on
+        // Windows, and Quick Settings saved "Show Cloud=false" on every OK; the
+        // Cloud section (preview 12) then stayed hidden. Back to the default.
+        KConfigGroup look(KSharedConfig::openConfig(), QStringLiteral("Panero Appearance"));
+        if (look.hasKey("Show Cloud") && !look.readEntry("Show Cloud", true))
+            look.deleteEntry("Show Cloud");
+    }
+#endif
+    if (version < 6) {
+        // preview 13 (D-022): marks are cleared after copy, move, pack and open for everybody
+        // (Total Commander); Krusader's old default was off and the settings dialog saved it
+        KConfigGroup look(KSharedConfig::openConfig(), QStringLiteral("Look&Feel"));
+        if (look.hasKey("UnselectBeforeOperation") && !look.readEntry("UnselectBeforeOperation", true))
+            look.deleteEntry("UnselectBeforeOperation");
+    }
+    if (version < 6) {
+        panero.writeEntry("Settings Version", 6);
         panero.sync();
     }
 }

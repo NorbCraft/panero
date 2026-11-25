@@ -11,6 +11,8 @@
 
 #include "filesystem.h"
 
+#include <memory>
+
 #include <QFileSystemWatcher>
 #include <QTimer>
 
@@ -30,6 +32,8 @@
  * (~500ms delay between operation finished and watcher emits signals).
  *
  */
+struct SlowListing;
+
 class DefaultFileSystem : public FileSystem {
     Q_OBJECT
 public:
@@ -39,7 +43,7 @@ public:
                            KIO::CopyJob::CopyMode mode = KIO::CopyJob::Copy,
                            bool showProgressInfo = true,
                            JobMan::StartMode startMode = JobMan::Default) override;
-    void dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget) override;
+    KIO::DropJob *dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget) override;
 
     void addFiles(const QList<QUrl> &fileUrls, KIO::CopyJob::CopyMode mode,
                   const QString &dir = "") override;
@@ -82,6 +86,8 @@ private:
     /// Panero: cloud/network folders are read in a worker thread; the panel
     /// stays usable and a new navigation cancels the listing.
     bool refreshSlow(const QUrl &directory, const QString &path, bool onlyScan);
+    /// fill the panel from a listing read by refreshSlow() or taken from the cache
+    bool showSlowListing(const std::shared_ptr<SlowListing> &listing, const QString &path, bool onlyScan);
     /// Panero: asks the cloud drive to read the shown folder again from the
     /// provider (at most every 20 s), then checks it for changes.
     void revalidateSlowFolder();

@@ -10,7 +10,10 @@
 
 #include "../FileSystem/panerocloudfiles.h"
 
+#include <QAction>
 #include <QCoreApplication>
+#include <QGuiApplication>
+#include <QMenu>
 #include <QDir>
 #include <QImage>
 #include <QDebug>
@@ -18,6 +21,9 @@
 #include <QThread>
 #include <QWidget>
 #include <QWindow>
+
+#include <KConfigCore/KConfigGroup>
+#include <KConfigCore/KSharedConfig>
 
 #include <windows.h>
 #include <commctrl.h>
@@ -127,6 +133,9 @@ struct ShellMenu::Private {
     UINT chosen = 0;
     POINT point = {0, 0};
 
+    bool start(QWidget *w);
+    void finish(UINT flags, const QStringList &names);
+
     QString verb(UINT id) const
     {
         if (!cm || id < ShellFirst || id > ShellLast)
@@ -164,25 +173,112 @@ struct ShellMenu::Private {
     }
 };
 
-ShellMenu::ShellMenu(QWidget *owner, const QString &folder, const QStringList &names, bool extendedVerbs)
-    : d(new Private)
+namespace
 {
-    d->owner = owner;
-    d->folder = QDir::toNativeSeparators(QDir::cleanPath(folder));
-    if (d->folder.endsWith(QLatin1Char(':'))) // "C:" -> "C:\"
-        d->folder += QLatin1Char('\\');
+QString nativeFolder(const QString &path)
+{
+    QString out = QDir::toNativeSeparators(QDir::cleanPath(path));
+    if (out.endsWith(QLatin1Char(':'))) // "C:" -> "C:\"
+        out += QLatin1Char('\\');
+    return out;
+}
+} // namespace
+
+bool ShellMenu::Private::start(QWidget *w)
+{
+    owner = w;
     if (!owner || QThread::currentThread() != QCoreApplication::instance()->thread()) {
-        d->error = QStringLiteral("not in the GUI thread");
-        return;
+        error = QStringLiteral("not in the GUI thread");
+        return false;
     }
-    d->hwnd = reinterpret_cast<HWND>(owner->window()->winId());
+    hwnd = reinterpret_cast<HWND>(owner->window()->winId());
     // Qt's GUI thread is a single-threaded apartment with OLE already (drag and drop)
     const HRESULT init = OleInitialize(nullptr);
     if (FAILED(init)) {
-        d->error = QStringLiteral("OleInitialize: 0x%1").arg(quint32(init), 8, 16, QLatin1Char('0'));
+        error = QStringLiteral("OleInitialize: 0x%1").arg(quint32(init), 8, 16, QLatin1Char('0'));
+        return false;
+    }
+    ole = true;
+    return true;
+}
+
+void ShellMenu::Private::finish(UINT flags, const QStringList &names)
+{
+    if (FAILED(cm->QueryInterface(IID_IContextMenu3, reinterpret_cast<void **>(&cm3))))
+        cm3 = nullptr;
+    if (!cm3 && FAILED(cm->QueryInterface(IID_IContextMenu2, reinterpret_cast<void **>(&cm2))))
+        cm2 = nullptr;
+
+    menu = CreatePopupMenu();
+    const HRESULT hr = cm->QueryContextMenu(menu, 0, ShellFirst, ShellLast, flags);
+    if (FAILED(hr)) {
+        error = QStringLiteral("QueryContextMenu: 0x%1").arg(quint32(hr), 8, 16, QLatin1Char('0'));
         return;
     }
-    d->ole = true;
+    // no separator at the very top or bottom
+    while (GetMenuItemCount(menu) > 0 && (GetMenuState(menu, 0, MF_BYPOSITION) & MF_SEPARATOR))
+        DeleteMenu(menu, 0, MF_BYPOSITION);
+    while (GetMenuItemCount(menu) > 0 && (GetMenuState(menu, UINT(GetMenuItemCount(menu) - 1), MF_BYPOSITION) & MF_SEPARATOR))
+        DeleteMenu(menu, UINT(GetMenuItemCount(menu) - 1), MF_BYPOSITION);
+    if (debugMenu())
+        qWarning() << "Explorer menu:" << "menu of" << folder << names << "flags" << Qt::hex << flags;
+}
+
+ShellMenu::ShellMenu(QWidget *owner, const QStringList &paths, bool extendedVerbs)
+    : d(new Private)
+{
+    d->folder = nativeFolder(paths.value(0));
+    if (paths.isEmpty()) {
+        d->error = QStringLiteral("no items");
+        return;
+    }
+    if (!d->start(owner))
+        return;
+    // the items' parent folder (for drives: "This PC") and their PIDLs in it
+    std::vector<PIDLIST_ABSOLUTE> absolute;
+    std::vector<PCUITEMID_CHILD> children;
+    IShellFolder *parent = nullptr;
+    HRESULT hr = S_OK;
+    for (const QString &path : paths) {
+        const std::wstring wpath = nativeFolder(path).toStdWString();
+        PIDLIST_ABSOLUTE pidl = nullptr;
+        hr = SHParseDisplayName(wpath.c_str(), nullptr, &pidl, 0, nullptr);
+        if (FAILED(hr) || !pidl)
+            break;
+        absolute.push_back(pidl);
+        PCUITEMID_CHILD child = nullptr;
+        IShellFolder *itemParent = nullptr;
+        hr = SHBindToParent(pidl, IID_IShellFolder, reinterpret_cast<void **>(&itemParent), &child);
+        if (FAILED(hr))
+            break;
+        if (!parent)
+            parent = itemParent; // the first item's parent (the others share it)
+        else
+            itemParent->Release();
+        children.push_back(child);
+    }
+    if (SUCCEEDED(hr) && parent)
+        hr = parent->GetUIObjectOf(d->hwnd, UINT(children.size()), children.data(), IID_IContextMenu, nullptr,
+                                   reinterpret_cast<void **>(&d->cm));
+    release(parent);
+    for (PIDLIST_ABSOLUTE pidl : absolute)
+        CoTaskMemFree(pidl); // the children point into these
+    if (FAILED(hr) || !d->cm) {
+        d->error = QStringLiteral("no shell menu for %1: 0x%2").arg(paths.join(QLatin1Char(' '))).arg(quint32(hr), 8, 16, QLatin1Char('0'));
+        release(d->cm);
+        return;
+    }
+    d->finish(CMF_NORMAL | (extendedVerbs ? CMF_EXTENDEDVERBS : 0), paths);
+    if (debugMenu())
+        qWarning() << "Explorer menu:" << "items" << items();
+}
+
+ShellMenu::ShellMenu(QWidget *owner, const QString &folder, const QStringList &names, bool extendedVerbs)
+    : d(new Private)
+{
+    d->folder = nativeFolder(folder);
+    if (!d->start(owner))
+        return;
 
     const std::wstring wfolder = d->folder.toStdWString();
     PIDLIST_ABSOLUTE folderPidl = nullptr;
@@ -228,26 +324,9 @@ ShellMenu::ShellMenu(QWidget *owner, const QString &folder, const QStringList &n
         release(d->cm);
         return;
     }
-    if (FAILED(d->cm->QueryInterface(IID_IContextMenu3, reinterpret_cast<void **>(&d->cm3))))
-        d->cm3 = nullptr;
-    if (!d->cm3 && FAILED(d->cm->QueryInterface(IID_IContextMenu2, reinterpret_cast<void **>(&d->cm2))))
-        d->cm2 = nullptr;
-
-    d->menu = CreatePopupMenu();
-    const UINT flags = CMF_NORMAL | CMF_CANRENAME | (extendedVerbs ? CMF_EXTENDEDVERBS : 0);
-    hr = d->cm->QueryContextMenu(d->menu, 0, ShellFirst, ShellLast, flags);
-    if (FAILED(hr)) {
-        d->error = QStringLiteral("QueryContextMenu: 0x%1").arg(quint32(hr), 8, 16, QLatin1Char('0'));
-        return;
-    }
-    // no separator at the very top or bottom
-    while (GetMenuItemCount(d->menu) > 0 && (GetMenuState(d->menu, 0, MF_BYPOSITION) & MF_SEPARATOR))
-        DeleteMenu(d->menu, 0, MF_BYPOSITION);
-    while (GetMenuItemCount(d->menu) > 0
-           && (GetMenuState(d->menu, UINT(GetMenuItemCount(d->menu) - 1), MF_BYPOSITION) & MF_SEPARATOR))
-        DeleteMenu(d->menu, UINT(GetMenuItemCount(d->menu) - 1), MF_BYPOSITION);
+    d->finish(CMF_NORMAL | CMF_CANRENAME | (extendedVerbs ? CMF_EXTENDEDVERBS : 0), names);
     if (debugMenu())
-        qWarning() << "Explorer menu:" << "menu of" << d->folder << names << "extended" << extendedVerbs << "items" << items();
+        qWarning() << "Explorer menu:" << "items" << items();
 }
 
 ShellMenu::~ShellMenu()
@@ -337,7 +416,7 @@ void ShellMenu::addExtras(const QList<MenuExtra> &extras)
             mii.fMask = MIIM_ID | MIIM_STRING | MIIM_STATE;
             mii.wID = e.id;
             mii.dwTypeData = &text[0];
-            mii.fState = (e.checkable && e.checked) ? MFS_CHECKED : MFS_UNCHECKED;
+            mii.fState = ((e.checkable && e.checked) ? MFS_CHECKED : MFS_UNCHECKED) | (e.enabled ? MFS_ENABLED : MFS_DISABLED);
             if (!e.checkable) { // a check mark instead of the picture
                 if (HBITMAP bmp = iconBitmap(e.icon)) {
                     d->bitmaps.push_back(bmp);
@@ -415,5 +494,72 @@ bool ShellMenu::invoke(QString *error)
         *error = QStringLiteral("0x%1").arg(quint32(hr), 8, 16, QLatin1Char('0'));
     // HRESULT_FROM_WIN32(ERROR_CANCELLED): the user cancelled a dialog of the command
     return SUCCEEDED(hr) || hr == HRESULT_FROM_WIN32(ERROR_CANCELLED);
+}
+
+bool explorerMenuEnabled()
+{
+    if (qEnvironmentVariableIsSet("PANERO_NO_EXPLORER_MENU"))
+        return false;
+    return KConfigGroup(KSharedConfig::openConfig(), "Look&Feel").readEntry("Explorer Menu", true);
+}
+
+bool execItemMenu(QWidget *owner, const QString &path, const QMenu *panero, const QPoint &globalPos, QAction **chosen,
+                  QAction *openAction)
+{
+    if (chosen)
+        *chosen = nullptr;
+    if (!explorerMenuEnabled() || path.isEmpty())
+        return false;
+    const bool shift = QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier;
+    ShellMenu menu(owner, QStringList{path}, shift);
+    if (!menu.isValid()) {
+        qWarning() << "Explorer menu not available:" << menu.error();
+        return false;
+    }
+    // Panero's items: separators, no submenus, no doubled or edge separators
+    QList<MenuExtra> extras;
+    QList<QAction *> actions;
+    if (panero) {
+        const QList<QAction *> all = panero->actions();
+        for (QAction *a : all) {
+            if (!a->isVisible() || a->menu())
+                continue;
+            if (a->isSeparator()) {
+                if (!extras.isEmpty() && extras.last().id != 0)
+                    extras << MenuExtra();
+                continue;
+            }
+            MenuExtra e;
+            e.id = MenuExtraFirst + unsigned(actions.size());
+            e.text = a->text().remove(QLatin1Char('&'));
+            e.shortcut = a->shortcut().toString(QKeySequence::NativeText);
+            e.icon = a->icon();
+            e.checkable = a->isCheckable();
+            e.checked = a->isChecked();
+            e.enabled = a->isEnabled();
+            extras << e;
+            actions << a;
+        }
+    }
+    while (!extras.isEmpty() && extras.last().id == 0)
+        extras.removeLast();
+    menu.addExtras(extras);
+    const ShellMenu::Choice choice = menu.exec(globalPos);
+    if (choice.extra) {
+        if (chosen)
+            *chosen = actions.value(int(choice.extra - MenuExtraFirst));
+        return true;
+    }
+    if (!choice.shell)
+        return true;
+    if (openAction && choice.verb == QLatin1String("open")) {
+        if (chosen)
+            *chosen = openAction; // in a panel, not in an Explorer window
+        return true;
+    }
+    QString error;
+    if (!menu.invoke(&error))
+        qWarning() << "Explorer menu command failed:" << choice.text << choice.verb << error;
+    return true;
 }
 } // namespace PaneroWinShell

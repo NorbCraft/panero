@@ -84,6 +84,11 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actCalculate = action(i18n("Calculate &Occupied Space"), "accessories-calculator", 0, _func, SLOT(calcSpace()), "calculate");
     actPack = action(i18n("Pac&k..."), "archive-insert", Qt::ALT + Qt::SHIFT + Qt::Key_P, _func, SLOT(pack()), "pack");
     actUnpack = action(i18n("&Unpack..."), "archive-extract", Qt::ALT + Qt::SHIFT + Qt::Key_U, _func, SLOT(unpack()), "unpack");
+#ifdef Q_OS_WIN
+    // Panero (Windows): also Total Commander's Alt+F5 / Alt+F9
+    _mainWindow->actions()->setDefaultShortcuts(actPack, {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_P), QKeySequence(Qt::ALT + Qt::Key_F5)});
+    _mainWindow->actions()->setDefaultShortcuts(actUnpack, {QKeySequence(Qt::ALT + Qt::SHIFT + Qt::Key_U), QKeySequence(Qt::ALT + Qt::Key_F9)});
+#endif
     actCreateChecksum = action(i18n("Create Checksum..."), "document-edit-sign", 0, _func, SLOT(createChecksum()), "create checksum");
     actMatchChecksum = action(i18n("Verify Checksum..."), "document-edit-decrypt-verify", 0, _func, SLOT(matchChecksum()), "match checksum");
     action(i18n("New Symlink..."), nullptr, Qt::CTRL + Qt::ALT + Qt::Key_S, _func, SLOT(krlink()), "new symlink");
@@ -103,9 +108,10 @@ ListPanelActions::ListPanelActions(QObject *parent, KrMainWindow *mainWindow) :
     actSyncBrowse = action(i18n("S&ynchron Folder Changes"), "kr_syncbrowse_off", Qt::ALT + Qt::SHIFT + Qt::Key_Y, _gui, SLOT(toggleSyncBrowse()), "sync browse");
     actLocationBar = action(i18n("Go to Location Bar"), nullptr, Qt::CTRL + Qt::Key_L, _gui, SLOT(editLocation()), "location_bar");
     // Panero: no "Toggle Sidebar" (Alt+Down): the per-panel sidebar is removed
-    action(i18n("Bookmarks"), nullptr, Qt::CTRL + Qt::Key_D, _gui, SLOT(openBookmarks()), "bookmarks");
-    action(i18n("Left Bookmarks"), nullptr, 0, this, SLOT(openLeftBookmarks()), "left bookmarks");
-    action(i18n("Right Bookmarks"), nullptr, 0, this, SLOT(openRightBookmarks()), "right bookmarks");
+    // Panero: the bookmark keys open the Pinned list (D-022)
+    action(i18n("Pinned Folders"), "bookmarks", Qt::CTRL + Qt::Key_D, _gui, SLOT(openBookmarks()), "bookmarks");
+    action(i18n("Left Pinned Folders"), nullptr, 0, this, SLOT(openLeftBookmarks()), "left bookmarks");
+    action(i18n("Right Pinned Folders"), nullptr, 0, this, SLOT(openRightBookmarks()), "right bookmarks");
     action(i18n("History"), nullptr, Qt::CTRL + Qt::Key_H, _gui, SLOT(openHistory()), "history");
     action(i18n("Left History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Left, this, SLOT(openLeftHistory()), "left history");
     action(i18n("Right History"), nullptr, Qt::ALT + Qt::CTRL + Qt::Key_Right, this, SLOT(openRightHistory()), "right history");

@@ -25,6 +25,7 @@
 #include <QWidget>
 
 #include <KIO/CopyJob>
+namespace KIO { class DropJob; }
 #include <KIO/DirectorySizeJob>
 
 #include "../JobMan/jobman.h"
@@ -73,7 +74,9 @@ public:
                            bool showProgressInfo = true,
                            JobMan::StartMode startMode = JobMan::Default) = 0;
     /// Handle file dropping in this filesystem. Destination is absolute URL. May implemented async.
-    virtual void dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget) = 0;
+    /// Panero: returns the drop job (its copy starts after the drop menu), or nullptr when the
+    /// files were handled at once.
+    virtual KIO::DropJob *dropFiles(const QUrl &destination, QDropEvent *event, QWidget *targetWidget) = 0;
 
     /// Copy (copy, move or link) files to the current filesystem directory or to "dir", the
     /// directory name relative to the current dir. May implemented async.

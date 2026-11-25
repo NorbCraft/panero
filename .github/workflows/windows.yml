@@ -60,7 +60,7 @@ jobs:
             curl zip
           pacboy: >-
             gcc:p cmake:p ninja:p pkgconf:p extra-cmake-modules:p
-            qt5-base:p qt5-svg:p qt5-tools:p qt5-winextras:p qt5-imageformats:p
+            qt5-base:p qt5-svg:p qt5-tools:p qt5-winextras:p qt5-imageformats:p qt5-multimedia:p
             gettext-tools:p zlib:p bzip2:p xz:p dbus:p
 
       - name: Install pinned KDE Frameworks 5

@@ -178,6 +178,13 @@ public:
     void init(bool enableUpdateDefaultSettings = true);
     KrViewInstance *instance() { return &_instance; }
     static const IconSizes iconSizes;
+    /// Panero: the sizes Zoom In / Zoom Out step through; the thumbnail view uses
+    /// finer steps (thumbnailSizes) to fit any window and display
+    virtual const QVector<int> &zoomSizes() const
+    {
+        return iconSizes;
+    }
+    static const QVector<int> thumbnailSizes;
 
 protected:
     void initProperties();

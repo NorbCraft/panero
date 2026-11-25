@@ -64,6 +64,27 @@ private slots:
                  QUrl(QStringLiteral("sftp://user@host/")));
     }
 
+    void archiveIsItsLocalFolder()
+    {
+        // inside an archive the tree shows the local folders ("krarc:/" is no folder)
+#ifdef Q_OS_WIN
+        QSKIP("Unix paths");
+#endif
+        const QUrl home = QUrl::fromLocalFile(QDir::cleanPath(m_homePath));
+        QDir(m_homePath).mkpath(QStringLiteral("Downloads"));
+        QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("krarc:") + m_homePath + QStringLiteral("/Downloads/a.zip/sub/"))), home);
+        QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("zip:") + m_homePath + QStringLiteral("/Downloads/a.zip/"))), home);
+        const QUrl outside = PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("krarc:/usr/share/doc/x.tar.gz/")));
+        QVERIFY(outside.isLocalFile());
+        QCOMPARE(outside, QUrl::fromLocalFile(QStorageInfo(QStringLiteral("/usr/share/doc")).rootPath()));
+    }
+
+    void virtualFolderIsHome()
+    {
+        const QUrl home = QUrl::fromLocalFile(QDir::cleanPath(m_homePath));
+        QCOMPARE(PaneroPaths::homeOrDriveRoot(QUrl(QStringLiteral("virt:/Search results"))), home);
+    }
+
 private:
     QTemporaryDir m_home;
     QString m_homePath;

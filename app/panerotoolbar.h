@@ -43,7 +43,7 @@ private:
 namespace PaneroToolBar
 {
 /// Version of the default toolbar layout shipped in paneroui.rc (the <gui version>).
-constexpr int LayoutVersion = 32;
+constexpr int LayoutVersion = 34;
 
 /**
  * KXMLGUI keeps the toolbars of a user's local copy of paneroui.rc (written as soon

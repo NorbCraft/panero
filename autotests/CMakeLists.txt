@@ -23,6 +23,11 @@ ecm_add_test(paneropathstest.cpp ../app/Panel/paneropaths.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Core PaneroSlowPaths)
 target_include_directories(paneropathstest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel)
 
+ecm_add_test(paneroportaldragtest.cpp ../app/Panel/paneroportaldrag.cpp
+    TEST_NAME paneroportaldragtest
+    LINK_LIBRARIES Qt5::Test Qt5::Core Qt5::DBus)
+target_include_directories(paneroportaldragtest PRIVATE ${CMAKE_SOURCE_DIR}/app/Panel)
+
 if(NOT WIN32) # Cloud is not offered on Windows (rclone mount needs FUSE)
 # Cloud backend (rclone / KIO servers). The mount test needs rclone in PATH and
 # /dev/fuse; it skips otherwise. All state lives in temporary HOME/XDG dirs.
@@ -58,3 +63,28 @@ ecm_add_test(panerocloudfilestest.cpp
     LINK_LIBRARIES Qt5::Test Qt5::Gui PaneroCloudFiles)
 target_include_directories(panerocloudfilestest PRIVATE ${CMAKE_SOURCE_DIR}/app/FileSystem)
 set_tests_properties(panerocloudfilestest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Undo for file operations and the Windows Recycle Bin records (D-022). No D-Bus, temporary HOME/XDG.
+ecm_add_test(panerojobstest.cpp ../app/JobMan/paneroundo.cpp ../app/JobMan/panerorecyclebin.cpp
+    TEST_NAME panerojobstest
+    LINK_LIBRARIES Qt5::Test Qt5::Widgets KF5::KIOWidgets KF5::I18n KF5::WidgetsAddons)
+target_include_directories(panerojobstest PRIVATE ${CMAKE_SOURCE_DIR}/app/JobMan ${CMAKE_SOURCE_DIR}/app)
+if(WIN32)
+    target_link_libraries(panerojobstest advapi32 shell32)
+endif()
+set_tests_properties(panerojobstest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Quick View (D-022): classification, encodings, EXIF, folder sizes, archives, PDF, hex.
+ecm_add_test(paneroquickviewtest.cpp
+    TEST_NAME paneroquickviewtest
+    LINK_LIBRARIES Qt5::Test Qt5::Gui KF5::Archive QuickViewData)
+target_include_directories(paneroquickviewtest PRIVATE ${CMAKE_SOURCE_DIR}/app/QuickView)
+if(PANERO_HAVE_POPPLER)
+    target_compile_definitions(paneroquickviewtest PRIVATE PANERO_HAVE_POPPLER)
+endif()
+set_tests_properties(paneroquickviewtest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+ecm_add_test(percentalsplittertest.cpp ../app/Dialogs/percentalsplitter.cpp
+    TEST_NAME percentalsplittertest
+    LINK_LIBRARIES Qt5::Test Qt5::Widgets)
+target_include_directories(percentalsplittertest PRIVATE ${CMAKE_SOURCE_DIR}/app/Dialogs)

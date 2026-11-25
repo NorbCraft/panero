@@ -32,6 +32,10 @@ cp "$P/bin/kioslave5.exe" "$P/bin/kiod5.exe" "$out/"
 for d in platforms styles imageformats iconengines; do
     cp -r "$P/share/qt5/plugins/$d" "$out/plugins/"
 done
+# Quick View audio/video (Qt Multimedia: DirectShow / Media Foundation backends)
+for d in mediaservice audio playlistformats; do
+    [ -d "$P/share/qt5/plugins/$d" ] && cp -r "$P/share/qt5/plugins/$d" "$out/plugins/"
+done
 # KDE plugins: KIO workers (file, trash = Recycle Bin, ftp, http, ...) and kiod modules
 cp -r "$P/share/qt5/plugins/kf5/kio" "$P/share/qt5/plugins/kf5/kiod" "$out/plugins/kf5/"
 # Panero's own KIO worker (krarc: browse archives)
@@ -71,6 +75,27 @@ while [ "$changed" = 1 ]; do
         done
     done < <(find "$out" -iname '*.exe' -o -iname '*.dll')
 done
+
+# 7-Zip for Pack / Unpack and archive browsing (zip, 7z, rar, gzip, bzip2, xz;
+# Windows' own tar.exe does the tar family): the official x64 release at a
+# pinned version, checked by SHA-256. 7z.exe and 7z.dll go to "7-Zip", where
+# Panero looks first (KrArcBaseManager::findExecutable). Licence: GNU LGPL with
+# the unRAR restriction (License.txt).
+sz_ver=26.06 sz_tag=2606
+sz_sha=9b697f65ecc2d9b0152f5ee96d72dde522a7827690349d9307935dacf40f42ec
+sz_dl="$build/7z$sz_tag-x64.exe"
+if [ ! -f "$sz_dl" ] || ! echo "$sz_sha  $sz_dl" | sha256sum -c --status; then
+    curl -fsSL --retry 3 -o "$sz_dl" "https://github.com/ip7z/7zip/releases/download/$sz_ver/7z$sz_tag-x64.exe" \
+        || curl -fsSL --retry 3 -o "$sz_dl" "https://www.7-zip.org/a/7z$sz_tag-x64.exe"
+fi
+echo "$sz_sha  $sz_dl" | sha256sum -c
+mkdir -p "$out/7-Zip"
+# the installer is a 7z self-extracting archive; libarchive's bsdtar reads it
+sz_tar=$(command -v bsdtar || echo /c/Windows/System32/tar.exe)
+"$sz_tar" -xf "$sz_dl" -C "$out/7-Zip" 7z.exe 7z.dll License.txt readme.txt History.txt
+cp "$out/7-Zip/License.txt" "$out/licenses/7-Zip-License.txt"
+cp "$here/7-Zip/LGPL-2.1.txt" "$out/licenses/7-Zip-LGPL-2.1.txt"
+"$out/7-Zip/7z.exe" i > "$build/7z-info.txt" && head -3 "$build/7z-info.txt"
 
 # Licenses and source offer (GPL): Panero, Krusader, KDE Frameworks, Qt, MinGW runtime
 cp "$root"/LICENSES/*.txt "$out/licenses/"

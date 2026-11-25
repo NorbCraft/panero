@@ -60,6 +60,12 @@ KgStartup::KgStartup(bool first, QWidget* parent) :
 
     KonfiguratorCheckBoxGroup* cbs = createCheckBoxGroup(2, 0, settings, 2 /* settings count */, panelsGrp);
     panelsGrid->addWidget(cbs, 2, 0, 1, 2);
+    // Panero ships no splash screen
+    cbs->find("Show splashscreen")->hide();
+#ifdef Q_OS_WIN
+    // single instance mode works through D-Bus (Linux only)
+    cbs->find("Single Instance Mode")->hide();
+#endif
 
     auto *iconThemeLayout = new QHBoxLayout();
     QLabel *iconThemeLabel = new QLabel(i18n("Fallback Icon Theme:"));

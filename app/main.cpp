@@ -53,6 +53,8 @@
 #include "Cloud/panerocloud.h"
 #endif
 #include "Panel/paneroappearance.h"
+#include "GUI/panerodialogplacement.h"
+#include "Dialogs/panerofirststart.h"
 
 static const char *description = I18N_NOOP("Panero\nTwin-panel file manager, an independent fork of Krusader");
 
@@ -96,6 +98,13 @@ void openTabsRemote(QStringList tabs, bool left, const QString& appName)
 
 int main(int argc, char *argv[])
 {
+    // Panero: PANERO_TEST_PROFILE=1 keeps settings and data apart from the
+    // user's (QStandardPaths test mode: ~/.qttest on Linux, %LOCALAPPDATA%\qttest
+    // on Windows). GUI tests on a real machine use it; it must come before any
+    // configuration is read.
+    if (qEnvironmentVariableIntValue("PANERO_TEST_PROFILE") == 1)
+        QStandardPaths::setTestModeEnabled(true);
+
     // set global log message format
     qSetMessagePattern(KrServices::GLOBAL_MESSAGE_PATTERN);
 
@@ -324,6 +333,10 @@ int main(int argc, char *argv[])
 
     // Panero look (light/dark following the desktop, Fusion + Panero palette) - Panero only
     PaneroAppearance::instance()->apply();
+    // dialogs without a parent open centred on the Panero window
+    PaneroDialogPlacement::install();
+    // new users: the first-start assistant (look, drives, mouse) before the window opens
+    PaneroFirstStart::runOnFirstStart();
 
     // splash screen - if the user wants one
     QSplashScreen *splash = nullptr;

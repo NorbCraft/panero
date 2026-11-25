@@ -18,6 +18,7 @@ add_subdirectory(JobMan)
 add_subdirectory(Locate)
 add_subdirectory(MountMan)
 add_subdirectory(Panel)
+add_subdirectory(QuickView)
 add_subdirectory(Search)
 add_subdirectory(Splitter)
 add_subdirectory(UserAction)
@@ -74,6 +75,7 @@ if(WIN32)
 endif()
 
 target_link_libraries(panero
+                      QuickView
                       Panel
                       PanelView
                       BookMan
@@ -129,6 +131,8 @@ install(FILES midnight_commander.color
         DESTINATION ${KDE_INSTALL_DATADIR}/panero)
 install(FILES io.github.norbcraft.panero.metainfo.xml
         DESTINATION ${KDE_INSTALL_METAINFODIR})
+# notice when a file operation kept in the background ends (D-022, Linux)
+install(FILES panero.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFY5RCDIR})
 
 # Panero application icon (original artwork, see dev/ICON-PROVENANCE.md)
 ecm_install_icons(ICONS

@@ -387,3 +387,36 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       feature/explorer-menu (Windows run 45169504569 green).
 - Needs the owner's PC: OneDrive names/icons, real download/free-up after
   the pin actions, the icon fix on his C:\, Google Drive detection.
+
+## Phase 17 — Preview 13 (owner decisions D-022)
+
+- [x] Windows VM over SSH (key ~/.ssh/panero-vm_ed25519 on the host, setup
+      script ~/VM-Share/setup-panero-ssh.ps1 run by the owner); MSYS2,
+      Python, Inno Setup in the VM; dev/windows/vm.sh (full build 2m49s,
+      incremental ~2 min). VM-safe GUI test mode: helper (feature/p13-windows).
+- [x] Drag & drop via the document portal (verified with the Flatpak
+      Firefox sandbox); Cloud section migration (Windows); special folder
+      icons everywhere; krarc:/ error inside archives; dialogs centred on
+      the main window (owner findings 2026-11-23).
+- [x] Folder ticks from the provider status (p13-windows); icon theme
+      resets folder colour (p13-settings).
+- [x] Linux drive menu (PaneroDriveActions); Windows: Explorer's drive menu.
+- [x] App icon bigger; splitter double-click 50/50; Back/Forward on the
+      toolbar (layout 33); thumbnail frame.
+- [x] Selection cleared (p13-jobs); right-click menu choice (p13-windows,
+      in Settings/Quick Settings); transparent colours (p13-settings).
+- [x] Quick View (Ctrl+Q) with images, text/code, folders, archives, PDF,
+      audio/video (p13-quickview).
+- [x] Copy progress window + toolbar jobs button (p13-jobs).
+- [x] Settings window (Panero pages + Advanced) and short Quick Settings.
+- [x] Faster start (no full udev scans: 200k -> 3.6k syscalls), thumbnails
+      not on cloud drives + known mime type, cloud listing cache; context
+      menu freeze on cloud files fixed.
+- [x] Ideas: undo, folder size on Space (p13-jobs); first-start assistant,
+      bookmarks into Pinned, Tools menu cleanup (p13-settings).
+- [x] Windows: zip/7z/tar packing and unpacking (bundled 7-Zip, tar.exe);
+      archive jobs use toLocalFile ("/C:/x" broke tar).
+- [x] Owner additions: finer thumbnail zoom steps; image viewer plan
+      (dev/IMAGE-VIEWER-PLAN.md workbook; decision page for the brief in
+      ~/Projects/panero-image-viewer-handoff, published after the release).
+- [ ] Release v0.1.0-preview.13 (Linux + Windows round).

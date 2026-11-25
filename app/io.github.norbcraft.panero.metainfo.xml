@@ -37,6 +37,11 @@
   </categories>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.0~preview.13" date="2026-11-24" type="development">
+      <description>
+        <p>Quick View in the other panel, copy progress windows with a jobs button, Undo for file operations, one Settings window with a short Quick Settings, drag and drop into Flatpak apps, drive menus, a faster start and many smaller fixes on Linux and Windows.</p>
+      </description>
+    </release>
     <release version="0.1.0~preview.12" date="2026-11-23" type="development">
       <description>
         <p>Windows: Explorer's right-click menu, cloud folders of OneDrive, Google Drive and Dropbox in the sidebar without downloading while browsing, Explorer's offline actions, folder icons fixed and an installer. Drive buttons with letter or icon only and a Network button. Linux: a Windows 11 icon theme option.</p>

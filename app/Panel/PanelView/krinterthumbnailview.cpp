@@ -20,7 +20,7 @@
 #include <KConfigCore/KConfig>
 #include <KConfigCore/KConfigGroup>
 
-/// Default thumbnail size in logical pixels (must be one of KrView::iconSizes)
+/// Default thumbnail size in logical pixels (must be one of KrView::thumbnailSizes)
 static const int DefaultThumbnailSize = 64;
 
 KrInterThumbnailView::KrInterThumbnailView(QWidget *parent, KrViewInstance &instance, KConfig *cfg)

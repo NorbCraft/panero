@@ -134,7 +134,7 @@ void KgGeneral::createViewerTab()
 
     QLabel *label1 = new QLabel(i18n("Editor:"), editorGrp);
     editorGrid->addWidget(label1, 0, 0);
-    KonfiguratorURLRequester *urlReq = createURLRequester("General", "Editor", "internal editor",
+    KonfiguratorURLRequester *urlReq = createURLRequester("General", "Editor", _Editor,
                                        label1, editorGrp, false, QString(), PAGE_VIEWER, false);
     editorGrid->addWidget(urlReq, 0, 1);
 

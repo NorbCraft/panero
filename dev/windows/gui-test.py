@@ -3,7 +3,11 @@
 """First-run GUI checks of the Windows build from a Total Commander user's view.
 
 Runs on a disposable GitHub Windows runner against disposable files in
-C:\\pt\\work. Drives Panero with the keyboard (and the mouse where UI Automation
+C:\\pt\\work. With --vm (dev/windows/vm-gui-test.ps1) it runs on a real machine:
+files in --work, no Cloud Files test provider, Panero with PANERO_TEST_PROFILE=1
+(separate settings), and only the items it deleted are removed from the Recycle Bin.
+
+Drives Panero with the keyboard (and the mouse where UI Automation
 exposes the file rows), checks every result on disk, and takes a screenshot
 after each step. Results go to <out>/gui-results.md and gui-results.json.
 
@@ -26,16 +30,26 @@ import win32con
 import win32gui
 from PIL import ImageGrab
 from pywinauto import Application, Desktop, keyboard, mouse
+# VM desktop: input only while Panero is in front (fgguard.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fgguard  # noqa: E402
+fgguard.install()
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # the CI console is cp1252
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)
+# --vm: a real Windows machine (the developer VM, D-022) instead of a disposable
+# runner: own work folder, no Cloud Files test provider, the Recycle Bin left
+# as it was (only the items this test deleted are removed from it again)
+ap.add_argument('--vm', action='store_true')
+ap.add_argument('--work', default=r'C:\pt\work')
 args = ap.parse_args()
 OUT = Path(args.out)
 OUT.mkdir(parents=True, exist_ok=True)
+VM = args.vm
 
 EXE = os.environ['PANERO_EXE']
-WORK = Path(r'C:\pt\work')
+WORK = Path(args.work).resolve()
 LEFT, RIGHT = WORK / 'left', WORK / 'right'
 results = []
 shot_no = [20]
@@ -101,6 +115,58 @@ def keys(seq, pause=0.6):
     time.sleep(pause)
 
 
+def recycled_from_work():
+    """Recycle Bin entries ($I info + $R data in C:\\$Recycle.Bin\\<SID>) whose original
+    path lies inside WORK: only what this test deleted."""
+    import win32api
+    import win32security
+    sid = win32security.ConvertSidToStringSid(win32security.GetTokenInformation(
+        win32security.OpenProcessToken(win32api.GetCurrentProcess(), win32con.TOKEN_QUERY),
+        win32security.TokenUser)[0])
+    folder = Path(WORK.drive + '\\') / '$Recycle.Bin' / sid
+    work = str(WORK).lower().rstrip('\\') + '\\'
+    out = []
+    try:
+        infos = [p for p in folder.iterdir() if p.name.startswith('$I')]
+    except OSError:
+        return out
+    for info in infos:
+        try:
+            data = info.read_bytes()
+            if int.from_bytes(data[0:8], 'little') == 2:       # Windows 10/11: length + path
+                n = int.from_bytes(data[24:28], 'little')
+                orig = data[28:28 + 2 * n].decode('utf-16-le').rstrip('\0')
+            else:                                              # Vista..8.1: fixed 520 bytes
+                orig = data[24:24 + 520].decode('utf-16-le').split('\0')[0]
+        except (OSError, UnicodeDecodeError):
+            continue
+        if orig.lower().startswith(work):
+            out.append((orig, info, folder / ('$R' + info.name[2:])))
+    return out
+
+
+def purge_own_recycled():
+    """VM: permanently removes the Recycle Bin items that came from WORK (nothing else)."""
+    removed = []
+    for orig, info, data in recycled_from_work():
+        try:
+            if data.is_dir():
+                shutil.rmtree(data)
+            else:
+                data.unlink(missing_ok=True)
+            info.unlink()
+            removed.append(orig)
+        except OSError as e:
+            print('could not purge', orig, e)
+    if removed:
+        print('removed from the Recycle Bin (deleted by this test):', removed, flush=True)
+    return removed
+
+
+if VM:
+    atexit.register(purge_own_recycled)
+
+
 def recycle_bin_names():
     ps = ('$s = New-Object -ComObject Shell.Application; '
           '$s.Namespace(10).Items() | ForEach-Object { $_.Name }')
@@ -110,6 +176,8 @@ def recycle_bin_names():
 
 
 # --- disposable files -------------------------------------------------------
+if VM:
+    purge_own_recycled()   # left over from an interrupted run
 shutil.rmtree(WORK, ignore_errors=True)
 (LEFT / 'docs').mkdir(parents=True)
 RIGHT.mkdir(parents=True)
@@ -139,13 +207,21 @@ def windows_of(pid):
         try:
             if w.process_id() == pid and w.is_visible() and w.window_text():
                 out.append(w)
+                # dialogs owned by the main window (Panero gives parentless dialogs the
+                # main window as parent) sit below it in the UI Automation tree
+                for c in w.children(control_type='Window'):
+                    h = c.handle
+                    if h and h != w.handle and win32gui.GetWindow(h, win32con.GW_OWNER) and c.is_visible() \
+                            and c.window_text():
+                        out.append(c)
         except Exception:  # window vanished
             pass
     return out
 
 
 DIALOG_TITLES = ('Information', 'Search results', 'Konfigurator', 'Panero Settings', 'Missing Plugin', 'Warning',
-                 'Error', 'Import Krusader Settings', 'Quick Settings')
+                 'Error', 'Import Krusader Settings', 'Quick Settings', 'Welcome to Panero')
+ASSISTANT = 'Welcome to Panero'   # first-start assistant (D-022): new users only
 
 
 def is_main(w):
@@ -173,14 +249,18 @@ def module_audit(proc, label):
                 if not path.endswith(('.dll', '.exe')):
                     continue
                 seen.append(f'{p.name()}\t{m.path}')
-                if not (path.startswith(APP_DIR) or path.startswith(WINDIR)):
+                if VM:   # a real machine: shell extensions (OneDrive, 7-Zip, ...) load too; only MSYS2 is wrong
+                    if '\\msys64' in path:
+                        bad.append(f'{p.name()}: {m.path}')
+                elif not (path.startswith(APP_DIR) or path.startswith(WINDIR)):
                     bad.append(f'{p.name()}: {m.path}')
         except psutil.Error:
             pass
     with open(OUT / f'loaded-modules-{label}.txt', 'w') as f:
         f.write('\n'.join(sorted(set(seen))))
     names = sorted({p.name() for p in procs if p.is_running()})
-    record(f'Every loaded module comes from the ZIP folder or Windows ({label})', not bad,
+    record(f'No loaded module comes from MSYS2 ({label})' if VM else
+           f'Every loaded module comes from the ZIP folder or Windows ({label})', not bad,
            f'processes: {", ".join(names)}; ' + ('; '.join(bad[:8]) if bad else f'{len(set(seen))} modules'),
            must=True)
 
@@ -463,7 +543,8 @@ while time.time() < deadline and proc.poll() is None:
         if d.window_text() not in first_run_dialogs:
             first_run_dialogs.append(d.window_text())
         d.set_focus()
-        # Welcome box: OK. Konfigurator (opened by the first run): close it, keep defaults.
+        # First-start assistant: Enter goes Next ... Start Panero with the defaults.
+        # Konfigurator (opened by older first runs): close it, keep defaults.
         if d.window_text().startswith('Konfigurator'):
             d.close()
         else:
@@ -481,8 +562,9 @@ time.sleep(3)
 main.set_focus()
 shot('first-run-main-window')
 record('First run reaches the main window', True, 'windows on the way: ' + ' → '.join(seen_titles))
-record('First run goes straight to the panels (no welcome box, tool search or Konfigurator)',
-       not first_run_dialogs, f'dialogs: {first_run_dialogs}', must=True)
+record('First run: only the first-start assistant, then the panels (no welcome box, tool search or Konfigurator)',
+       all(t == ASSISTANT for t in first_run_dialogs), f'dialogs: {first_run_dialogs}', must=True)
+record('First run shows the first-start assistant', ASSISTANT in first_run_dialogs, f'dialogs: {first_run_dialogs}')
 r = main.rectangle()
 record('Main window size on first run', True, f'{r.width()}×{r.height()} on a {ImageGrab.grab().size[0]}×'
        f'{ImageGrab.grab().size[1]} screen; title "{main.window_text()}"')
@@ -522,8 +604,8 @@ except Exception as e:  # noqa: BLE001
     except Exception:  # noqa: BLE001
         proc.kill()
     record('Title bar Close button closes Panero', False, f'pressed {pressed}; {e}', must=True)
-for p in psutil.process_iter(['name']):
-    if p.info['name'] in ('kioslave5.exe', 'kiod5.exe'):
+for p in psutil.process_iter(['name', 'exe']):
+    if p.info['name'] in ('kioslave5.exe', 'kiod5.exe') and (p.info['exe'] or '').lower().startswith(APP_DIR):
         p.kill()
 
 # --- phase B: Total Commander habits on disposable files --------------------------------
@@ -1059,6 +1141,11 @@ else:
     keys('{ESC}', 0.5)
     record('Alt+F2 + Enter switches the right panel to another drive', False, f'menu items: {items}')
 keys('{TAB}', 0.8)                      # back to the left panel
+for _ in range(2):                      # a slow second drive (a VM's CD drive) may swallow the Tab
+    if title().startswith('left'):
+        break
+    time.sleep(1.5)
+    keys('{TAB}', 0.8)
 
 # --- Shift+F6, TC's rename in place ----------------------------------------------------------
 ORDER = ['..', 'docs', 'New folder', 'alpha.txt', 'renamed.txt']
@@ -1094,8 +1181,14 @@ except Exception as e:  # noqa: BLE001
 keys('{ESC}', 0.3)
 win.set_focus()
 before_wins = {w.handle for w in windows_of(proc.pid)}
-keys('^+,', 2.5)                       # Configure Panero (KDE's Preferences shortcut)
-new_wins = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+keys('^+,', 1.0)                       # Settings (KDE's Preferences shortcut; Ctrl+, too)
+new_wins = []
+for _ in range(20):                    # 15 pages: give the window time on a slow runner
+    new_wins = [w for w in windows_of(proc.pid) if w.handle not in before_wins]
+    if new_wins:
+        break
+    time.sleep(0.5)
+time.sleep(1)
 shot('settings-window')
 names = [w.window_text() for w in new_wins]
 record('The settings window is called "Panero Settings" (not Konfigurator)', any(n.startswith('Panero Settings') for n in names)
@@ -1233,22 +1326,27 @@ def main_window_of(p):
 
 
 provider = None
-try:
-    for f in (FETCH_LOG, READY, STOP):
-        f.unlink(missing_ok=True)
-    provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root', str(CLOUD),
-                                 '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP), '--name', CLOUD_NAME],
-                                stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
-    wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
-    time.sleep(0.5)
-    pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
-except Exception as e:  # noqa: BLE001
-    pstate = {'ok': False, 'error': repr(e)}
+if VM:   # no test sync root on a real machine (it would sit in the user's profile and registry)
+    pstate = {'ok': False, 'vm': True}
+else:
+    try:
+        for f in (FETCH_LOG, READY, STOP):
+            f.unlink(missing_ok=True)
+        provider = subprocess.Popen([sys.executable, str(Path(__file__).with_name('cloud-provider.py')), '--root',
+                                     str(CLOUD), '--log', str(FETCH_LOG), '--ready', str(READY), '--stop', str(STOP),
+                                     '--name', CLOUD_NAME],
+                                    stdout=open(OUT / 'cloud-provider-stdout.txt', 'w'), stderr=subprocess.STDOUT)
+        wait_for(lambda: READY.exists() or provider.poll() is not None, 60)
+        time.sleep(0.5)
+        pstate = json.loads(READY.read_text()) if READY.exists() else {'ok': False, 'exit': provider.poll()}
+    except Exception as e:  # noqa: BLE001
+        pstate = {'ok': False, 'error': repr(e)}
 cloud_ok = bool(pstate.get('ok'))
-record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
-       f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
-       f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
-       + (f"; {pstate}" if not cloud_ok else ''), must=True)
+if not VM:
+    record('Test sync root registered with the Cloud Files API (cldapi, as OneDrive)', cloud_ok,
+           f"register {pstate.get('register_hr')}, connect {pstate.get('connect_hr')}, placeholders "
+           f"{pstate.get('placeholders_hr')}, registry: {pstate.get('registry')}; attributes {pstate.get('attributes')}"
+           + (f"; {pstate}" if not cloud_ok else ''), must=True)
 if cloud_ok:
     record('Placeholders are online-only before Panero starts (RECALL_ON_DATA_ACCESS)', not still_placeholders(),
            f'not placeholders: {still_placeholders()}', must=True)
@@ -1329,6 +1427,17 @@ else:
     record('Every folder on C:\\ has its folder icon in the folder tree', bool(tree_icons) and not missing,
            f'icon colours: {tree_icons}; without icon: {missing}', must=bool(tree_icons))
 
+    if VM and os.environ.get('OneDrive') and os.path.isdir(os.environ['OneDrive']):
+        # read only: the user's real OneDrive is found and listed (nothing is opened or changed)
+        lists = [l for l in main_w.descendants(control_type='List') if l.window_text() == 'Cloud folders']
+        names = [li.window_text() for li in main_w.descendants(control_type='ListItem')
+                 if lists and lists[0].rectangle().top <= li.rectangle().top <= lists[0].rectangle().bottom]
+        if lists:
+            r = lists[0].rectangle()
+            crop_shot('vm-cloud-section', (r.left - 4, r.top - 30, r.left + 240, r.bottom + 6), 3)
+        record('The sidebar\'s Cloud section lists the real OneDrive', any('OneDrive' in n for n in names),
+               f'Cloud section: {names}')
+
     if cloud_ok:
         # the Cloud section lists the sync folder (found in the registry), with its name
         entries = [li for li in main_w.descendants(control_type='ListItem') if li.window_text() == CLOUD_NAME]
@@ -1363,6 +1472,18 @@ else:
                f'fetch requests by Panero: {got}', must=True)
         record('The placeholders stay online-only after browsing', not still_placeholders(),
                f'downloaded: {still_placeholders()}', must=True)
+        # preview 13: a folder gets the "available" tick only when all its content is local;
+        # "Shared" holds an online-only placeholder, so its badge is the (blue) cloud
+        time.sleep(2.0)                       # the folder scan runs in the background
+        shared = [el.rectangle() for el in main_w.descendants() if el.window_text() == 'Shared'
+                  and side_right < el.rectangle().left < mid]
+        if shared:
+            r = shared[0]
+            cy = (r.top + r.bottom) // 2
+            badge = icon_colour((r.left + 1, cy - 9, r.left + 27, cy + 9))
+            crop_shot('p13-cloud-folder-badge', (r.left - 4, cy - 14, r.left + 160, cy + 14), 4)
+            record('A sync folder with online-only content shows the cloud badge, not the tick', badge['blue'] > 0.02,
+                   f'icon colours of "Shared": {badge}')
 
         # Explorer's offline actions on a file and on a folder
         for name, rel in (('report.pdf', 'report.pdf'), ('Shared', 'Shared')):
@@ -1487,5 +1608,373 @@ if provider is not None:
         provider.wait(30)
     except subprocess.TimeoutExpired:
         provider.kill()
+
+# --- phase D (preview 13): Pack / Unpack with the bundled 7-Zip and Windows' tar, archives as
+# folders, Explorer's drive menus, Quick Settings' right-click menu choice --------------------------
+ARC = WORK / 'arc'
+ARC_SRC, ARC_OUT = ARC / 'src', ARC / 'out'
+shutil.rmtree(ARC, ignore_errors=True)
+(ARC_SRC / 'sub').mkdir(parents=True)
+ARC_OUT.mkdir()
+for n in ('one.txt', 'two.txt'):
+    (ARC_SRC / n).write_text(f'Panero archive test {n}\n')
+(ARC_SRC / 'sub' / 'three.txt').write_text('three\n')
+SEVENZIP = Path(EXE).parent / '7-Zip' / '7z.exe'
+ARC_WANT = {'one.txt', 'two.txt', 'sub/three.txt'}
+
+
+def archive_names(path):
+    """Entries of an archive, as the bundled 7-Zip lists them (files and folders)."""
+    try:
+        out = subprocess.run([str(SEVENZIP), 'l', '-ba', '-slt', str(path)], capture_output=True, text=True,
+                             timeout=30).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    return {l[7:].strip().replace('\\', '/') for l in out.splitlines() if l.startswith('Path = ')}
+
+
+def new_dialog(before, timeout=10):
+    found = []
+    wait_for(lambda: found.extend(w for w in windows_of(proc.pid) if w.handle not in before and not is_main(w))
+             or found, timeout)
+    return found[0] if found else None
+
+
+PACK_TYPES = ('tar', 'tar.gz', 'tar.bz2', 'tar.lzma', 'tar.xz', 'zip', 'cbz', 'rar', 'cbr', 'lha', 'arj', '7z')
+
+
+def combo_text(c):
+    for get in (lambda: c.selected_text(), lambda: c.window_text(), lambda: c.get_value()):
+        try:
+            t = get()
+            if t:
+                return t
+        except Exception:  # noqa: BLE001
+            pass
+    return ''
+
+
+def choose_in_combo(dlg, text, candidates=PACK_TYPES):
+    """Selects @p text in the dialog's combo box that offers it (the packer type).
+    UI Automation's select() can mark an item without QComboBox switching to it,
+    so type the name into the focused combo box (Qt jumps to the matching item)
+    and check what it shows."""
+    for c in dlg.descendants(control_type='ComboBox'):
+        if combo_text(c) not in candidates:
+            continue
+        try:
+            # open its list (focusing the closed box over UI Automation did not
+            # move the keyboard focus: the typing went into the name field)
+            c.click_input()
+            time.sleep(0.6)
+            keys(text.replace('+', '{+}'), 0.5)
+            keys('{ENTER}', 0.6)
+            if combo_text(c) == text:
+                return True
+            keys('{ESC}', 0.3)
+        except Exception:  # noqa: BLE001
+            pass
+    for c in dlg.descendants(control_type='ComboBox'):
+        try:
+            c.select(text)
+            if c.selected_text() == text or c.window_text() == text:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    for c in dlg.descendants(control_type='ComboBox'):   # fallback: open it and click the item
+        try:
+            c.click_input()
+            time.sleep(0.6)
+            for w in Desktop(backend='uia').windows(process=proc.pid):
+                for li in w.descendants(control_type='ListItem'):
+                    if li.window_text() == text:
+                        li.click_input()
+                        time.sleep(0.4)
+                        return True
+            keys('{ESC}', 0.3)
+        except Exception:  # noqa: BLE001
+            pass
+    return False
+
+
+def pack_as(kind):
+    before = {w.handle for w in windows_of(proc.pid)}
+    keys('%{F5}', 1.5)
+    dlg = new_dialog(before)
+    if dlg is None:
+        return f'no Pack dialog; windows {[w.window_text() for w in windows_of(proc.pid)]}'
+    chosen = choose_in_combo(dlg, kind)
+    shot(f'p13-pack-dialog-{kind}')
+    how = press_button(proc.pid, 'OK')
+    return f'dialog "{dlg.window_text()}", type chosen: {chosen}, OK {how}'
+
+
+def unpack_to(name, dest):
+    global ORDER
+    ORDER = panel_order(ARC_OUT)
+    go_to(name)
+    before = {w.handle for w in windows_of(proc.pid)}
+    keys('%{F9}', 1.5)
+    dlg = new_dialog(before)
+    if dlg is None:
+        return 'no Unpack dialog'
+    shot(f'p13-unpack-dialog-{name}')
+    keys('^a', 0.2)
+    keys(str(dest).replace('\\', '/'), 0.3)
+    keys('{ENTER}', 0.5)
+    return f'dialog "{dlg.window_text()}"'
+
+
+def unpacked_ok(dest):
+    try:
+        return (dest / 'one.txt').read_text() == 'Panero archive test one.txt\n' \
+            and (dest / 'sub' / 'three.txt').read_text() == 'three\n'
+    except OSError:
+        return False
+
+
+proc = start(['--left', str(ARC_SRC), '--right', str(ARC_OUT)], 'archives')
+app, win, main_w = None, None, None
+for _ in range(60):
+    time.sleep(1)
+    mains = [w for w in windows_of(proc.pid) if is_main(w)]
+    if mains:
+        app = Application(backend='uia')
+        app.connect(process=proc.pid)
+        win = app.window(handle=mains[0].handle)
+        main_w = Desktop(backend='uia').window(handle=mains[0].handle).wrapper_object()
+        break
+if win is None:
+    record('Panero starts for the archive checks', False, 'no main window', must=True)
+    proc.kill()
+else:
+    time.sleep(3)
+    win.set_focus()
+    title = lambda: app.top_window().window_text()
+    if title() != 'src':
+        keys('{TAB}', 0.8)
+    record('Bundled 7-Zip is in the Panero folder', SEVENZIP.exists(), str(SEVENZIP), must=True)
+    try:
+        # mark everything, pack as zip, 7z and tar.gz into the other panel (the dialog's default);
+        # packing clears the marks (Total Commander, D-022), so mark again before each one
+        for kind, must in (('zip', True), ('7z', True), ('tar.gz', False)):
+            win.set_focus()
+            ORDER = panel_order(ARC_SRC)
+            go_to('sub')
+            keys('{INSERT}{INSERT}{INSERT}', 0.5)
+            note = pack_as(kind)
+            target = ARC_OUT / f'src.{kind}'
+            ok = wait_for(lambda: target.exists() and ARC_WANT <= archive_names(target), 40)
+            time.sleep(1.0)
+            shot(f'p13-packed-{kind}')
+            record(f'Pack (Alt+F5) as {kind} on Windows makes the archive with the marked files and folders', ok,
+                   f'{note}; {target.name}: {sorted(archive_names(target)) if target.exists() else "missing"}',
+                   must=must)
+            for w in windows_of(proc.pid):           # an error box would block the next step
+                if not is_main(w):
+                    record(f'No dialog left open after packing {kind}', False, w.window_text())
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+        win.set_focus()
+        keys('%-', 0.4)
+        # unpack each into its own folder (Alt+F9, the path typed into the dialog)
+        keys('{TAB}', 1.0)
+        if title() != 'out':
+            keys('{TAB}', 1.0)
+        keys('^r', 1.5)                               # the right panel shows the new archives
+        for kind, must in (('zip', True), ('7z', True), ('tar.gz', False)):
+            if not (ARC_OUT / f'src.{kind}').exists():
+                continue
+            dest = ARC / f'un-{kind}'
+            dest.mkdir(exist_ok=True)
+            note = unpack_to(f'src.{kind}', dest)
+            ok = wait_for(lambda: unpacked_ok(dest), 40)
+            shot(f'p13-unpacked-{kind}')
+            record(f'Unpack (Alt+F9) of a {kind} on Windows restores the files and folders', ok,
+                   f'{note}; {dest.name}: {sorted(str(p.relative_to(dest)) for p in dest.rglob("*"))}', must=must)
+            for w in windows_of(proc.pid):
+                if not is_main(w):
+                    record(f'No dialog left open after unpacking {kind}', False, w.window_text())
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+            win.set_focus()
+        # Enter on an archive opens it as a folder (krarc + 7-Zip)
+        for kind in ('zip', '7z'):
+            ORDER = panel_order(ARC_OUT)
+            go_to(f'src.{kind}')
+            keys('{ENTER}', 3.0)
+            t = title()
+            rows = [w.window_text() for w in win.descendants() if w.window_text() in ('one', 'two', 'sub')]
+            shot(f'p13-archive-browse-{kind}')
+            record(f'Enter on a {kind} opens it as a folder (krarc with the bundled 7-Zip)',
+                   t.startswith(f'src.{kind}') and {'one', 'two', 'sub'} <= set(rows),
+                   f'title "{t}"; rows {sorted(set(rows))}', must=True)
+            for w in windows_of(proc.pid):
+                if not is_main(w):
+                    try:
+                        w.set_focus()
+                        keys('{ESC}', 0.5)
+                    except Exception:  # noqa: BLE001
+                        pass
+            win.set_focus()
+            if t.startswith(f'src.{kind}'):
+                keys('{BACKSPACE}', 2.0)
+    except Exception as e:  # noqa: BLE001
+        record('Archive checks', False, f'automation error: {e!r}', must=True)
+        close_menus()
+
+    # Explorer's drive menu (Properties, Format, Eject, BitLocker, ...) with Panero's items on top
+    def drive_menu_check(label, opener, panero_need):
+        try:
+            win.set_focus()
+            opener()
+            texts = wait_menu(proc.pid, want=tuple(panero_need[:1]))
+            time.sleep(0.8)
+            shot(f'p13-drive-menu-{label}')
+            have = {norm(t) for t in texts}
+            missing = [x for x in panero_need + ['properties'] if x not in have]
+            record(f'Drive menu ({label}): Explorer\'s drive menu with Panero\'s {panero_need} on top', not missing,
+                   f'missing: {missing}; menu: {texts}', must=True)
+        except Exception as e:  # noqa: BLE001
+            record(f'Drive menu ({label})', False, f'automation error: {e!r}', must=True)
+        close_menus()
+
+    def c_drive_items(control_type, where=None):
+        out = []
+        for el in main_w.descendants(control_type=control_type):
+            try:
+                if '(C:)' in el.window_text() and (where is None or where(el)):
+                    out.append(el)
+            except Exception:  # noqa: BLE001
+                pass
+        return sorted(out, key=lambda el: el.rectangle().left)
+
+    def right_click(el):
+        r = el.rectangle()
+        mouse.right_click(coords=((r.left + r.right) // 2, (r.top + r.bottom) // 2))
+        time.sleep(1.0)
+
+    def drive_list():
+        keys('%{F1}', 1.2)
+        items = []
+        for w in Desktop(backend='uia').windows(process=proc.pid):
+            try:
+                items += [i for i in w.descendants(control_type='MenuItem') if '(C:)' in i.window_text()]
+            except Exception:  # noqa: BLE001
+                pass
+        if items:
+            right_click(items[0])
+    drive_menu_check('drive-list', drive_list, ['open in other panel', 'open in a new tab'])
+
+    def path_bar_button():
+        buttons = c_drive_items('Button', lambda el: el.rectangle().height() < 40)
+        if buttons:
+            right_click(buttons[0])
+    drive_menu_check('path-bar-button', path_bar_button, ['open in other panel', 'open in a new tab'])
+
+    def pinned_drive():
+        pins = c_drive_items('ListItem')
+        if pins:
+            try:
+                pins[0].iface_scroll_item.ScrollIntoView()
+                time.sleep(0.4)
+            except Exception:  # noqa: BLE001  (no ScrollItem pattern: visible already)
+                pass
+            right_click(pins[0])
+    drive_menu_check('pinned-drive', pinned_drive, ['open in other panel', 'unpin'])
+
+    # Quick Settings: drive buttons on; the right-click menu row (Windows only)
+    def quick_settings():
+        before = {w.handle for w in windows_of(proc.pid)}
+        qs = [b for b in main_w.descendants() if b.window_text() == 'Quick Settings'
+              and b.element_info.control_type in ('Button', 'MenuItem', 'SplitButton')]
+        if not qs:
+            return None
+        qs[0].click_input()
+        return new_dialog(before)
+
+    # Quick Settings (preview 13) is a popup that applies each change at once;
+    # Esc closes it. Its "Right-click:" box offers the Explorer menu or Panero's.
+    RIGHT_CLICK = ('Explorer menu (default)', 'Panero menu')
+    try:
+        dlg = quick_settings()
+        if dlg is None:
+            record('Quick Settings opens', False, 'no Quick Settings button or popup', must=True)
+        else:
+            combos = [combo_text(c) for c in dlg.descendants(control_type='ComboBox')]
+            labels = [t.window_text() for t in dlg.descendants(control_type='Text')]
+            shot('p13-quick-settings')
+            record('Quick Settings has the "Right-click" row (Explorer menu default / Panero menu)',
+                   'Right-click:' in labels and 'Explorer menu (default)' in combos,
+                   f'labels: {labels}; combos: {combos}', must=True)
+            for cb in dlg.descendants(control_type='CheckBox'):
+                if cb.window_text() == 'Drive buttons' and not cb.get_toggle_state():
+                    cb.click_input()
+                    time.sleep(0.6)
+            keys('{ESC}', 1.5)
+
+            def drive_button():
+                # the drive bar's "C: Windows" button, not the path bar's drive list
+                # button "Windows (C:)" (MediaButton)
+                # checkable tool buttons may not be reported as "Button": search all types
+                buttons, seen = [], []
+                for b in main_w.descendants():
+                    try:
+                        t = b.window_text()
+                        if t.startswith('C:') and '/' not in t and b.rectangle().height() < 40 \
+                                and b.element_info.control_type in ('Button', 'CheckBox') \
+                                and b.element_info.class_name != 'MediaButton':
+                            buttons.append(b)
+                        elif t.startswith(('C:', 'D:')):
+                            seen.append(f'{t}/{b.element_info.control_type}/{b.element_info.class_name}')
+                    except Exception:  # noqa: BLE001
+                        pass
+                print('drive bar candidates:', [f'{b.window_text()}/{b.element_info.control_type}' for b in buttons],
+                      'other C:/D: elements:', seen[:8], flush=True)
+                buttons.sort(key=lambda el: el.rectangle().left)
+                if buttons:
+                    right_click(buttons[0])
+            drive_menu_check('drive-button', drive_button, ['open in other panel', 'hide this button'])
+
+            # "Panero menu": files get Panero's own menu again (no Explorer items)
+            dlg = quick_settings()
+            if dlg is not None:
+                chosen = choose_in_combo(dlg, 'Panero menu', RIGHT_CLICK)
+                shot('p13-quick-settings-panero-menu')
+                keys('{ESC}', 1.0)
+                win.set_focus()
+                keys('{TAB}', 0.8)
+                if title() != 'src':
+                    keys('{TAB}', 0.8)
+                ORDER = panel_order(ARC_SRC)
+                go_to('one.txt')
+                keys('{VK_APPS}', 0.5)
+                texts = wait_menu(proc.pid, want=('move to recycle bin',))
+                shot('p13-panero-menu-chosen')
+                have = {norm(t) for t in texts}
+                record('Quick Settings "Panero menu": the right-click menu is Panero\'s own (no Explorer items)',
+                       'move to recycle bin' in have and 'send to' not in have and 'panero menu' not in have,
+                       f'chosen: {chosen}; menu: {texts}', must=True)
+                close_menus()
+    except Exception as e:  # noqa: BLE001
+        record('Quick Settings checks', False, f'automation error: {e!r}', must=True)
+        close_menus()
+    try:
+        win.close()
+        proc.wait(15)
+    except Exception:  # noqa: BLE001
+        proc.kill()
+
+
+if VM:
+    removed = purge_own_recycled()
+    record('VM: the items this test deleted are removed from the Recycle Bin again (nothing else)',
+           not recycled_from_work(), f'removed: {removed}')
 
 sys.exit(1 if any(r['status'] == 'FAIL' for r in results) else 0)

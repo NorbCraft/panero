@@ -7,7 +7,7 @@
 */
 
 #include "listpanel.h"
-#include "panerojobrow.h"
+#include "paneroportaldrag.h"
 
 // QtCore
 #include <QStringList>
@@ -138,6 +138,10 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     connect(mediaButton, &MediaButton::aboutToShow, this, [=]() { slotFocusOnMe(); });
     connect(mediaButton, &MediaButton::openUrl, [=](const QUrl & _t1) { func->openUrl(_t1); });
     connect(mediaButton, &MediaButton::newTab, this, [=](const QUrl &url) { duplicateTab(url); });
+    connect(mediaButton, &MediaButton::openInOtherPanel, this, [=](const QUrl &url) {
+        otherPanel()->func->openUrl(url);
+        otherPanel()->gui->slotFocusOnMe();
+    });
     ADD_WIDGET(mediaButton);
 
     // status bar
@@ -242,10 +246,7 @@ ListPanel::ListPanel(QWidget *parent, AbstractPanelManager *manager, const KConf
     totals->setMinimumHeight(std::max(quickSizeCalcProgress->height(), cancelQuickSizeCalcButton->height()));
 
     // progress indicator for the preview job
-    // Panero: copy/move progress of jobs that target this panel
-    jobRow = new PaneroJobRow(this);
-    ADD_WIDGET(jobRow);
-
+    // (Panero: copy/move progress is in the jobs' windows and the jobs button, D-022)
     previewProgress = new QProgressBar(this);
     previewProgress->hide();
     ADD_WIDGET(previewProgress);
@@ -886,19 +887,37 @@ void ListPanel::handleDrop(QDropEvent *event, QWidget *targetFrame)
 
     QWidget *targetWidget = targetFrame ? targetFrame : view->widget();
 
-    func->files()->dropFiles(destination, event, targetWidget);
-
-    if(KConfigGroup(krConfig, "Look&Feel").readEntry("UnselectBeforeOperation",
-                                                     _UnselectBeforeOperation)) {
-        KrPanel *p = dragFromThisPanel ? this : otherPanel();
-        p->view->saveSelection();
-        p->view->unselectAll();
-    }
+    KIO::DropJob *job = func->files()->dropFiles(destination, event, targetWidget);
+    unselectDragSourceWhenStarted(event, job);
 }
 
 void ListPanel::handleDrop(const QUrl &destination, QDropEvent *event)
 {
-    func->files()->dropFiles(destination, event, view->widget());
+    KIO::DropJob *job = func->files()->dropFiles(destination, event, view->widget());
+    unselectDragSourceWhenStarted(event, job);
+}
+
+void ListPanel::unselectDragSourceWhenStarted(QDropEvent *event, KIO::DropJob *job)
+{
+    // Panero (Total Commander, D-022): the panel the files were dragged from loses its marks
+    // once the copy/move starts; a drop from another application or a dismissed drop menu
+    // changes nothing
+    KrPanel *source = nullptr;
+    if (event->source() == this)
+        source = this;
+    else if (otherPanel() && event->source() == otherPanel()->gui)
+        source = otherPanel();
+    if (!source)
+        return;
+    QPointer<ListPanelFunc> sourceFunc = source->func;
+    if (!job) {
+        sourceFunc->unselectAfterOperation();
+        return;
+    }
+    connect(job, &KIO::DropJob::copyJobStarted, this, [sourceFunc]() {
+        if (sourceFunc)
+            sourceFunc->unselectAfterOperation();
+    });
 }
 
 void ListPanel::startDragging(const QStringList& names, const QPixmap& px)
@@ -913,6 +932,8 @@ void ListPanel::startDragging(const QStringList& names, const QPixmap& px)
     auto *mimeData = new QMimeData;
     drag->setPixmap(px);
     mimeData->setUrls(urls);
+    // sandboxed apps (Flatpak Firefox ...) get the files through the portal
+    PaneroPortalDrag::addFiles(mimeData, urls);
     drag->setMimeData(mimeData);
 
     drag->exec(Qt::MoveAction | Qt::CopyAction | Qt::LinkAction);
@@ -1309,6 +1330,9 @@ void ListPanel::restoreSettings(KConfigGroup cfg)
 
 void ListPanel::slotCurrentChanged(KrViewItem *item)
 {
+    if (cursorChangedHook)
+        cursorChangedHook(this);
+
     // update status bar
     if (item)
         krApp->statusBarUpdate(item->description());
@@ -1325,6 +1349,8 @@ void ListPanel::slotCurrentChanged(KrViewItem *item)
 
     p->update(item ? func->files()->getFileItem(item->name()) : nullptr);
 }
+
+std::function<void(ListPanel *)> ListPanel::cursorChangedHook;
 
 void ListPanel::otherPanelChanged()
 {

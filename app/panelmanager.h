@@ -12,6 +12,7 @@
 #include "abstractpanelmanager.h"
 
 // QtWidgets
+#include <QPointer>
 #include <QWidget>
 #include <QLayout>
 #include <QGridLayout>
@@ -65,6 +66,10 @@ public:
     void setOtherManager(PanelManager *other) {
         _otherManager = other;
     }
+    /// Panero Quick View (D-022): show @p widget in place of the tabs and panels;
+    /// nullptr shows them again. The panels are left as they are meanwhile.
+    void setOverlay(QWidget *widget);
+    QWidget *overlay() const { return _overlay; }
 
     // AbstractPanelManager implementation
     bool isLeft() const override { return _left; }
@@ -152,6 +157,7 @@ private:
     QStackedWidget *_stack;
     QToolButton *_newTab;
     ListPanel *_currentPanel;
+    QPointer<QWidget> _overlay;
 };
 
 

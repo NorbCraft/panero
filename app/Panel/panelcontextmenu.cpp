@@ -7,6 +7,7 @@
 */
 
 #include "panelcontextmenu.h"
+#include "../FileSystem/paneroslowpaths.h"
 #include "../panerowording.h"
 #include <QClipboard>
 #include <QApplication>
@@ -62,6 +63,7 @@
 #include <QTimer>
 #endif
 #include "../UserAction/useractionpopupmenu.h"
+#include "../UserAction/useraction.h"
 
 PanelContextMenu* PanelContextMenu::run(const QPoint &pos, KrPanel *panel, bool background)
 {
@@ -246,14 +248,21 @@ PanelContextMenu::PanelContextMenu(KrPanel *krPanel, bool background, QWidget *p
     addSeparator();
 
     // --------------- user actions
-    QAction *userAction = new UserActionPopupMenu(file->getUrl(), this);
-    userAction->setText(i18n("User Actions"));
-    addAction(userAction);
+    // (Panero: only once the user has defined user actions, D-022)
+    if (UserAction::userDefinedActions()) {
+        QAction *userAction = new UserActionPopupMenu(file->getUrl(), this);
+        userAction->setText(i18n("User Actions"));
+        addAction(userAction);
+    }
 
     // --------------- compress/extract actions
     // --------------- KDE file item actions
     // workaround for Bug 372999: application freezes very long time if many files are selected
-    if (_items.length() < 1000) {
+    // Panero: not on cloud/network drives - KFileItemListProperties checks every
+    // item's permissions with a stat() in the GUI thread, which waits for the
+    // drive (a frozen window while rclone is busy, D-018)
+    const bool onSlowDrive = file->getUrl().isLocalFile() && PaneroSlowPaths::isSlowPath(file->getUrl().toLocalFile());
+    if (_items.length() < 1000 && !onSlowDrive) {
 #if KIO_VERSION < QT_VERSION_CHECK(5, 79, 0)
         // add compress and extract plugins (if available); newer KIO adds them in addActionsTo()
         addCompressAndExtractPluginActions();
@@ -715,7 +724,7 @@ PaneroWinShell::MenuExtra extra(unsigned id, const QString &text, const QIcon &i
 
 bool PanelContextMenu::runShellMenu(const QPoint &pos, KrPanel *panel, bool background)
 {
-    if (qEnvironmentVariableIsSet("PANERO_NO_EXPLORER_MENU"))
+    if (!PaneroWinShell::explorerMenuEnabled()) // Quick Settings > Right-click menu
         return false;
     // only items of a local folder (not archives, the Recycle Bin, search results, FTP, ...)
     const QUrl dir = panel->virtualPath();

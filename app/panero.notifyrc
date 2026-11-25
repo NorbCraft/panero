@@ -1,0 +1,9 @@
+[Global]
+IconName=io.github.norbcraft.panero
+Name=Panero
+Comment=Panero file manager
+
+[Event/jobFinished]
+Name=File operation finished
+Comment=A copy, move, delete or pack job kept in the background has finished
+Action=Popup

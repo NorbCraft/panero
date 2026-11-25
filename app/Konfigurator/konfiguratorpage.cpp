@@ -18,11 +18,27 @@
 #include <utility>
 
 #include "../krglobal.h"
+#include "konfigurator.h"
 
 KonfiguratorPage::KonfiguratorPage(bool firstTime, QWidget* parent) :
         QScrollArea(parent), firstCall(firstTime)
 {
     setFrameStyle(QFrame::NoFrame);
+}
+
+QLabel *KonfiguratorPage::createSettingsLink(const QString &html, QWidget *parent)
+{
+    auto *label = new QLabel(html, parent);
+    label->setWordWrap(true);
+    label->setTextFormat(Qt::RichText);
+    label->setTextInteractionFlags(Qt::LinksAccessibleByMouse | Qt::LinksAccessibleByKeyboard);
+    QObject::connect(label, &QLabel::linkActivated, label, [label](const QString &link) {
+        if (!link.startsWith(QLatin1String("settings:")))
+            return;
+        if (auto *dialog = qobject_cast<Konfigurator *>(label->window()))
+            dialog->showPage(link.mid(9));
+    });
+    return label;
 }
 
 bool KonfiguratorPage::apply()

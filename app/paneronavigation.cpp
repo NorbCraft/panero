@@ -5,6 +5,8 @@
 */
 
 #include "paneronavigation.h"
+#include "FileSystem/panerospecialfolders.h"
+#include "GUI/panerodriveactions.h"
 #ifndef Q_OS_WIN // cloud drives are Linux-only (rclone, FUSE); Windows: preview 12
 #include "Cloud/panerocloud.h"
 #include "Cloud/paneroaddclouddialog.h"
@@ -18,6 +20,7 @@
 
 #include "icon.h"
 #include "krglobal.h"
+#include "krusader.h"
 #include "krusaderview.h"
 #include "Panel/krfiletreeview.h"
 #include "Panel/krpanel.h"
@@ -26,12 +29,15 @@
 #ifdef Q_OS_WIN
 #include "FileSystem/panerocloudfiles.h"
 #include "Panel/panerowinshell.h"
+#include "Panel/panerowinshellmenu.h"
 #endif
 #include "MountMan/kmountman.h"
 
 #include <memory>
 
 #include <QDir>
+#include <QDomDocument>
+#include <QFile>
 #include <QFileInfo>
 #include <QProgressDialog>
 #include <QStandardPaths>
@@ -54,10 +60,12 @@
 #include <QVBoxLayout>
 
 #include <KConfigCore/KConfigGroup>
+#include <KXmlGui/KActionCollection>
 #include <KI18n/KLocalizedString>
 #include <KWidgetsAddons/KMessageBox>
 #include <Solid/Device>
 #include <Solid/StorageAccess>
+#include <KIOCore/KMountPoint>
 #include <Solid/StorageVolume>
 
 namespace
@@ -73,8 +81,9 @@ QString iconForUrl(const QUrl &url)
     if (!url.isLocalFile())
         return url.scheme() == QLatin1String("trash") ? QStringLiteral("user-trash") : QStringLiteral("folder-network");
     const QString path = url.toLocalFile();
-    if (QDir::cleanPath(path) == QDir::homePath())
-        return QStringLiteral("user-home");
+    const QString special = PaneroSpecialFolders::iconName(path);
+    if (!special.isEmpty())
+        return special; // Home, Documents, Downloads, ...
     if (path == QLatin1String("/"))
         return QStringLiteral("drive-harddisk-root");
     return QStringLiteral("folder");
@@ -857,6 +866,43 @@ void PaneroNavigationDock::openPin(QListWidgetItem *item)
 void PaneroNavigationDock::pinContextMenu(const QPoint &pos)
 {
     QListWidgetItem *item = m_pins->itemAt(pos);
+#ifdef Q_OS_WIN
+    // a pinned drive: Explorer's drive menu (Properties, Format, Eject, BitLocker, ...)
+    // with Panero's items on top; the shell's "Open" opens it in the active panel
+    const QUrl pinned = item ? item->data(UrlRole).toUrl() : QUrl();
+    const QString drivePath = pinned.isLocalFile() ? QDir::cleanPath(pinned.toLocalFile()) : QString();
+    if (drivePath.size() <= 3 && drivePath.size() >= 2 && drivePath.at(1) == QLatin1Char(':')) {
+        QMenu panero(this);
+        QAction *other = panero.addAction(Icon(QStringLiteral("view-split-left-right")), i18n("Open in Other Panel"));
+        QAction *up = panero.addAction(Icon(QStringLiteral("go-up")), i18n("Move Up"));
+        QAction *down = panero.addAction(Icon(QStringLiteral("go-down")), i18n("Move Down"));
+        panero.addSeparator();
+        QAction *unpin = panero.addAction(Icon(QStringLiteral("list-remove")), i18n("Unpin"));
+        QAction open(this);
+        QAction *chosen = nullptr;
+        if (PaneroWinShell::execItemMenu(this, drivePath, &panero, m_pins->viewport()->mapToGlobal(pos), &chosen, &open)) {
+            if (chosen == &open) {
+                openPin(item);
+            } else if (chosen == other && ACTIVE_PANEL) {
+                KrPanel *target = ACTIVE_PANEL->otherPanel();
+                target->func->openUrl(pinned);
+                target->gui->slotFocusOnMe();
+            } else if (chosen == unpin) {
+                delete item;
+                savePins();
+            } else if (chosen == up || chosen == down) {
+                const int row = m_pins->row(item);
+                const int target = chosen == up ? row - 1 : row + 1;
+                if (target >= 0 && target < m_pins->count()) {
+                    m_pins->insertItem(target, m_pins->takeItem(row));
+                    m_pins->setCurrentRow(target);
+                    savePins();
+                }
+            }
+            return;
+        }
+    }
+#endif
     QMenu menu(this);
     QAction *open = nullptr, *unpin = nullptr, *up = nullptr, *down = nullptr;
     if (item) {
@@ -866,6 +912,18 @@ void PaneroNavigationDock::pinContextMenu(const QPoint &pos)
         menu.addSeparator();
         unpin = menu.addAction(Icon(QStringLiteral("list-remove")), i18n("Unpin"));
         menu.addSeparator();
+#ifndef Q_OS_WIN
+        // a pinned drive (USB stick, partition, "/"): its system actions (D-022)
+        const QString udi = item->data(UdiRole).toString();
+        const QUrl url = item->data(UrlRole).toUrl();
+        bool drive = !udi.isEmpty();
+        if (!drive && url.isLocalFile()) {
+            const KMountPoint::Ptr mp = KMountPoint::currentMountPoints().findByPath(url.toLocalFile());
+            drive = mp && QDir::cleanPath(mp->mountPoint()) == QDir::cleanPath(url.toLocalFile());
+        }
+        if (drive && PaneroDriveActions::addTo(&menu, udi, url.isLocalFile() ? url.toLocalFile() : QString(), this) > 0)
+            menu.addSeparator();
+#endif
     }
     QAction *pinCurrent = menu.addAction(Icon(QStringLiteral("list-add")), i18n("Pin Active Panel's Folder"));
     QAction *chosen = menu.exec(m_pins->viewport()->mapToGlobal(pos));
@@ -941,6 +999,7 @@ void PaneroNavigationDock::loadPins()
             addPin(pin);
         }
 #endif
+        importBookmarksOnce();
         return;
     }
     const QStringList urls = g.readEntry("Urls", QStringList());
@@ -956,6 +1015,118 @@ void PaneroNavigationDock::loadPins()
         if (pin.url.isValid())
             addPin(pin);
     }
+    importBookmarksOnce();
+}
+
+namespace
+{
+void collectBookmarks(const QDomElement &parent, QList<QPair<QUrl, QString>> *out)
+{
+    for (QDomElement e = parent.firstChildElement(); !e.isNull(); e = e.nextSiblingElement()) {
+        if (e.tagName() == QLatin1String("folder")) {
+            collectBookmarks(e, out); // Pinned is one flat list
+        } else if (e.tagName() == QLatin1String("bookmark") && e.hasAttribute(QStringLiteral("href"))) {
+            const QUrl url = QUrl::fromUserInput(e.attribute(QStringLiteral("href")), QString(), QUrl::AssumeLocalFile);
+            if (url.isValid() && !url.isRelative())
+                out->append({url, e.firstChildElement(QStringLiteral("title")).text()});
+        }
+    }
+}
+} // namespace
+
+int PaneroNavigationDock::importBookmarks(const QString &bookmarksFile, QList<QPair<QUrl, QString>> *pins)
+{
+    QFile file(bookmarksFile);
+    if (!file.open(QIODevice::ReadOnly))
+        return 0;
+    const QByteArray data = file.readAll();
+    file.close();
+    QDomDocument doc;
+    if (!doc.setContent(data))
+        return 0;
+    const QString backup = bookmarksFile + QStringLiteral(".before-pinned");
+    if (!QFileInfo::exists(backup))
+        QFile::copy(bookmarksFile, backup);
+    QList<QPair<QUrl, QString>> found;
+    collectBookmarks(doc.documentElement(), &found);
+    int added = 0;
+    for (const auto &bookmark : qAsConst(found)) {
+        const QUrl url = bookmark.first.adjusted(QUrl::StripTrailingSlash);
+        bool known = false;
+        for (const auto &pin : qAsConst(*pins))
+            known = known || pin.first.adjusted(QUrl::StripTrailingSlash) == url;
+        if (known)
+            continue;
+        pins->append({url, bookmark.second});
+        ++added;
+    }
+    return added;
+}
+
+void PaneroNavigationDock::importBookmarksOnce()
+{
+    KConfigGroup g(krConfig, PIN_GROUP);
+    if (g.readEntry("Bookmarks Imported", false))
+        return;
+    g.writeEntry("Bookmarks Imported", true);
+    const QString file = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+        + QStringLiteral("/panero/krbookmarks.xml");
+    QList<QPair<QUrl, QString>> pins;
+    for (int i = 0; i < m_pins->count(); ++i)
+        pins.append({m_pins->item(i)->data(UrlRole).toUrl(), m_pins->item(i)->text()});
+    const int before = pins.size();
+    if (importBookmarks(file, &pins) > 0) {
+        for (int i = before; i < pins.size(); ++i) {
+            Pin pin;
+            pin.url = pins[i].first;
+            pin.label = pins[i].second;
+            if (pin.label.isEmpty())
+                pin.label = pin.url.isLocalFile() ? QFileInfo(pin.url.toLocalFile()).fileName() : pin.url.fileName();
+            if (pin.label.isEmpty())
+                pin.label = pin.url.toDisplayString(QUrl::PreferLocalFile);
+            addPin(pin);
+        }
+        savePins();
+    }
+    g.sync();
+}
+
+void PaneroNavigationDock::fillPinMenu(QMenu *menu, const std::function<void(const QUrl &)> &open)
+{
+    for (int i = 0; i < m_pins->count(); ++i) {
+        QListWidgetItem *item = m_pins->item(i);
+        QAction *action = menu->addAction(item->icon(), item->text());
+        action->setToolTip(item->toolTip());
+        const QUrl url = item->data(UrlRole).toUrl();
+        QPointer<QListWidget> pins(m_pins);
+        connect(action, &QAction::triggered, this, [this, url, open, pins]() {
+            if (url.isLocalFile() && !QFileInfo(url.toLocalFile()).isDir()) {
+                // missing folder: the sidebar's way (mount the drive, retry or unpin)
+                for (int row = 0; pins && row < pins->count(); ++row) {
+                    if (pins->item(row)->data(UrlRole).toUrl() == url) {
+                        openPin(pins->item(row));
+                        return;
+                    }
+                }
+            }
+            if (open)
+                open(url);
+            else
+                openUrlInActivePanel(url);
+        });
+    }
+    if (m_pins->count() == 0)
+        menu->addAction(i18n("No pinned folders"))->setEnabled(false);
+    menu->addSeparator();
+    QAction *pin = menu->addAction(Icon(QStringLiteral("list-add")), i18n("Pin Current Folder"));
+    if (QAction *add = krApp ? krApp->actionCollection()->action(QStringLiteral("add bookmark")) : nullptr)
+        pin->setShortcut(add->shortcut()); // shown in the menu; the action itself has the key
+    connect(pin, &QAction::triggered, this, &PaneroNavigationDock::pinCurrentFolder);
+    QAction *sidebar = menu->addAction(Icon(QStringLiteral("view-list-tree")), i18n("Show Pinned Folders in the Sidebar"));
+    connect(sidebar, &QAction::triggered, this, [this]() {
+        show();
+        raise();
+    });
 }
 
 void PaneroNavigationDock::saveSettings() const

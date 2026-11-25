@@ -18,8 +18,11 @@
 #include <QMutexLocker>
 #include <QPainter>
 #include <QPainterPath>
+#include <QThreadPool>
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -50,6 +53,28 @@ State stateFromAttributes(quint32 attributes, bool isDir)
     if (attributes & AttrPinned)
         return State::Pinned;
     return State::Available; // downloaded (also UNPINNED until the provider frees it)
+}
+
+bool entryIsLocal(quint32 attributes, bool isDir)
+{
+    if (attributes == InvalidAttributes)
+        return false;
+    if (isDir) // a folder whose listing is still in the cloud, or freed up
+        return !(attributes & (AttrRecallOnOpen | AttrRecallOnDataAccess | AttrOffline));
+    return !isPlaceholder(attributes);
+}
+
+State folderStateFromScan(quint32 folderAttributes, bool allLocal, bool complete)
+{
+    if (folderAttributes == InvalidAttributes)
+        return State::NotCloud;
+    if (folderAttributes & (AttrUnpinned | AttrRecallOnOpen | AttrRecallOnDataAccess | AttrOffline))
+        return State::OnlineOnly; // known without looking inside
+    if (!complete)
+        return State::NotCloud; // not known (yet): no badge rather than a wrong tick
+    if (!allLocal)
+        return State::OnlineOnly; // Explorer: a cloud while anything inside is online-only
+    return (folderAttributes & AttrPinned) ? State::Pinned : State::Available;
 }
 
 quint32 withPinState(quint32 attributes, Pin pin)
@@ -267,6 +292,15 @@ bool s_loaded = false;
 QElapsedTimer s_age;
 QHash<QString, QPair<quint32, qint64>> s_attributes;
 QElapsedTimer s_clock;
+// folder badges (Windows): the result of the background scan of each folder's content
+struct FolderScan {
+    bool allLocal = false;
+    bool complete = false;
+    bool pending = false;
+    bool stale = false; ///< invalidate(): scanned again when next painted
+    qint64 at = -1; ///< s_clock time of the result; -1: none yet
+};
+QHash<QString, FolderScan> s_folders;
 
 #ifdef Q_OS_WIN
 QString regString(HKEY key, const wchar_t *sub, const wchar_t *name)
@@ -427,6 +461,8 @@ void invalidate()
     QMutexLocker lock(&s_mutex);
     s_loaded = false;
     s_attributes.clear();
+    for (FolderScan &f : s_folders)
+        f.stale = true; // the old badge stays until the new scan answers
 }
 
 bool rootFor(const QString &path, SyncRoot *root)
@@ -503,6 +539,125 @@ bool avoidReading(const QString &path)
 #endif
 }
 
+Notifier *notifier()
+{
+    static Notifier *n = new Notifier; // created by the GUI thread (state(), the views)
+    return n;
+}
+
+#ifdef Q_OS_WIN
+namespace
+{
+constexpr qint64 FolderScanMaxAge = 20000;
+constexpr int FolderScanMaxEntries = 50000;
+constexpr qint64 FolderScanMaxTime = 8000;
+
+QThreadPool *scanPool()
+{
+    static QThreadPool *pool = []() {
+        auto *p = new QThreadPool; // never destroyed: no waiting for a scan at exit
+        p->setMaxThreadCount(2);
+        return p;
+    }();
+    return pool;
+}
+
+/// Walks the content with FindFirstFileEx (metadata only). Never opens a folder
+/// whose listing is still in the cloud (RECALL_ON_OPEN), so nothing is fetched.
+void scanFolder(const std::wstring &dir, bool *allLocal, bool *complete)
+{
+    *allLocal = true;
+    *complete = true;
+    QElapsedTimer timer;
+    timer.start();
+    int entries = 0;
+    std::vector<std::pair<std::wstring, int>> stack{{dir, 0}};
+    while (!stack.empty()) {
+        const std::wstring folder = stack.back().first;
+        const int depth = stack.back().second;
+        stack.pop_back();
+        WIN32_FIND_DATAW fd;
+        HANDLE h = FindFirstFileExW((folder + L"\\*").c_str(), FindExInfoBasic, &fd, FindExSearchNameMatch, nullptr,
+                                    FIND_FIRST_EX_LARGE_FETCH);
+        if (h == INVALID_HANDLE_VALUE) {
+            if (GetLastError() != ERROR_FILE_NOT_FOUND)
+                *complete = false;
+            continue;
+        }
+        do {
+            if (!wcscmp(fd.cFileName, L".") || !wcscmp(fd.cFileName, L".."))
+                continue;
+            const bool isDir = fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+            if (!entryIsLocal(fd.dwFileAttributes, isDir)) {
+                *allLocal = false; // one is enough
+                FindClose(h);
+                return;
+            }
+            if (++entries > FolderScanMaxEntries || timer.elapsed() > FolderScanMaxTime || depth > 64) {
+                *complete = false; // too big to know quickly: no badge
+                FindClose(h);
+                return;
+            }
+            if (isDir)
+                stack.push_back({folder + L"\\" + fd.cFileName, depth + 1});
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+}
+
+void startScan(const QString &key, const QString &path)
+{
+    Notifier *n = notifier();
+    const std::wstring native = QDir::toNativeSeparators(QDir::cleanPath(path)).toStdWString();
+    scanPool()->start([key, native, n]() {
+        bool allLocal = false, complete = false;
+        scanFolder(native, &allLocal, &complete);
+        bool changed = false;
+        {
+            QMutexLocker lock(&s_mutex);
+            FolderScan &s = s_folders[key];
+            changed = s.at < 0 || s.allLocal != allLocal || s.complete != complete;
+            s.allLocal = allLocal;
+            s.complete = complete;
+            s.pending = false;
+            s.stale = false;
+            s.at = s_clock.elapsed();
+        }
+        if (changed)
+            QMetaObject::invokeMethod(n, [n]() { Q_EMIT n->folderStatesChanged(); }, Qt::QueuedConnection);
+    });
+}
+
+State folderState(const QString &path, quint32 attrs)
+{
+    const State own = folderStateFromScan(attrs, true, true);
+    if (own == State::NotCloud || own == State::OnlineOnly)
+        return own; // known without a scan
+    const QString key = normalizePath(path).toLower();
+    FolderScan s;
+    bool start = false;
+    {
+        QMutexLocker lock(&s_mutex);
+        if (!s_clock.isValid())
+            s_clock.start();
+        if (s_folders.size() > 5000)
+            s_folders.clear();
+        FolderScan &cached = s_folders[key];
+        if (!cached.pending && (cached.at < 0 || cached.stale || s_clock.elapsed() - cached.at > FolderScanMaxAge)) {
+            cached.pending = true;
+            start = true;
+        }
+        s = cached;
+    }
+    if (start)
+        startScan(key, path);
+    if (s.at < 0)
+        return State::NotCloud; // until the scan answers
+    return folderStateFromScan(attrs, s.allLocal, s.complete);
+}
+} // namespace
+#endif
+
 State state(const QString &path, bool isDir)
 {
     SyncRoot r;
@@ -510,6 +665,10 @@ State state(const QString &path, bool isDir)
         return State::NotCloud;
     if (r.virtualDrive)
         return State::NotCloud; // no Cloud Files attributes there
+#ifdef Q_OS_WIN
+    if (isDir)
+        return folderState(path, attributes(path));
+#endif
     return stateFromAttributes(attributes(path), isDir);
 }
 

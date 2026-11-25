@@ -13,7 +13,7 @@ set(FileSystem_SRCS
 
 # Panero: cloud/network mount helpers, shared with the Cloud library (one
 # copy of their state: the revalidation hook is set by PaneroCloud)
-add_library(PaneroSlowPaths STATIC paneroslowpaths.cpp)
+add_library(PaneroSlowPaths STATIC paneroslowpaths.cpp panerospecialfolders.cpp)
 target_link_libraries(PaneroSlowPaths Qt5::Core Qt5::Concurrent)
 
 # Panero: Windows cloud folders (OneDrive, Google Drive, Dropbox) and their

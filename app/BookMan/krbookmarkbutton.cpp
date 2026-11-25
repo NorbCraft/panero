@@ -7,6 +7,7 @@
 */
 
 #include "krbookmarkbutton.h"
+#include "../paneronavigation.h"
 #include "krbookmarkhandler.h"
 #include "../krglobal.h"
 #include "../icon.h"
@@ -25,8 +26,8 @@ KrBookmarkButton::KrBookmarkButton(QWidget *parent): QToolButton(parent)
 {
     setAutoRaise(true);
     setIcon(Icon("bookmarks"));
-    setText(i18n("BookMan II"));
-    setToolTip(i18n("BookMan II"));
+    setText(i18n("Pinned Folders"));
+    setToolTip(i18n("Pinned folders (Ctrl+D); Ctrl+B pins the current folder"));
     setPopupMode(QToolButton::InstantPopup);
     setAcceptDrops(false);
 
@@ -40,6 +41,14 @@ KrBookmarkButton::KrBookmarkButton(QWidget *parent): QToolButton(parent)
 
 void KrBookmarkButton::populate()
 {
+    // Panero: Pinned is the single list of favourite places (D-022); Krusader's
+    // bookmarks were imported into it once
+    if (PaneroNavigationDock *dock = PaneroNavigationDock::instance()) {
+        QMenu *m = menu();
+        m->clear();
+        dock->fillPinMenu(m, [this](const QUrl &url) { emit openUrl(url); });
+        return;
+    }
     krBookMan->populate(static_cast<QMenu*>(menu()));
 }
 

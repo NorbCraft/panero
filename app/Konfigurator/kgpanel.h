@@ -21,6 +21,7 @@ public:
     explicit KgPanel(bool first, QWidget* parent = nullptr);
 
     int activeSubPage() override;
+    void showSubPage(const QString &name) override;
     bool apply() override;
 
 protected:

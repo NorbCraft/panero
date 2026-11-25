@@ -13,6 +13,8 @@
 #include <KArchive/KTar>
 
 #include <QtCore/QStandardPaths>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QDir>
 
 // Having a "file signature" (also known as "magic number") there
 // allows the archive type to be identified (for example, in
@@ -35,6 +37,21 @@ const int KrArcBaseManager::maxLenType = 5;
 
 KrArcBaseManager::KrArcBaseManager() : krConf(QStringLiteral("panerorc")), dependGrp(&krConf, "Dependencies") {}
 
+QString KrArcBaseManager::findExecutable(const QString &name)
+{
+#ifdef Q_OS_WIN
+    // Panero (Windows): the 7-Zip bundled in the Panero folder, Windows' own tools
+    // (tar.exe), then PATH. The KIO worker runs in kioslave5.exe, which is in the
+    // Panero folder too.
+    const QString app = QCoreApplication::applicationDirPath();
+    const QString system = QDir::fromNativeSeparators(qEnvironmentVariable("SystemRoot", QStringLiteral("C:/Windows"))) + QStringLiteral("/System32");
+    const QString own = QStandardPaths::findExecutable(name, {app + QStringLiteral("/7-Zip"), app, system});
+    if (!own.isEmpty())
+        return own;
+#endif
+    return QStandardPaths::findExecutable(name);
+}
+
 QString KrArcBaseManager::fullPathName(const QString& name)
 {
     // Reminder: If that function is modified, it's important to research if the
@@ -48,7 +65,7 @@ QString KrArcBaseManager::fullPathName(const QString& name)
     if (QFileInfo::exists(supposedName))
         return supposedName;
 
-    if ((supposedName = QStandardPaths::findExecutable(name)).isEmpty())
+    if ((supposedName = findExecutable(name)).isEmpty())
          return QString();
 
     // Because an executable file has been found, its path is remembered

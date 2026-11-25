@@ -84,7 +84,8 @@
 // Always show current item decoration in panel
 #define _AlwaysShowCurrentItem true
 // Unslect files before copy/move
-#define _UnselectBeforeOperation false
+// Panero: marks are cleared after copy, move, pack and open (Total Commander, D-022)
+#define _UnselectBeforeOperation true
 // Filter dialog remembers settings
 #define _FilterDialogRemembersSettings false
 

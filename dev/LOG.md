@@ -540,3 +540,65 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   run 45177457275 green (Windows build + GUI test, .deb build + test-deb,
   publish). Assets: .deb, Windows ZIP, setup.exe, source, licences;
   SHA256SUMS verified after download.
+
+## 2026-11-23 — Preview 13 planning
+
+- Owner feedback after preview 12 (drag & drop, Windows cloud, drive
+  right-click, icons, selection, app icon, splitter, back/forward, menu
+  choice, viewer, colours, thumbnails, copy progress, Windows workflow,
+  ideas, settings). Causes found:
+  - Drag & drop: Firefox is a Flatpak (filesystem=xdg-download only); Qt 5
+    drags pass plain paths, GTK file managers use the document portal
+    (application/vnd.portal.filetransfer). Fix: offer the portal key too.
+  - Windows Cloud section hidden: preview 11 Quick Settings wrote
+    "Show Cloud=false" (hidden checkbox, default false on Windows).
+  - OneDrive ticks on all folders: stateFromAttributes treats folders
+    without flags as Available; use PKEY_StorageProviderState instead.
+  - Special folder icons: only KDirModel (tree) maps XDG user dirs.
+  - Folder colour recolours the active theme's folders (Win11 shape kept);
+    a previously chosen colour persists across icon theme changes.
+- Proposal page with 12 decisions given to the owner (private artifact):
+  https://claude.ai/artifact/P3K5pkJobatqem4De4Uyoc. Waiting for decisions.
+
+## 2026-11-23/24 — Preview 13 implementation (branch feature/preview13)
+
+- Owner decisions recorded as D-022. VM set up: OpenSSH (host-only firewall
+  rule, key auth), MSYS2 + pinned KF5, Python 3.12 + pywinauto, Inno Setup;
+  GUI runs on the VM desktop via a scheduled task (/it) — dev/windows/vm.sh.
+  The CI GUI test is not VM-safe (renames C:\msys64, real profile, Recycle
+  Bin, fake sync root): VM mode is being added by a helper.
+- Owner findings: "krarc:/ does not exist" (folder tree root inside an
+  archive) fixed; parentless dialogs reparented to the main window on Polish
+  (centred; Wayland transient). gui-dialog-test.sh (fails on the old code).
+- Drag & drop: FileTransfer portal key (paneroportaldrag), verified that the
+  Flatpak Firefox sandbox reads a file through the key while the plain path
+  is "not found" there.
+- Done by the main session: special folder icons, Windows Show Cloud
+  migration, Linux drive menu, 50/50 double-click, Back/Forward, bigger icon
+  (+ .ico), even thumbnail frame, startup (KMountMan allDevices/Block scans
+  removed), thumbnails on cloud drives off, cloud listing cache, context
+  menu freeze on cloud files (KFileItemListProperties stat).
+- Four helpers in worktrees: p13-windows, p13-quickview, p13-jobs,
+  p13-settings. All stopped at the 5-hour usage limit and were resumed.
+
+## 2026-11-24/25 — Preview 13 integration
+
+- Helpers stopped twice at the usage limit; their branches were merged by
+  the main session (conflicts: kractions includes, autotests CMake, the old
+  Quick Settings dialog deleted by p13-settings while p13-windows edited
+  it — the right-click choice lives in panerosettings/paneroquicksettings,
+  same key Look&Feel/Explorer Menu). Toolbar layout version 34.
+- Linux: 14 suites, 87/87 window checks (gui-fileops-test opened the Trash
+  by toolbar position, which became Unpack: now via the location bar).
+- Windows VM: build + 11 suites (qt5-multimedia added to the VM). VM GUI
+  runs failed: Panero's windows stay behind the owner's foreground app
+  (Firefox) — a task-started process cannot take the foreground. Added
+  dev/windows/fgguard.py (PANERO_VM_GUARD=1): input only while Panero is in
+  front, else the test stops; nothing reached Firefox. The focused tests
+  (quickview, jobs) now also run on the GitHub runner after gui-test.py.
+- GitHub runner: Quick View test and jobs test pass, installer passes;
+  gui-test.py's p13 checks failed already on feature/p13-windows: packing
+  (UIA select() did not change QComboBox; archive jobs passed "/C:/..."
+  paths to tar.exe) and Quick Settings checks (old dialog) — fixed.
+- Package: lintian clean, 96 checks incl. upgrade from preview 12
+  (knotifications5/panero.notifyrc allowed).

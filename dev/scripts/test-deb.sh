@@ -177,7 +177,7 @@ for f in /usr/bin/panero /usr/lib/x86_64-linux-gnu/panero/plugins/kf5/kio/*.so; 
     check "all shared libraries resolve for $(basename "$f")" bash -c "! ldd '$f' | grep -q 'not found'"
 done
 check "no file outside the expected Panero paths" bash -c "! dpkg -L panero | grep -v -E \
-'^/(\.|usr|usr/bin|usr/lib|usr/lib/x86_64-linux-gnu|usr/lib/x86_64-linux-gnu/libexec|usr/share|etc|etc/xdg)$|^/usr/share/lintian(/overrides(/panero)?)?$|^/usr/bin/panero$|/panero(/|$)|^/usr/share/(applications|metainfo|icons/hicolor/[^/]+/apps)/io\.github\.norbcraft\.panero\.|^/usr/share/locale/[^/]+/LC_MESSAGES/panero\.mo$|^/usr/share/man/man1/panero\.1\.gz$|^/etc/xdg/panero_kio_isorc$|^/usr/share/(applications|metainfo|icons|icons/hicolor|icons/hicolor/[^/]+|icons/hicolor/[^/]+/apps|locale|locale/[^/]+|locale/[^/]+/LC_MESSAGES|man|man/man1|doc|doc/HTML|doc/HTML/[^/]+|kxmlgui5)$'"
+'^/(\.|usr|usr/bin|usr/lib|usr/lib/x86_64-linux-gnu|usr/lib/x86_64-linux-gnu/libexec|usr/share|etc|etc/xdg)$|^/usr/share/lintian(/overrides(/panero)?)?$|^/usr/bin/panero$|/panero(/|$)|^/usr/share/(applications|metainfo|icons/hicolor/[^/]+/apps)/io\.github\.norbcraft\.panero\.|^/usr/share/locale/[^/]+/LC_MESSAGES/panero\.mo$|^/usr/share/man/man1/panero\.1\.gz$|^/etc/xdg/panero_kio_isorc$|^/usr/share/knotifications5(/panero\.notifyrc)?$|^/usr/share/(applications|metainfo|icons|icons/hicolor|icons/hicolor/[^/]+|icons/hicolor/[^/]+/apps|locale|locale/[^/]+|locale/[^/]+/LC_MESSAGES|man|man/man1|doc|doc/HTML|doc/HTML/[^/]+|kxmlgui5)$'"
 
 apt_install desktop-file-utils appstream >/dev/null
 # Panero's own rclone and keyring helper (dev/CLOUD-SECURITY-AUDIT.md R1/R2)

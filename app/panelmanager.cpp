@@ -88,7 +88,7 @@ void PanelManager::tabsCountChanged()
 {
     const KConfigGroup cfg(krConfig, "Look&Feel");
     // Panero: the tab bar appears with the second tab (D-014)
-    const bool showTabbar = _tabbar->count() > 1 || cfg.readEntry("Show Tab Bar On Single Tab", false);
+    const bool showTabbar = !_overlay && (_tabbar->count() > 1 || cfg.readEntry("Show Tab Bar On Single Tab", false));
     const bool showNewButton = showTabbar && cfg.readEntry("Show New Tab Button", true);
     const bool showCloseButtons = showTabbar && cfg.readEntry("Show Close Tab Buttons", true);
 
@@ -103,6 +103,26 @@ void PanelManager::tabsCountChanged()
     _tabbar->setTabsClosable(showCloseButtons && _tabbar->count() > 1);
 
     _actions->refreshActions();
+}
+
+void PanelManager::setOverlay(QWidget *widget)
+{
+    if (_overlay == widget)
+        return;
+    if (_overlay) {
+        _layout->removeWidget(_overlay);
+        _overlay->hide();
+    }
+    _overlay = widget;
+    if (_overlay) {
+        _overlay->setParent(this);
+        _layout->addWidget(_overlay, 0, 0, 3, 1);
+        _stack->hide();
+        _overlay->show();
+    } else {
+        _stack->show();
+    }
+    tabsCountChanged();
 }
 
 void PanelManager::activate()

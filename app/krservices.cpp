@@ -16,6 +16,7 @@
 
 #include <KConfigCore/KSharedConfig>
 #include <KIOCore/KProtocolManager>
+#include "../plugins/krarc/krarcbasemanager.h"
 #include <utility>
 
 #include "krglobal.h"
@@ -34,7 +35,7 @@ bool KrServices::cmdExist(const QString& cmdName)
     if (QFileInfo::exists(supposedName))
         return true;
 
-    if ((supposedName = QStandardPaths::findExecutable(cmdName)).isEmpty())
+    if ((supposedName = KrArcBaseManager::findExecutable(cmdName)).isEmpty())
          return false;
 
     // Because an executable file has been found, its path is remembered
@@ -58,7 +59,7 @@ QString KrServices::fullPathName(const QString& name, QString confName)
     if (QFileInfo::exists(supposedName))
         return supposedName;
 
-    if ((supposedName = QStandardPaths::findExecutable(name)).isEmpty())
+    if ((supposedName = KrArcBaseManager::findExecutable(name)).isEmpty())
         return QString();
 
     // Because an executable file has been found, its path is remembered

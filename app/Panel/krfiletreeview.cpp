@@ -155,6 +155,9 @@ KrFileTreeView::KrFileTreeView(QWidget *parent)
 {
     mSourceModel = new KrDirModel(this);
     mSourceModel->dirLister()->setDirOnlyMode(true);
+    // Panero: no error pop-ups from the tree (the panel reports its own errors;
+    // the tree only follows it, e.g. "krarc:/ does not exist" inside an archive)
+    static_cast<KCoreDirLister *>(mSourceModel->dirLister())->setAutoErrorHandlingEnabled(false);
 
     mProxyModel = new KDirSortFilterProxyModel(this);
     mProxyModel->setSourceModel(mSourceModel);

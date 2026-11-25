@@ -1,8 +1,10 @@
 <!DOCTYPE gui SYSTEM "kpartgui.dtd">
-<!-- NOTE: Always update the version in the gui tag below if you make changes to the menu bar and its actions!
+<!-- Panero (D-022): rarely used tools are in Tools; no Mount Manager (drive buttons and
+     drive menus replace it, Alt+/ still opens it); bookmarks = the Pinned list (Go menu).
+     NOTE: Always update the version in the gui tag below if you make changes to the menu bar and its actions!
            This will trigger an update of the ~/.local/share/kxmlgui5/krusader/krusaderui.rc file next time
            user opens the application: the menu bar will be replaced with the new version, toolbars updated.  -->
-<gui version="32" name="panero" >
+<gui version="34" name="panero" >
  <MenuBar>
   <Menu name="file" >
    <text>&amp;File</text>
@@ -20,19 +22,14 @@
    <Action name="unpack" />
    <Action name="test archives" />
    <Separator/>
-   <Action name="compare" />
    <Action name="multirename" />
-   <Separator/>
-   <Action name="create checksum" />
-   <Action name="match checksum" />
-   <Separator/>
-   <Action name="split" />
-   <Action name="combine" />
    <Separator/>
    <Action name="std_quit" />
   </Menu>
   <Menu name="edit">
    <text>&amp;Edit</text>
+   <Action name="job undo" />
+   <Separator/>
    <Action name="std_cut" />
    <Action name="std_copy" />
    <Action name="std_paste" />
@@ -77,6 +74,7 @@
    <Action name="toggle previews" />
    <Action name="panero view colors" />
    <Action name="panero toggle navigation" />
+   <Action name="panero quick view" />
    <Separator/>
    <Action name="changeremoteencoding" />
    <Separator/>
@@ -94,6 +92,9 @@
    <Separator/>
    <Action name="set_jump_back" />
    <Action name="jump_back" />
+   <Separator/>
+   <Action name="bookmarks" />
+   <Action name="add bookmark" />
   </Menu>
   <Action name="useractionmenu">
   </Action>
@@ -102,9 +103,15 @@
    <Action name="find" />
    <Action name="locate" />
    <Separator/>
+   <Action name="compare" />
    <Action name="sync dirs" />
-   <Action name="mountman" />
    <Action name="disk usage" />
+   <Separator/>
+   <Action name="create checksum" />
+   <Action name="match checksum" />
+   <Separator/>
+   <Action name="split" />
+   <Action name="combine" />
    <Separator/>
    <Action name="ftp new connection" />
    <Action name="ftp disconnect" />
@@ -115,6 +122,7 @@
    <Separator/>
    <Action name="emptytrash" />
    <Separator/>
+   <Action name="manage useractions" />
    <Action name="JS_Console" />
   </Menu>
   <Menu name="settings" noMerge="1">
@@ -168,6 +176,7 @@
   </Menu>
   <Menu name="help" >
    <text>&amp;Help</text>
+   <Action name="panero first start" />
   </Menu>
  </MenuBar>
  <!-- Panero default toolbar: one toolbar, icons only (medium). File operations stay on
@@ -178,6 +187,8 @@
   <Action name="panero sidebar button" />
   <Separator name="separator_nav" />
   <Action name="go_up" />
+  <Action name="go_back" />
+  <Action name="go_forward" />
   <Action name="go_home" />
   <Action name="std_redisplay" />
   <Separator name="separator_0" />
@@ -190,7 +201,9 @@
   <Separator name="separator_2" />
   <Action name="toggle hidden files" />
   <Action name="panero view mode" />
+  <Action name="panero quick view" />
   <Action name="panero toolbar spacer" />
+  <Action name="panero jobs" />
   <Action name="panero view colors" />
   <Action name="hamburger_menu" />
  </ToolBar>

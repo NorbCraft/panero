@@ -375,3 +375,39 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   finished and green on the Windows runner before preview 12 was tagged, so
   it ships in preview 12 after all. Panero's old menu stays reachable as
   "Panero Menu" and with PANERO_NO_EXPLORER_MENU=1.
+
+## D-022 — Preview 13 (2026-11-23, owner)
+
+Owner's choices on the preview 13 proposal page (all recommendations, with
+these additions):
+- Choosing an icon theme resets the folder colour to the theme's own; a
+  colour can still be picked afterwards.
+- Drive right-click on Linux: Open in Other Panel, Properties (usage),
+  Mount/Unmount, Eject/Safely Remove, Format/Edit in GNOME Disks, Hide This
+  Button. Windows: Explorer's drive menu with Panero's items on top.
+- Selection cleared after copy, move, pack, open, and copying from or to the
+  other panel (Total Commander).
+- Quick View in the other panel: toolbar button (on the toolbar by default)
+  + Ctrl+Q, follows the cursor. Types: images, text and code, folders (size,
+  counts), archives (contents), PDF on Linux, audio/video. Cloud and
+  online-only files load only on Space or a click (size shown).
+- Copy/move progress: Krusader's progress window + a jobs button with
+  progress on the toolbar; no in-panel progress.
+- Windows workflow: both systems in the code, automatic Windows build on
+  every change, Windows rounds only when the owner asks or before a release.
+  For preview 13 every item is also done for Windows.
+- Windows VM over SSH (owner enables OpenSSH Server, adds Panero's key; SSH
+  allowed from the host only) + ~/VM-Share for test builds. Set up before
+  implementation starts.
+- Settings: one Settings window (Panero pages first, Krusader's under
+  Advanced, overridden options hidden or linked) + short Quick Settings popup.
+- Ideas: Undo for file operations (Ctrl+Z); folder size on Space;
+  first-start assistant; bookmarks vs Pinned (main session decides, see
+  below); hide Mount Manager and empty User Actions, one Tools menu;
+  background thumbnails, faster start, cloud listing cache.
+- Windows: packing/unpacking of zip and other common archive types.
+- Everything in preview 13.
+- Bookmarks vs Pinned (delegated): Pinned is the single list of favourite
+  places for everybody; Krusader's bookmarks are imported into Pinned once and
+  the Bookmarks menu/keys (Ctrl+D, Alt+B) act on the Pinned list, so power
+  users keep keyboard access without a second list to maintain.
