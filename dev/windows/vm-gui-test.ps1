@@ -53,6 +53,10 @@ foreach ($p in 'panerorc', 'panero', 'kxmlgui5\panero', 'panero-cloud', 'panerou
 (Get-CimInstance Win32_OperatingSystem).Caption | Tee-Object -Append "$OutDir\summary.txt"
 $env:PANERO_EXE = $exe
 $env:PANERO_TEST_PROFILE = '1'
+# never send keys or clicks to another application on this desktop (fgguard.py)
+$env:PANERO_VM_GUARD = '1'
+# gui-test.py checks the first-start assistant itself; the focused tests start past it
+if ($Script -ne 'gui-test.py') { $env:PANERO_NO_FIRST_START_ASSISTANT = '1' }
 $env:PANERO_CLEAN_PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
 & $python "$PSScriptRoot\$Script" --vm --work $work --out $OutDir @Extra
 $code = $LASTEXITCODE

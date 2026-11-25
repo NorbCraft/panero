@@ -22,6 +22,10 @@ from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageGrab
 from pywinauto import Desktop, keyboard, mouse
+# VM desktop: input only while Panero is in front (fgguard.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fgguard  # noqa: E402
+fgguard.install()
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)

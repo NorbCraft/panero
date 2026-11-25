@@ -17,6 +17,7 @@ import argparse
 import atexit
 import json
 import os
+import sys
 import shutil
 import subprocess
 import time
@@ -26,6 +27,10 @@ import win32con
 import win32gui
 from PIL import ImageGrab
 from pywinauto import Application, Desktop, keyboard
+# VM desktop: input only while Panero is in front (fgguard.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fgguard  # noqa: E402
+fgguard.install()
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--out', required=True)

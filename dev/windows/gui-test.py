@@ -30,6 +30,10 @@ import win32con
 import win32gui
 from PIL import ImageGrab
 from pywinauto import Application, Desktop, keyboard, mouse
+# VM desktop: input only while Panero is in front (fgguard.py)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fgguard  # noqa: E402
+fgguard.install()
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # the CI console is cp1252
 ap = argparse.ArgumentParser()

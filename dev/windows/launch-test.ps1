@@ -33,4 +33,17 @@ python -m pip install --quiet pywinauto==0.6.9 pillow==11.3.0 psutil==7.0.0
 $env:PANERO_EXE = "$root\Panero\panero.exe"
 $env:PANERO_CLEAN_PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
 python "$PSScriptRoot\gui-test.py" --out $OutDir
-exit $LASTEXITCODE
+$code = $LASTEXITCODE
+
+# Preview 13's focused checks on the same fresh runner: Quick View and the file
+# operations (progress windows, jobs button, Undo, marks). They start past the
+# first-start assistant, which gui-test.py has already checked.
+$env:PANERO_NO_FIRST_START_ASSISTANT = '1'
+foreach ($t in @(@{ py = 'quickview-test.py'; dir = 'quickview' }, @{ py = 'jobs-gui-test.py'; dir = 'jobs' })) {
+    $out = Join-Path $OutDir $t.dir
+    New-Item -ItemType Directory -Force $out | Out-Null
+    python "$PSScriptRoot\$($t.py)" --work "C:\pt\$($t.dir)" --out $out
+    "$($t.py): exit code $LASTEXITCODE" | Tee-Object -Append "$OutDir\summary.txt"
+    if ($LASTEXITCODE -ne 0 -and $code -eq 0) { $code = $LASTEXITCODE }
+}
+exit $code
