@@ -1,3 +1,28 @@
+panero (0.1.0~preview.13-1) noble; urgency=medium
+
+  * Thirteenth preview (git tag v0.1.0-preview.13).
+  * Quick View (Ctrl+Q): the other panel shows the file under the cursor:
+    images, text and code, folders (size), archives, PDF, audio and video.
+  * Copy/move progress windows and a jobs button with progress on the
+    toolbar; Undo (Ctrl+Z) for move, rename, copy, new folder and delete to
+    Trash; marks cleared after operations; folder size on Space.
+  * One Settings window (Panero pages first, Krusader's under Advanced), a
+    short Quick Settings popup, a first-start assistant; Pinned replaces the
+    bookmarks; a Tools menu.
+  * Drag and drop into Flatpak/Snap apps (e.g. the Flatpak Firefox) through
+    the document portal; dialogs open centred on Panero and stay on top; no
+    "krarc:/ does not exist" error inside archives.
+  * Drive right-click menus (Linux: Properties, Mount/Unmount, Eject, Format
+    in Disks; Windows: Explorer's drive menu); special folder icons
+    everywhere; faster start; cloud folders: no automatic downloads for
+    thumbnails, last listing shown at once.
+  * 50/50 on double-click of the panel divider, Back/Forward on the toolbar,
+    finer thumbnail zoom, bigger app icon.
+  * Windows: OneDrive folder ticks as in Explorer, zip/7z/tar packing with
+    the bundled 7-Zip, right-click menu choice, Cloud section shown again.
+
+ -- Norbert Szabo <349977413+NorbCraft@users.noreply.github.com>  Tue, 24 Nov 2026 21:00:00 +0100
+
 panero (0.1.0~preview.12-1) noble; urgency=medium
 
   * Twelfth preview (git tag v0.1.0-preview.12).
