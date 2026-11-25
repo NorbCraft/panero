@@ -1663,12 +1663,15 @@ def choose_in_combo(dlg, text, candidates=PACK_TYPES):
         if combo_text(c) not in candidates:
             continue
         try:
-            c.set_focus()
-            time.sleep(0.3)
-            keys('{HOME}', 0.3)
-            keys(text.replace('+', '{+}'), 0.8)
+            # open its list (focusing the closed box over UI Automation did not
+            # move the keyboard focus: the typing went into the name field)
+            c.click_input()
+            time.sleep(0.6)
+            keys(text.replace('+', '{+}'), 0.5)
+            keys('{ENTER}', 0.6)
             if combo_text(c) == text:
                 return True
+            keys('{ESC}', 0.3)
         except Exception:  # noqa: BLE001
             pass
     for c in dlg.descendants(control_type='ComboBox'):
@@ -1915,8 +1918,10 @@ else:
             keys('{ESC}', 1.5)
 
             def drive_button():
-                buttons = [b for b in c_drive_items('Button') if b.rectangle().height() < 40]
-                if len(buttons) > 1:
+                # the drive bar's button, not the path bar's drive list button (MediaButton)
+                buttons = [b for b in c_drive_items('Button') if b.rectangle().height() < 40
+                           and b.element_info.class_name != 'MediaButton']
+                if buttons:
                     right_click(buttons[0])
             drive_menu_check('drive-button', drive_button, ['open in other panel', 'hide this button'])
 
