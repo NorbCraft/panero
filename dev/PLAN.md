@@ -398,21 +398,25 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       Firefox sandbox); Cloud section migration (Windows); special folder
       icons everywhere; krarc:/ error inside archives; dialogs centred on
       the main window (owner findings 2026-11-23).
-- [ ] Folder ticks from the provider status (helper p13-windows); icon
-      theme resets folder colour (helper p13-settings).
-- [x] Linux drive menu (PaneroDriveActions). [ ] Windows: helper p13-windows.
+- [x] Folder ticks from the provider status (p13-windows); icon theme
+      resets folder colour (p13-settings).
+- [x] Linux drive menu (PaneroDriveActions); Windows: Explorer's drive menu.
 - [x] App icon bigger; splitter double-click 50/50; Back/Forward on the
       toolbar (layout 33); thumbnail frame.
-- [ ] Selection cleared (helper p13-jobs); right-click menu choice
-      (p13-windows); transparent colours (p13-settings).
-- [ ] Quick View (Ctrl+Q) with images, text/code, folders, archives, PDF,
-      audio/video.
-- [ ] Copy progress window + toolbar jobs button.
-- [ ] Settings window (Panero pages + Advanced) and short Quick Settings.
+- [x] Selection cleared (p13-jobs); right-click menu choice (p13-windows,
+      in Settings/Quick Settings); transparent colours (p13-settings).
+- [x] Quick View (Ctrl+Q) with images, text/code, folders, archives, PDF,
+      audio/video (p13-quickview).
+- [x] Copy progress window + toolbar jobs button (p13-jobs).
+- [x] Settings window (Panero pages + Advanced) and short Quick Settings.
 - [x] Faster start (no full udev scans: 200k -> 3.6k syscalls), thumbnails
       not on cloud drives + known mime type, cloud listing cache; context
       menu freeze on cloud files fixed.
-- [ ] Ideas: undo, folder size on Space (p13-jobs); first-start assistant,
+- [x] Ideas: undo, folder size on Space (p13-jobs); first-start assistant,
       bookmarks into Pinned, Tools menu cleanup (p13-settings).
-- [ ] Windows: zip/7z/tar packing and unpacking.
+- [x] Windows: zip/7z/tar packing and unpacking (bundled 7-Zip, tar.exe);
+      archive jobs use toLocalFile ("/C:/x" broke tar).
+- [x] Owner additions: finer thumbnail zoom steps; image viewer plan
+      (dev/IMAGE-VIEWER-PLAN.md workbook; decision page for the brief in
+      ~/Projects/panero-image-viewer-handoff, published after the release).
 - [ ] Release v0.1.0-preview.13 (Linux + Windows round).

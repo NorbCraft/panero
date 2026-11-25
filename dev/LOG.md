@@ -580,3 +580,25 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   menu freeze on cloud files (KFileItemListProperties stat).
 - Four helpers in worktrees: p13-windows, p13-quickview, p13-jobs,
   p13-settings. All stopped at the 5-hour usage limit and were resumed.
+
+## 2026-11-24/25 — Preview 13 integration
+
+- Helpers stopped twice at the usage limit; their branches were merged by
+  the main session (conflicts: kractions includes, autotests CMake, the old
+  Quick Settings dialog deleted by p13-settings while p13-windows edited
+  it — the right-click choice lives in panerosettings/paneroquicksettings,
+  same key Look&Feel/Explorer Menu). Toolbar layout version 34.
+- Linux: 14 suites, 87/87 window checks (gui-fileops-test opened the Trash
+  by toolbar position, which became Unpack: now via the location bar).
+- Windows VM: build + 11 suites (qt5-multimedia added to the VM). VM GUI
+  runs failed: Panero's windows stay behind the owner's foreground app
+  (Firefox) — a task-started process cannot take the foreground. Added
+  dev/windows/fgguard.py (PANERO_VM_GUARD=1): input only while Panero is in
+  front, else the test stops; nothing reached Firefox. The focused tests
+  (quickview, jobs) now also run on the GitHub runner after gui-test.py.
+- GitHub runner: Quick View test and jobs test pass, installer passes;
+  gui-test.py's p13 checks failed already on feature/p13-windows: packing
+  (UIA select() did not change QComboBox; archive jobs passed "/C:/..."
+  paths to tar.exe) and Quick Settings checks (old dialog) — fixed.
+- Package: lintian clean, 96 checks incl. upgrade from preview 12
+  (knotifications5/panero.notifyrc allowed).
