@@ -152,7 +152,13 @@ try:
         ok = wait_page(page, item)
         time.sleep(0.6)
         shot(f'{n:02d}-{item}')
-        record(f'{item}: {page} page', ok, ([t for t in trace() if t.startswith('page=')] or ['-'])[-1])
+        last = ([t for t in trace() if t.startswith('page=')] or ['-'])[-1]
+        if page == 'media' and not ok and wait_page('info', item, 1):
+            # no usable audio output on this machine (runners vary): Quick View falls
+            # back to the file info with "This file cannot be played here", as intended
+            record(f'{item}: {page} page (fallback to info: no audio device on this machine)', False, last, info=True)
+        else:
+            record(f'{item}: {page} page', ok, last)
     record('folder size calculated', any(t.startswith('folder done item=0-Project files=2 folders=1') for t in trace()))
 
     n0 = len(trace())

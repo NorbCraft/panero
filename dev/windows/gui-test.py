@@ -1922,14 +1922,20 @@ else:
             def drive_button():
                 # the drive bar's "C: Windows" button, not the path bar's drive list
                 # button "Windows (C:)" (MediaButton)
-                buttons = []
-                for b in main_w.descendants(control_type='Button'):
+                # checkable tool buttons may not be reported as "Button": search all types
+                buttons, seen = [], []
+                for b in main_w.descendants():
                     try:
-                        if b.window_text().startswith('C:') and b.rectangle().height() < 40 \
+                        t = b.window_text()
+                        if t.startswith('C:') and b.rectangle().height() < 40 \
                                 and b.element_info.class_name != 'MediaButton':
                             buttons.append(b)
+                        elif t.startswith(('C:', 'D:')):
+                            seen.append(f'{t}/{b.element_info.control_type}/{b.element_info.class_name}')
                     except Exception:  # noqa: BLE001
                         pass
+                print('drive bar candidates:', [f'{b.window_text()}/{b.element_info.control_type}' for b in buttons],
+                      'other C:/D: elements:', seen[:8], flush=True)
                 buttons.sort(key=lambda el: el.rectangle().left)
                 if buttons:
                     right_click(buttons[0])
