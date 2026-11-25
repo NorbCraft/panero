@@ -377,7 +377,7 @@ QUrl AbstractJobThread::downloadIfRemote(const QUrl &baseUrl, const QStringList 
 QString AbstractJobThread::tempFileIfRemote(const QUrl &kurl, const QString &type)
 {
     if (kurl.isLocalFile()) {
-        return kurl.path();
+        return kurl.toLocalFile(); // Panero: "C:/x" on Windows (path() is "/C:/x")
     }
 
     _tempFile = new QTemporaryFile(QDir::tempPath() + QLatin1String("/krusader_XXXXXX.") + type);
@@ -393,7 +393,7 @@ QString AbstractJobThread::tempFileIfRemote(const QUrl &kurl, const QString &typ
 QString AbstractJobThread::tempDirIfRemote(const QUrl &kurl)
 {
     if (kurl.isLocalFile()) {
-        return kurl.adjusted(QUrl::StripTrailingSlash).path();
+        return kurl.adjusted(QUrl::StripTrailingSlash).toLocalFile(); // Panero: "C:/x" on Windows
     }
 
     _tempDir = new QTemporaryDir();
@@ -630,7 +630,9 @@ bool AbstractJobThread::getArchiveInformation(QString &path, QString &type, QStr
     QUrl url = sourceFolder.adjusted(QUrl::StripTrailingSlash);
     url.setPath(url.path() + '/' + arcName);
 
-    path = url.adjusted(QUrl::StripTrailingSlash).path();
+    // Panero: a local archive as a file path ("C:/x.zip" on Windows, not "/C:/x.zip")
+    path = url.isLocalFile() ? url.adjusted(QUrl::StripTrailingSlash).toLocalFile()
+                             : url.adjusted(QUrl::StripTrailingSlash).path();
 
     QMimeDatabase db;
     QMimeType mt = db.mimeTypeForUrl(url);

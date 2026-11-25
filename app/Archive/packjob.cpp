@@ -46,7 +46,8 @@ void PackThread::slotStart()
     countLocalFiles(newSource, _fileNames, totalFiles);
 
     QString arcFile = tempFileIfRemote(_destUrl, _type);
-    QString arcDir = newSource.adjusted(QUrl::StripTrailingSlash).path();
+    // Panero: toLocalFile, "C:/x" on Windows (path() is "/C:/x", not a folder there)
+    QString arcDir = newSource.adjusted(QUrl::StripTrailingSlash).toLocalFile();
 
     setProgressTitle(i18n("Processed files"));
 

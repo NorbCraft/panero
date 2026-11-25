@@ -1640,8 +1640,37 @@ def new_dialog(before, timeout=10):
     return found[0] if found else None
 
 
-def choose_in_combo(dlg, text):
-    """Selects @p text in the dialog's combo box that offers it (the packer type)."""
+PACK_TYPES = ('tar', 'tar.gz', 'tar.bz2', 'tar.lzma', 'tar.xz', 'zip', 'cbz', 'rar', 'cbr', 'lha', 'arj', '7z')
+
+
+def combo_text(c):
+    for get in (lambda: c.selected_text(), lambda: c.window_text(), lambda: c.get_value()):
+        try:
+            t = get()
+            if t:
+                return t
+        except Exception:  # noqa: BLE001
+            pass
+    return ''
+
+
+def choose_in_combo(dlg, text, candidates=PACK_TYPES):
+    """Selects @p text in the dialog's combo box that offers it (the packer type).
+    UI Automation's select() can mark an item without QComboBox switching to it,
+    so type the name into the focused combo box (Qt jumps to the matching item)
+    and check what it shows."""
+    for c in dlg.descendants(control_type='ComboBox'):
+        if combo_text(c) not in candidates:
+            continue
+        try:
+            c.set_focus()
+            time.sleep(0.3)
+            keys('{HOME}', 0.3)
+            keys(text.replace('+', '{+}'), 0.8)
+            if combo_text(c) == text:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
     for c in dlg.descendants(control_type='ComboBox'):
         try:
             c.select(text)
@@ -1865,23 +1894,25 @@ else:
         qs[0].click_input()
         return new_dialog(before)
 
+    # Quick Settings (preview 13) is a popup that applies each change at once;
+    # Esc closes it. Its "Right-click:" box offers the Explorer menu or Panero's.
+    RIGHT_CLICK = ('Explorer menu (default)', 'Panero menu')
     try:
         dlg = quick_settings()
         if dlg is None:
-            record('Quick Settings opens', False, 'no Quick Settings button or dialog', must=True)
+            record('Quick Settings opens', False, 'no Quick Settings button or popup', must=True)
         else:
-            combos = {c.window_text(): c for c in dlg.descendants(control_type='ComboBox')}
+            combos = [combo_text(c) for c in dlg.descendants(control_type='ComboBox')]
             labels = [t.window_text() for t in dlg.descendants(control_type='Text')]
             shot('p13-quick-settings')
-            record('Quick Settings has the "Right-click menu" row (Explorer menu default / Panero menu)',
-                   'Right-click menu:' in labels and 'Explorer menu (default)' in combos,
-                   f'combos: {list(combos)}', must=True)
+            record('Quick Settings has the "Right-click" row (Explorer menu default / Panero menu)',
+                   'Right-click:' in labels and 'Explorer menu (default)' in combos,
+                   f'labels: {labels}; combos: {combos}', must=True)
             for cb in dlg.descendants(control_type='CheckBox'):
-                if cb.window_text() == 'Show drive buttons above each panel' and not cb.get_toggle_state():
+                if cb.window_text() == 'Drive buttons' and not cb.get_toggle_state():
                     cb.click_input()
-                    time.sleep(0.4)
-            press_button(proc.pid, 'OK')
-            time.sleep(2.0)
+                    time.sleep(0.6)
+            keys('{ESC}', 1.5)
 
             def drive_button():
                 buttons = [b for b in c_drive_items('Button') if b.rectangle().height() < 40]
@@ -1892,10 +1923,9 @@ else:
             # "Panero menu": files get Panero's own menu again (no Explorer items)
             dlg = quick_settings()
             if dlg is not None:
-                choose_in_combo(dlg, 'Panero menu')
+                chosen = choose_in_combo(dlg, 'Panero menu', RIGHT_CLICK)
                 shot('p13-quick-settings-panero-menu')
-                press_button(proc.pid, 'OK')
-                time.sleep(1.5)
+                keys('{ESC}', 1.0)
                 win.set_focus()
                 keys('{TAB}', 0.8)
                 if title() != 'src':
@@ -1908,7 +1938,7 @@ else:
                 have = {norm(t) for t in texts}
                 record('Quick Settings "Panero menu": the right-click menu is Panero\'s own (no Explorer items)',
                        'move to recycle bin' in have and 'send to' not in have and 'panero menu' not in have,
-                       f'menu: {texts}', must=True)
+                       f'chosen: {chosen}; menu: {texts}', must=True)
                 close_menus()
     except Exception as e:  # noqa: BLE001
         record('Quick Settings checks', False, f'automation error: {e!r}', must=True)
