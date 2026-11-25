@@ -420,3 +420,23 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
       (dev/IMAGE-VIEWER-PLAN.md workbook; decision page for the brief in
       ~/Projects/panero-image-viewer-handoff, published after the release).
 - [ ] Release v0.1.0-preview.13 (Linux + Windows round).
+
+## Phase 18 — Panero Image Viewer (D-023; branch feature/image-viewer)
+
+Specification: `dev/IMAGE-VIEWER-PLAN.md`. Start guide:
+`dev/handoff/IMAGE-VIEWER-START.md`. Release 0.2.0 = M0–M3 + M8 + M9a;
+0.3.0 = M4–M7 + M9b.
+
+- [x] Plan, decisions (D-023), references and start guide on the branch.
+- [ ] M0 Foundation: module, shared canvas, decoder queue, harness, fixtures.
+- [ ] M1 Viewer window + opening/returning + own taskbar identity + icon.
+- [ ] M2 Marks and Trash.
+- [ ] M3 Info and metadata (Exiv2).
+- [ ] M8 Date Taken column (branch feature/date-taken).
+- [ ] M9a Packaging; "Open with" desktop entry; release 0.2.0.
+- [ ] M4 Editor: Tone.
+- [ ] M5 Crop & Rotate (M5b Fixed Size with upscaling).
+- [ ] M6 Save (staged, Replace via Trash, RAW sidecar, HEIC as JPEG).
+- [ ] M7 Paste Previous Edit.
+- [ ] M9b Packaging; release 0.3.0.
+- [ ] M10 Photo view.

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Panero contributors
+  SPDX-License-Identifier: GPL-2.0-or-later
+
+  Simplified Panero icon for 16-24 px: wider split, no sheen.
+  See dev/ICON-PROVENANCE.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>Panero Image Viewer</title>
+  <defs>
+    <linearGradient id="back" x1="16" y1="0" x2="240" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#096479"/>
+      <stop offset="1" stop-color="#25b9a7"/>
+    </linearGradient>
+    <mask id="split" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <rect width="256" height="256" fill="#fff"/>
+      <rect x="118" y="72" width="20" height="156" fill="#000"/>
+    </mask>
+  </defs>
+  <path mask="url(#split)" fill="url(#back)" d="M32 28H88A12 12 0 0 1 97.6 32.8L106 44H224A16 16 0 0 1 240 60V212A16 16 0 0 1 224 228H32A16 16 0 0 1 16 212V44A16 16 0 0 1 32 28Z"/>
+  <path fill="#087f93" d="M32 72H118V228H32A16 16 0 0 1 16 212V88A16 16 0 0 1 32 72Z"/>
+  <path fill="#44dfb9" d="M138 72H224A16 16 0 0 1 240 88V212A16 16 0 0 1 224 228H138Z"/>
+
+    <g transform="translate(250 240) scale(1.17) translate(-250 -240)">
+      <rect x="103" y="123" width="147" height="117" rx="15" fill="#f1fcff" stroke="#183654" stroke-width="8"/>
+      <rect x="116" y="136" width="121" height="79" rx="6" fill="#23507d"/>
+      <circle cx="208" cy="157" r="11" fill="#f1fcff"/><path d="M121 207 150 167 175 191 193 177 231 207V215H121Z" fill="#69e1d9"/>
+    </g>
+</svg>

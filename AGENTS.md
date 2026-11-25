@@ -16,6 +16,9 @@ If you are an agent (or a human) picking this work up, read in this order:
    how to reproduce the build, GitHub access setup.
 6. `dev/OPEN-QUESTIONS.md` — questions for the owner and their answers.
 
+**Image viewer work** (branch `feature/image-viewer`): start with
+`dev/handoff/IMAGE-VIEWER-START.md`, then `dev/IMAGE-VIEWER-PLAN.md`.
+
 ## Working rules
 
 - Keep `dev/PLAN.md` and `dev/LOG.md` current at the end of every work

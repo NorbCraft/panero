@@ -602,3 +602,19 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   paths to tar.exe) and Quick Settings checks (old dialog) — fixed.
 - Package: lintian clean, 96 checks incl. upgrade from preview 12
   (knotifications5/panero.notifyrc allowed).
+
+## 2026-11-25 — Image viewer: plan approved, branch prepared
+
+- Owner's brief reviewed against preview 13 and Zorin's packages (Qt +
+  kimageformats read RAW/HEIC/AVIF/JXL; ImageMagick 6 on Ubuntu cannot
+  decode RAW without ufraw-batch; per-window Wayland app id verified in a
+  headless GNOME Shell 46). Decision page answered → D-023 (Enter also opens
+  the viewer, Panero as "Open with" image viewer, Fixed Size scales up,
+  Before = backslash, RAW edits as XMP sidecars, semantic versions 0.2.0 /
+  0.3.0 / 1.0.0).
+- Branch `feature/image-viewer` created from preview 13 (21225ce15) with
+  the self-contained specification (`dev/IMAGE-VIEWER-PLAN.md`, replacing
+  the 2026-11-24 workbook), the start guide for the implementing agent
+  (`dev/handoff/IMAGE-VIEWER-START.md`), the mockups and the approved icon
+  (`dev/handoff/image-viewer/`), Phase 18 in this plan. No code yet. The
+  earlier review branch `plan/image-viewer` is superseded by this one.
