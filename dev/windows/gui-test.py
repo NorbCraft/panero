@@ -1927,7 +1927,8 @@ else:
                 for b in main_w.descendants():
                     try:
                         t = b.window_text()
-                        if t.startswith('C:') and b.rectangle().height() < 40 \
+                        if t.startswith('C:') and '/' not in t and b.rectangle().height() < 40 \
+                                and b.element_info.control_type in ('Button', 'CheckBox') \
                                 and b.element_info.class_name != 'MediaButton':
                             buttons.append(b)
                         elif t.startswith(('C:', 'D:')):
