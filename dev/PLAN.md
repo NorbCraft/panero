@@ -388,7 +388,7 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - Needs the owner's PC: OneDrive names/icons, real download/free-up after
   the pin actions, the icon fix on his C:\, Google Drive detection.
 
-## Phase 17 — Preview 13 (owner decisions D-022)
+## Phase 17 — Preview 13 (owner decisions D-022; done)
 
 - [x] Windows VM over SSH (key ~/.ssh/panero-vm_ed25519 on the host, setup
       script ~/VM-Share/setup-panero-ssh.ps1 run by the owner); MSYS2,
@@ -419,4 +419,6 @@ a decision form was given to the owner (drive buttons, Multi-Rename, Windows).
 - [x] Owner additions: finer thumbnail zoom steps; image viewer plan
       (dev/IMAGE-VIEWER-PLAN.md workbook; decision page for the brief in
       ~/Projects/panero-image-viewer-handoff, published after the release).
-- [ ] Release v0.1.0-preview.13 (Linux + Windows round).
+- [x] Release v0.1.0-preview.13 (Linux + Windows round): PR #20, tag on
+      3c882dd80, release run 45587307079 (Windows GUI job re-run once: a
+      Quick View timing flake, the test now waits up to 6 s).
