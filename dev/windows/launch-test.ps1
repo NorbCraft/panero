@@ -39,7 +39,16 @@ $code = $LASTEXITCODE
 # operations (progress windows, jobs button, Undo, marks). They start past the
 # first-start assistant, which gui-test.py has already checked.
 $env:PANERO_NO_FIRST_START_ASSISTANT = '1'
-foreach ($t in @(@{ py = 'quickview-test.py'; dir = 'quickview' }, @{ py = 'jobs-gui-test.py'; dir = 'jobs' })) {
+# Quick View's test starts from a fresh, separate profile (Qt's test location), not
+# from the panel sorting gui-test.py left; the jobs test uses the first-run profile
+foreach ($t in @(@{ py = 'quickview-test.py'; dir = 'quickview'; fresh = $true },
+                 @{ py = 'jobs-gui-test.py'; dir = 'jobs'; fresh = $false })) {
+    if ($t.fresh) {
+        $env:PANERO_TEST_PROFILE = '1'
+        Remove-Item -Recurse -Force "$env:LOCALAPPDATA\qttest", "$env:APPDATA\qttest" -ErrorAction SilentlyContinue
+    } else {
+        Remove-Item Env:PANERO_TEST_PROFILE -ErrorAction SilentlyContinue
+    }
     $out = Join-Path $OutDir $t.dir
     New-Item -ItemType Directory -Force $out | Out-Null
     python "$PSScriptRoot\$($t.py)" --work "C:\pt\$($t.dir)" --out $out
