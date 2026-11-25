@@ -1755,11 +1755,13 @@ else:
         keys('{TAB}', 0.8)
     record('Bundled 7-Zip is in the Panero folder', SEVENZIP.exists(), str(SEVENZIP), must=True)
     try:
-        # mark everything, pack as zip, 7z and tar.gz into the other panel (the dialog's default)
-        ORDER = panel_order(ARC_SRC)
-        go_to('sub')
-        keys('{INSERT}{INSERT}{INSERT}', 0.5)
+        # mark everything, pack as zip, 7z and tar.gz into the other panel (the dialog's default);
+        # packing clears the marks (Total Commander, D-022), so mark again before each one
         for kind, must in (('zip', True), ('7z', True), ('tar.gz', False)):
+            win.set_focus()
+            ORDER = panel_order(ARC_SRC)
+            go_to('sub')
+            keys('{INSERT}{INSERT}{INSERT}', 0.5)
             note = pack_as(kind)
             target = ARC_OUT / f'src.{kind}'
             ok = wait_for(lambda: target.exists() and ARC_WANT <= archive_names(target), 40)
@@ -1918,9 +1920,17 @@ else:
             keys('{ESC}', 1.5)
 
             def drive_button():
-                # the drive bar's button, not the path bar's drive list button (MediaButton)
-                buttons = [b for b in c_drive_items('Button') if b.rectangle().height() < 40
-                           and b.element_info.class_name != 'MediaButton']
+                # the drive bar's "C: Windows" button, not the path bar's drive list
+                # button "Windows (C:)" (MediaButton)
+                buttons = []
+                for b in main_w.descendants(control_type='Button'):
+                    try:
+                        if b.window_text().startswith('C:') and b.rectangle().height() < 40 \
+                                and b.element_info.class_name != 'MediaButton':
+                            buttons.append(b)
+                    except Exception:  # noqa: BLE001
+                        pass
+                buttons.sort(key=lambda el: el.rectangle().left)
                 if buttons:
                     right_click(buttons[0])
             drive_menu_check('drive-button', drive_button, ['open in other panel', 'hide this button'])
