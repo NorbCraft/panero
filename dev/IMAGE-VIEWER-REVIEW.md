@@ -1,7 +1,10 @@
 # Panero Image Viewer — review of the brief and proposed plan
 
-Status: **waiting for the owner's decisions** (2026-11-25). Nothing is
-implemented. The interactive version of this review, where the answers are
+Status: **decided** (2026-11-25): the owner's answers are recorded as
+`D-023` in `dev/DECISIONS.md`, with the changes to the recommendations
+(Enter also opens the viewer, Panero as an "Open with" image viewer for
+other programs, Fixed Size scales up, Before = backslash, RAW edits kept as
+XMP sidecars, semantic versions from 0.2.0). Nothing is implemented yet. The interactive version of this review, where the answers are
 chosen and saved, is the private decision page
 <https://claude.ai/artifact/8MXmejL9MsN6eGHGkYzyDc>. This file is the same
 content for reading on GitHub. Once the decisions are in, they become

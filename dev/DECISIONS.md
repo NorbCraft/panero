@@ -375,3 +375,52 @@ Supersedes the rclone parts of D-014 (C3). Details and reasons:
   finished and green on the Windows runner before preview 12 was tagged, so
   it ships in preview 12 after all. Panero's old menu stays reachable as
   "Panero Menu" and with PANERO_NO_EXPLORER_MENU=1.
+
+## D-023 — Panero Image Viewer (2026-11-25, owner, from the decision page)
+
+(D-022, preview 13, is on `feature/preview13` until that merges.) Review:
+`dev/IMAGE-VIEWER-REVIEW.md`. All recommendations taken, except where noted.
+
+- Imaging: Qt + KDE image plugins for decoding/encoding, Panero's own small
+  edit pipeline (one recipe for preview and export), Exiv2 for metadata, Qt
+  `QColorSpace` for colour profiles; no ImageMagick. Quality safeguards (owner
+  asked whether the results will be good enough): processing in 16 bit per
+  channel, Panero's own Lanczos resampler for resizing and bicubic for
+  rotation/straighten (Qt's built-in smooth scaling is only bilinear), and a
+  development-only comparison test against ImageMagick on the same edits.
+  MagickWand stays the fallback if that comparison shows a visible gap.
+- One process; the viewer window has its own taskbar identity.
+- Double-click, **Enter** and F3 on an image all open the viewer (owner).
+  Panero is also an image viewer for other programs: a visible desktop entry
+  "Panero Image Viewer" (`io.github.norbcraft.panero.imageviewer.desktop`,
+  image MIME types) so other file managers offer "Open with Panero Image
+  Viewer" and it can be the default image app. Opened from outside
+  (`panero --image-viewer FILE...`): an already running Panero opens a viewer
+  window (single instance over D-Bus), otherwise only the viewer starts, no
+  file-manager window. It browses the other images of that folder in name
+  order, starting at the file (only the given files when several are
+  passed). Marks stay in the viewer session; "Show in Panero" opens the
+  folder in Panero with that photo as the cursor and the marks applied.
+  Closing the last viewer window ends Panero if no file-manager window was
+  open. Windows follow-up: the installer registers the same "Open with".
+- Returning, no-Trash delete, Paste Previous Edit, Replace Original,
+  multi-frame/gestures, Date Taken sort, Photo view, harness: as recommended.
+- Fixed Size crop (second editor milestone): when the requested size is
+  bigger than the photo allows, the largest rectangle of that shape is
+  cropped and **scaled up** to the requested pixels (owner), with the
+  upscale factor and the effective DPI shown.
+- Before: hold backslash (\), as in Lightroom (owner).
+- RAW is never replaced (owner): saving an edit of a RAW writes the edit
+  recipe next to it as an XMP sidecar (`DSC_1850.CR2.xmp`, Panero's own XMP
+  namespace, written with Exiv2); opening the RAW again in Panero applies
+  it, like Lightroom or darktable. "Export JPEG" writes the edited JPEG copy
+  (quality 92, all metadata). Other programs and the panel thumbnails show
+  the unedited RAW. HEIC: edits are saved as a JPEG copy with all metadata;
+  a HEIC copy is an option with a "metadata not kept" note.
+- Versions (owner): preview 13 stays `0.1.0-preview.13` (built and tested);
+  from then on semantic versions: the viewer + Date Taken release is
+  **0.2.0**, fixes 0.2.1, …, the editor **0.3.0**, the official release
+  **1.0.0**. Test builds from a feature branch are `0.2.0~dev.N`, so the
+  final 0.2.0 replaces them.
+- Development on a new branch `feature/image-viewer` (owner), from `main`
+  after preview 13; Date Taken on `feature/date-taken`.
