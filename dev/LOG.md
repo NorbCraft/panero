@@ -602,3 +602,9 @@ Branch `feature/packaging` (rebased on `main` `bfa10f64b`).
   paths to tar.exe) and Quick Settings checks (old dialog) — fixed.
 - Package: lintian clean, 96 checks incl. upgrade from preview 12
   (knotifications5/panero.notifyrc allowed).
+- Released v0.1.0-preview.13: PR #20 merged (3c882dd80), tag pushed,
+  release run 45587307079 green after one re-run of the Windows GUI job
+  ("Ctrl+Q opens Quick View" checked after 1 s on a slow runner; the test now
+  waits up to 6 s). Assets: .deb, Windows ZIP, setup.exe, source, licences;
+  SHA256SUMS verified after download. The image viewer continues on
+  `feature/image-viewer` (D-023; next versions 0.2.0 / 0.3.0).

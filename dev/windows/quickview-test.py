@@ -143,6 +143,10 @@ try:
     before = ImageGrab.grab(bbox=(r.left + int(r.width() * 0.66), r.top + int(r.height() * 0.25),
                                   r.right - 20, r.top + int(r.height() * 0.75)))
     keys('^q', 1.0)
+    # a slow runner may need more than the second keys() waits
+    end = time.time() + 6
+    while 'opened' not in trace() and time.time() < end:
+        time.sleep(0.25)
     record('Ctrl+Q opens Quick View', 'opened' in trace())
     steps = [('folder', '0-Project'), ('image', '1-photo.jpg'), ('image', '2-anim.gif'), ('text', '3-code.cpp'),
              ('text', '4-notes.txt'), ('archive', '5-archive.zip'), ('info', '6-doc.pdf'),
@@ -173,6 +177,9 @@ try:
     keys('{ESC}')
     record('Esc: focus back in the panel', trace()[-1:] == ['focus=panel'], str(trace()[-2:]))
     keys('^q', 1.5)
+    end = time.time() + 6
+    while 'closed' not in trace()[-2:] and time.time() < end:
+        time.sleep(0.25)
     record('Ctrl+Q closes Quick View', 'closed' in trace()[-2:])
     win.set_focus()
     after = ImageGrab.grab(bbox=(r.left + int(r.width() * 0.66), r.top + int(r.height() * 0.25),
